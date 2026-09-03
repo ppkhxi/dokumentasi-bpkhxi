@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1B5E20">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dokumentasi XI">
+<meta name="description" content="Aplikasi dokumentasi foto lapangan berwatermark BPKH Wilayah XI">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-96.png" sizes="96x96">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Portal Dokumentasi BPKH XI</title>
+<script src="peta.js"></script>
+<style>
+:root{
+  --hijau:#1B5E20; --hijau-2:#2E7D32; --hijau-terang:#E8F5E9;
+  --bg:#F5F6F5; --surface:#FFFFFF; --teks:#1A1C19; --teks-2:#5F6560;
+  --garis:#DDE3DC; --merah:#C62828; --oranye:#EF6C00;
+  --appbar:56px; --navbar:64px;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;overscroll-behavior:none}
+body{
+  font-family:'Roboto','Segoe UI',system-ui,-apple-system,sans-serif;
+  background:#000;color:var(--teks);
+  display:flex;align-items:center;justify-content:center;
+  -webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit}
+
+#app{
+  position:relative;width:100%;height:100%;max-width:430px;max-height:100%;
+  background:var(--bg);overflow:hidden;display:flex;flex-direction:column;
+}
+/* Mockup HP hanya saat dibuka di layar lebar lewat browser biasa. */
+@media(min-width:600px) and (min-height:700px){
+  body{background:#20232A}
+  #app{height:844px;border-radius:28px;box-shadow:0 20px 60px rgba(0,0,0,.5);border:8px solid #111}
+}
+/* Saat sudah dipasang sebagai aplikasi: selalu penuh layar, tanpa bingkai. */
+@media all and (display-mode:standalone),all and (display-mode:fullscreen){
+  body{background:var(--bg)}
+  #app{max-width:none;height:100%;border:0;border-radius:0;box-shadow:none}
+}
+
+#appbar{
+  flex:0 0 auto;height:calc(var(--appbar) + var(--safe-t));padding-top:var(--safe-t);
+  background:var(--hijau);color:#fff;display:flex;align-items:center;gap:4px;padding-left:6px;padding-right:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);z-index:30;position:relative;
+}
+#appbar.sembunyi{display:none}
+#btnBack{background:none;border:0;color:#fff;width:44px;height:44px;font-size:24px;border-radius:50%;cursor:pointer;display:none}
+#btnBack.tampil{display:block}
+#judulBar{font-size:18px;font-weight:600;flex:1;padding-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aksi-bar{background:none;border:0;color:#fff;width:44px;height:44px;border-radius:50%;font-size:19px;cursor:pointer}
+#pilStatus{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.18);margin-right:6px;white-space:nowrap}
+#pilStatus.offline{background:var(--oranye)}
+
+#layar{flex:1 1 auto;position:relative;overflow:hidden}
+.screen{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;background:var(--bg);
+  padding:14px 14px calc(18px + var(--safe-b));
+  opacity:0;visibility:hidden;transform:translateX(14%);
+  transition:opacity .18s ease,transform .22s cubic-bezier(.2,.7,.3,1),visibility .22s;
+}
+.screen.aktif{opacity:1;visibility:visible;transform:none}
+.screen.nopad{padding:0}
+
+#navbar{
+  flex:0 0 auto;height:calc(var(--navbar) + var(--safe-b));padding-bottom:var(--safe-b);
+  background:var(--surface);border-top:1px solid var(--garis);display:flex;align-items:stretch;z-index:30;
+}
+#navbar.sembunyi{display:none}
+.nav-item{
+  flex:1;background:none;border:0;cursor:pointer;color:var(--teks-2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:500;
+}
+/* Ikon digambar sebagai SVG, bukan emoji — emoji berbeda bentuk di tiap
+   merek HP dan sering tampil tidak sejajar. */
+.nav-item .ic{
+  display:flex;align-items:center;justify-content:center;
+  height:26px;padding:2px 14px;border-radius:16px;transition:background .15s;
+}
+.nav-item .ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.nav-item.aktif{color:var(--hijau)}
+.nav-item.aktif .ic{background:var(--hijau-terang)}
+.nav-item.aktif .ic svg{stroke-width:2}
+.nav-fab{flex:0 0 76px;display:flex;align-items:center;justify-content:center}
+.nav-fab button{
+  width:58px;height:58px;border-radius:20px;border:0;background:var(--hijau);color:#fff;
+  cursor:pointer;box-shadow:0 5px 14px rgba(27,94,32,.42);margin-top:-16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-fab button svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.nav-fab button:active{transform:scale(.94)}
+
+.kartu{background:var(--surface);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.kartu-judul{font-size:13px;font-weight:700;color:var(--teks-2);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px}
+label.f{display:block;font-size:12px;font-weight:600;color:var(--teks-2);margin:12px 0 5px}
+input.f,select.f,textarea.f{
+  width:100%;padding:12px 13px;border:1.5px solid var(--garis);border-radius:12px;
+  font-size:15px;font-family:inherit;background:#fff;color:var(--teks);outline:none;-webkit-user-select:text;user-select:text;
+}
+input.f:focus,select.f:focus,textarea.f:focus{border-color:var(--hijau-2)}
+textarea.f{resize:none;min-height:84px}
+.tombol{
+  width:100%;padding:14px;border:0;border-radius:14px;background:var(--hijau);color:#fff;
+  font-size:15px;font-weight:600;cursor:pointer;margin-top:14px;
+}
+.tombol:active{background:var(--hijau-2)}
+.tombol.sekunder{background:var(--hijau-terang);color:var(--hijau)}
+.tombol.abu{background:#ECEFEC;color:var(--teks)}
+.tombol:disabled{opacity:.5}
+.baris-tombol{display:flex;gap:10px}
+.baris-tombol .tombol{margin-top:10px}
+
+.hero{background:linear-gradient(135deg,var(--hijau) 0%,#388E3C 100%);color:#fff;border-radius:18px;padding:17px;margin-bottom:12px}
+.hero .halo{font-size:12.5px;opacity:.85}
+.hero .nama{font-size:20px;font-weight:700;margin:3px 0 12px}
+.hero .room-chip{
+  display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);
+  padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;border:0;color:#fff;cursor:pointer;
+}
+.statistik{display:flex;gap:10px;margin-bottom:12px}
+.stat{flex:1;background:var(--surface);border-radius:14px;padding:13px 10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.stat b{display:block;font-size:22px;color:var(--hijau);line-height:1.2}
+.stat span{font-size:11px;color:var(--teks-2)}
+.grid-menu{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.menu-kartu{
+  background:var(--surface);border:0;border-radius:16px;padding:17px 13px;text-align:left;cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;flex-direction:column;gap:8px;
+}
+.menu-kartu .ic{
+  width:40px;height:40px;border-radius:12px;background:var(--hijau-terang);color:var(--hijau);
+  display:flex;align-items:center;justify-content:center;
+}
+.menu-kartu .ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+.menu-kartu b{font-size:14px;color:var(--teks)}
+.menu-kartu small{font-size:11.5px;color:var(--teks-2);line-height:1.4}
+#spandukPasang{
+  background:#FFF8E1;border:1px solid #FFE082;border-radius:14px;padding:13px 14px;margin-bottom:12px;display:none;
+}
+#spandukPasang.tampil{display:block}
+#spandukPasang b{font-size:13.5px;display:block;margin-bottom:3px}
+#spandukPasang p{margin:0 0 10px;font-size:12px;color:var(--teks-2);line-height:1.5}
+
+#scKamera{background:#000;display:flex;flex-direction:column}
+#wadahVideo{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+#video{width:100%;height:100%;object-fit:cover}
+#tumpukBawah{position:absolute;left:10px;right:10px;bottom:10px}
+#overlayWm{
+  color:#fff;font-size:10.5px;line-height:1.45;
+  background:linear-gradient(transparent,rgba(0,0,0,.62));padding:22px 8px 8px;border-radius:8px;pointer-events:none;
+  display:flex;align-items:center;gap:9px;
+}
+/* Catatan ditulis langsung di layar kamera, tepat di bawah pratinjau
+   watermark. Sengaja tidak wajib — memotret cepat berturut-turut
+   tidak boleh terhambat isian teks. */
+#inCatatanKamera{
+  width:100%;margin-top:8px;padding:11px 13px;border:0;border-radius:12px;
+  background:rgba(255,255,255,.94);color:var(--teks);font-size:14px;font-family:inherit;outline:none;
+  -webkit-user-select:text;user-select:text;
+}
+#inCatatanKamera:focus{background:#fff;box-shadow:0 0 0 2px var(--hijau-2)}
+#inCatatanKamera::placeholder{color:#7A807B}
+#overlayLogo{width:34px;height:34px;flex:0 0 34px;border:1px solid rgba(255,255,255,.7);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;overflow:hidden}
+#overlayLogo img{width:100%;height:100%;object-fit:contain}
+#overlayWm .kantor{font-weight:700;font-size:12.5px;letter-spacing:.4px}
+#pesanKamera{position:absolute;color:#fff;text-align:center;padding:26px;font-size:14px;line-height:1.6}
+#barKamera{flex:0 0 auto;background:#000;padding:14px 18px calc(16px + var(--safe-b));display:flex;align-items:center;justify-content:space-between}
+#shutter{width:70px;height:70px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.35);cursor:pointer;background-clip:padding-box}
+#shutter:active{transform:scale(.93)}
+.tombol-kecil{
+  background:rgba(255,255,255,.15);border:0;color:#fff;padding:9px 12px;border-radius:12px;
+  font-size:11.5px;cursor:pointer;min-width:96px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.tombol-kecil svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.tombol-kecil:active{background:rgba(255,255,255,.3)}
+#chipGps{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:6px 12px;border-radius:20px;white-space:nowrap}
+#tirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
+#tirai.kilat{opacity:.85;transition:none}
+
+#pratinjau{width:100%;border-radius:14px;display:block;background:#000}
+.meta-baris{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--teks-2);padding:7px 0;border-bottom:1px solid var(--garis)}
+.meta-baris b{color:var(--teks);font-weight:600;text-align:right}
+
+.filter{display:flex;gap:8px;margin-bottom:12px}
+.filter button{flex:1;padding:9px;border:1.5px solid var(--garis);background:#fff;border-radius:20px;font-size:12.5px;font-weight:600;color:var(--teks-2);cursor:pointer}
+.filter button.pilih{background:var(--hijau-terang);border-color:var(--hijau);color:var(--hijau)}
+.grid-galeri{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sel-galeri{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#ddd;border:0;padding:0;cursor:pointer}
+.sel-galeri img{width:100%;height:100%;object-fit:cover;display:block}
+.sel-galeri .tanda{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.3)}
+.sel-galeri.terpilih img{transform:scale(.86);border-radius:8px}
+.sel-galeri img{transition:transform .12s}
+.sel-galeri.terpilih{background:var(--hijau)}
+.centang{
+  position:absolute;left:5px;top:5px;width:20px;height:20px;border-radius:50%;
+  border:2px solid #fff;background:rgba(0,0,0,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.sel-galeri.terpilih .centang{background:var(--hijau);border-color:#fff}
+.centang svg{width:12px;height:12px;fill:none;stroke:#fff;stroke-width:3;
+  stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.sel-galeri.terpilih .centang svg{opacity:1}
+
+.aksi-galeri{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.aksi-galeri .jml{flex:1;font-size:13px;font-weight:600;min-width:90px}
+.tombol-mini{
+  padding:8px 13px;border:1.5px solid var(--garis);background:#fff;border-radius:20px;
+  font-size:12.5px;font-weight:600;color:var(--teks);cursor:pointer;font-family:inherit;
+}
+.tombol-mini.utama{background:var(--hijau);border-color:var(--hijau);color:#fff}
+.tombol-mini.bahaya{color:var(--merah);border-color:#F3C9C6}
+.tombol-mini:disabled{opacity:.45}
+.tanda.terkirim{background:#4CAF50}.tanda.pending{background:var(--oranye)}.tanda.gagal{background:var(--merah)}
+.tanda.simulasi{background:#9E9E9E}
+.kosong{text-align:center;padding:48px 22px;color:var(--teks-2)}
+.kosong .ic{font-size:46px;display:block;margin-bottom:12px;opacity:.4}
+.kosong p{font-size:13.5px;line-height:1.6;margin:0}
+
+.bungkus-tabel{background:var(--surface);border-radius:14px;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+table{border-collapse:collapse;width:100%;font-size:12px;min-width:600px}
+th{background:var(--hijau-terang);color:var(--hijau);text-align:left;padding:11px 9px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+td{padding:9px;border-top:1px solid var(--garis);vertical-align:top}
+td img{width:44px;height:44px;object-fit:cover;border-radius:6px;display:block}
+.badge{font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px;white-space:nowrap}
+.badge.terkirim{background:#E8F5E9;color:#2E7D32}
+.badge.pending{background:#FFF3E0;color:var(--oranye)}
+.badge.gagal{background:#FDECEA;color:var(--merah)}
+.badge.simulasi{background:#EEEEEE;color:#616161}
+#spandukSimulasi{
+  background:#FFF3E0;border:1px solid #FFCC80;border-radius:14px;padding:13px 14px;margin-bottom:12px;display:none;
+}
+#spandukSimulasi.tampil{display:block}
+#spandukSimulasi b{font-size:13.5px;display:block;margin-bottom:3px;color:var(--oranye)}
+#spandukSimulasi p{margin:0;font-size:12px;color:var(--teks-2);line-height:1.5}
+
+#fotoDetail{width:100%;border-radius:14px;display:block;margin-bottom:12px;background:#000}
+
+#peta{height:58vh;min-height:320px;border-radius:14px;overflow:hidden;background:#EAEFEA;
+  box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.peta-kosong{display:flex;align-items:center;justify-content:center;height:100%;
+  text-align:center;padding:26px;color:var(--teks-2);font-size:13px;line-height:1.7}
+.peta-popup{font-family:inherit;font-size:12.5px;line-height:1.5}
+.peta-popup img{width:100%;border-radius:8px;margin-bottom:8px;display:block}
+.peta-popup b{font-size:13.5px}
+.peta-popup .baris{color:var(--teks-2)}
+.peta-popup .catatan{margin:6px 0;color:var(--teks)}
+
+#snackbar{
+  position:absolute;left:14px;right:14px;bottom:calc(var(--navbar) + var(--safe-b) + 12px);
+  background:#323232;color:#fff;padding:13px 16px;border-radius:12px;font-size:13.5px;
+  opacity:0;transform:translateY(14px);transition:.22s;pointer-events:none;z-index:60;
+}
+#snackbar.tampil{opacity:1;transform:none}
+#dialog{position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:22px;z-index:70}
+#dialog.tampil{display:flex}
+.dialog-isi{background:#fff;border-radius:18px;padding:20px;width:100%;max-width:340px;max-height:82%;overflow-y:auto}
+.dialog-isi h3{margin:0 0 6px;font-size:17px}
+.dialog-isi p{margin:0 0 14px;font-size:13.5px;color:var(--teks-2);line-height:1.55}
+.opsi-room{display:flex;align-items:center;gap:10px;padding:13px;border:1.5px solid var(--garis);border-radius:12px;margin-bottom:8px;cursor:pointer;font-size:14px}
+.opsi-room.pilih{border-color:var(--hijau);background:var(--hijau-terang);font-weight:600;color:var(--hijau)}
+.catatan-kecil{font-size:11.5px;color:var(--teks-2);line-height:1.55;margin:8px 0 0}
+.saklar{display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:13px;line-height:1.45;cursor:pointer}
+.saklar input{width:19px;height:19px;flex:0 0 19px;margin:1px 0 0;accent-color:var(--hijau)}
+
+#scLogin{background:linear-gradient(160deg,var(--hijau) 0%,#2E7D32 55%,#43A047 100%);padding:0}
+.login-isi{min-height:100%;display:flex;flex-direction:column;justify-content:center;padding:30px 24px calc(30px + var(--safe-b))}
+.login-logo{
+  width:82px;height:82px;border-radius:24px;background:rgba(255,255,255,.16);border:2px dashed rgba(255,255,255,.5);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;margin:0 auto 16px;overflow:hidden;
+}
+.login-logo img{width:100%;height:100%;object-fit:contain}
+#scLogin h1{color:#fff;text-align:center;font-size:21px;margin:0 0 4px}
+#scLogin .sub{color:rgba(255,255,255,.82);text-align:center;font-size:13px;margin:0 0 24px}
+.kotak-login{background:#fff;border-radius:20px;padding:20px}
+#tombolGoogle{display:flex;justify-content:center;margin-top:16px;min-height:44px}
+#areaManual{display:none}
+#areaManual.tampil{display:block}
+#areaGoogle.sembunyi{display:none}
+.pemisah{display:flex;align-items:center;gap:10px;margin:16px 0 0;color:var(--teks-2);font-size:11.5px}
+.pemisah::before,.pemisah::after{content:'';flex:1;height:1px;background:var(--garis)}
+.akun-kartu{display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px;border:1.5px solid var(--garis);border-radius:12px}
+.akun-kartu img{width:38px;height:38px;border-radius:50%;flex:0 0 38px;background:var(--hijau-terang)}
+.akun-kartu b{display:block;font-size:14px}
+.akun-kartu small{color:var(--teks-2);font-size:11.5px;word-break:break-all}
+
+#areaCetak{display:none}
+@media print{
+  body{background:#fff;display:block;overflow:visible;height:auto}
+  html{overflow:visible;height:auto}
+  #app{display:none!important}
+  #areaCetak{display:block!important;font-family:'Times New Roman',serif;color:#000;padding:0}
+  #areaCetak h2{font-size:15pt;margin:0 0 2pt;text-align:center}
+  #areaCetak .sub{font-size:10pt;text-align:center;margin:0 0 12pt}
+  #areaCetak table{width:100%;border-collapse:collapse;font-size:9pt;min-width:0}
+  #areaCetak th,#areaCetak td{border:1px solid #000;padding:4pt;text-align:left;vertical-align:top;background:#fff!important;color:#000!important}
+  #areaCetak img{width:70px;height:70px;object-fit:cover}
+  @page{size:A4 landscape;margin:12mm}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div id="appbar">
+    <button id="btnBack" aria-label="Kembali">&#8592;</button>
+    <div id="judulBar">Portal Dokumentasi</div>
+    <span id="pilStatus">Online</span>
+    <button class="aksi-bar" id="btnSync" title="Sinkronkan">&#8635;</button>
+  </div>
+
+  <div id="layar">
+
+    <!-- LOGIN -->
+    <section class="screen nopad aktif" id="scLogin">
+      <div class="login-isi">
+        <div class="login-logo" id="logoLogin">LOGO</div>
+        <h1>BPKH Wilayah XI</h1>
+        <p class="sub">Portal Dokumentasi Foto Lapangan</p>
+        <div class="kotak-login">
+          <label class="f" for="inRoomLogin" style="margin-top:0">Room / Project</label>
+          <select class="f" id="inRoomLogin"></select>
+
+          <div id="areaGoogle">
+            <div id="tombolGoogle"></div>
+            <p class="catatan-kecil" id="ketGoogle">Masuk dengan akun Google Anda. Nama dan email
+              yang tercatat di tiap foto diambil dari akun itu, tidak bisa diketik sendiri.</p>
+          </div>
+
+          <div id="areaManual">
+            <label class="f" for="inNama">Nama Petugas</label>
+            <input class="f" id="inNama" placeholder="Contoh: Budi Santoso" autocomplete="name">
+            <button class="tombol" id="btnMasuk">Masuk</button>
+            <p class="catatan-kecil" id="ketManual">Login Google belum tersedia di perangkat ini.
+              Nama yang diketik hanya berlaku sebagai catatan, bukan identitas terverifikasi.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BERANDA -->
+    <section class="screen" id="scBeranda">
+      <div id="spandukSimulasi">
+        <b>&#9888;&#65039; Foto belum terkirim ke Drive</b>
+        <p>Aplikasi masih berjalan dalam mode simulasi karena alamat server belum diisi.
+          Foto tersimpan aman di HP, tapi belum naik ke Google Drive. Buka link undangan dari
+          admin, atau isi alamat server di menu Setelan.</p>
+      </div>
+      <div id="spandukPasang">
+        <b>&#128241; Pasang sebagai aplikasi</b>
+        <p>Tambahkan ke layar utama supaya jalan penuh layar tanpa tampilan browser dan bisa dibuka saat offline.</p>
+        <button class="tombol" id="btnPasang" style="margin-top:0">Pasang Sekarang</button>
+      </div>
+      <div class="hero">
+        <div class="halo">Selamat bertugas,</div>
+        <div class="nama" id="heroNama">Petugas</div>
+        <button class="room-chip" id="heroRoom">&#128193; <span>—</span></button>
+      </div>
+      <div class="statistik">
+        <div class="stat"><b id="statTotal">0</b><span>Total Foto</span></div>
+        <div class="stat"><b id="statPending">0</b><span>Menunggu Upload</span></div>
+        <div class="stat"><b id="statHariIni">0</b><span>Hari Ini</span></div>
+      </div>
+      <div class="grid-menu">
+        <button class="menu-kartu" data-menu="kamera"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><circle cx="12" cy="13.5" r="3.6"/></svg></span><b>Ambil Foto</b><small>Kamera + watermark otomatis</small></button>
+        <button class="menu-kartu" data-menu="galeri"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 16l4.5-4.5 3.5 3.5 3-3L21 17"/><circle cx="8.5" cy="9.5" r="1.4"/></svg></span><b>Galeri</b><small>Lihat foto tersimpan</small></button>
+        <button class="menu-kartu" data-menu="tabel"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M3.5 9.2h17M9.5 9.2V20M3.5 14.6h17"/></svg></span><b>Tabel Rekap</b><small>Unduh PDF / DOCX</small></button>
+        <button class="menu-kartu" data-menu="room"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Room</b><small>Pindah room kerja</small></button>
+        <button class="menu-kartu" data-menu="peta"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8Z"/><path d="M9 4.5v12.7M15 6.8v12.7"/></svg></span><b>Peta Sebaran</b><small>Lokasi foto + unduh KML</small></button>
+        <button class="menu-kartu" data-menu="antrian"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span><b>Antrian Upload</b><small>Status kirim ke Drive</small></button>
+        <button class="menu-kartu" data-menu="pengaturan"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.9 1.9 0 1 1-2.69 2.69l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47v.17a1.9 1.9 0 1 1-3.8 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a1.9 1.9 0 1 1-2.69-2.69l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97h-.17a1.9 1.9 0 1 1 0-3.8h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.9 1.9 0 1 1 2.69-2.69l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10.05 3.13V3a1.9 1.9 0 1 1 3.8 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a1.9 1.9 0 1 1 2.69 2.69l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.97h.17a1.9 1.9 0 1 1 0 3.8h-.09a1.6 1.6 0 0 0-1.47.97Z"/></svg></span><b>Pengaturan</b><small>Logo, kompresi, akun</small></button>
+      </div>
+    </section>
+
+    <!-- KAMERA -->
+    <section class="screen nopad" id="scKamera">
+      <div id="wadahVideo">
+        <video id="video" playsinline autoplay muted></video>
+        <div id="chipGps">&#128205; Mencari sinyal GPS…</div>
+        <div id="tumpukBawah">
+          <div id="overlayWm">
+            <div id="overlayLogo">LOGO</div>
+            <div>
+              <div class="kantor">BPKH WILAYAH XI</div>
+              <div id="wmKoord">Koordinat: —</div>
+              <div id="wmWaktu">—</div>
+            </div>
+          </div>
+          <input id="inCatatanKamera" placeholder="Catatan (opsional) — ketik di sini" maxlength="250" autocomplete="off">
+        </div>
+        <div id="pesanKamera" style="display:none"></div>
+        <div id="tirai"></div>
+      </div>
+      <div id="barKamera">
+        <button class="tombol-kecil" id="btnGantiKamera">Balik Kamera</button>
+        <button id="shutter" aria-label="Ambil foto"></button>
+        <button class="tombol-kecil" id="btnMenu">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+          Menu
+        </button>
+      </div>
+    </section>
+
+    <!-- GALERI -->
+    <section class="screen" id="scGaleri">
+      <div class="filter">
+        <button data-lingkup="room" class="pilih">Room ini</button>
+        <button data-lingkup="semua">Semua room</button>
+      </div>
+      <div id="aksiGaleri" class="aksi-galeri"></div>
+      <div id="isiGaleri"></div>
+    </section>
+
+    <!-- DETAIL -->
+    <section class="screen" id="scDetail">
+      <img id="fotoDetail" alt="Foto dokumentasi">
+      <div class="kartu">
+        <div class="meta-baris"><span>Petugas</span><b id="dtNama">—</b></div>
+        <div class="meta-baris"><span>Room</span><b id="dtRoom">—</b></div>
+        <div class="meta-baris"><span>Koordinat</span><b id="dtKoord">—</b></div>
+        <div class="meta-baris"><span>Waktu</span><b id="dtWaktu">—</b></div>
+        <div class="meta-baris"><span>Ukuran</span><b id="dtUkuran">—</b></div>
+        <div class="meta-baris"><span>Status</span><b id="dtStatus">—</b></div>
+        <div class="meta-baris" style="border-bottom:0" id="barisDrive"><span>Berkas Drive</span><b id="dtDrive">—</b></div>
+      </div>
+      <div class="kartu" id="kartuGagal" style="display:none;border-left:4px solid var(--merah)">
+        <div class="kartu-judul" style="color:var(--merah)">Gagal Dikirim</div>
+        <div id="dtGagal" style="font-size:13px;line-height:1.6">—</div>
+        <button class="tombol sekunder" id="btnCobaLagi">Coba Kirim Lagi</button>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Catatan</div>
+        <div id="dtCatatan" style="font-size:14px;line-height:1.6">—</div>
+      </div>
+      <div class="baris-tombol">
+        <button class="tombol abu" id="btnUnduhFoto" style="margin-top:0">Unduh Foto</button>
+        <button class="tombol abu" id="btnHapusFoto" style="color:var(--merah);margin-top:0">Hapus</button>
+      </div>
+    </section>
+
+    <!-- TABEL -->
+    <section class="screen" id="scTabel">
+      <div class="filter">
+        <button data-lingkup="room" class="pilih">Room ini</button>
+        <button data-lingkup="semua">Semua room</button>
+      </div>
+      <div class="baris-tombol" style="margin-bottom:12px">
+        <button class="tombol sekunder" id="btnPdf" style="margin-top:0">&#128196; Unduh PDF</button>
+        <button class="tombol sekunder" id="btnDocx" style="margin-top:0">&#128209; Unduh DOCX</button>
+      </div>
+      <div id="isiTabel"></div>
+    </section>
+
+    <!-- PETA -->
+    <section class="screen" id="scPeta">
+      <div class="filter">
+        <button data-lingkup="room" class="pilih">Room ini</button>
+        <button data-lingkup="semua">Semua room</button>
+      </div>
+      <div id="peta"></div>
+      <p class="catatan-kecil" id="ketPeta" style="padding:0 4px"></p>
+      <div class="baris-tombol">
+        <button class="tombol sekunder" id="btnKml">Unduh KML</button>
+        <button class="tombol sekunder" id="btnGeojson">Unduh GeoJSON</button>
+      </div>
+      <p class="catatan-kecil" style="padding:0 4px">Lingkaran samar menunjukkan ketelitian GPS.
+        KML dibuka di Google Earth, GeoJSON di ArcGIS atau QGIS.</p>
+    </section>
+
+    <!-- ANTRIAN -->
+    <section class="screen" id="scAntrian">
+      <div class="kartu">
+        <div class="kartu-judul">Status Koneksi</div>
+        <div class="meta-baris"><span>Mode</span><b id="anMode">—</b></div>
+        <div class="meta-baris"><span>Jaringan</span><b id="anKoneksi">—</b></div>
+        <div class="meta-baris"><span>Menunggu upload</span><b id="anPending">0 foto</b></div>
+        <div class="meta-baris" style="border-bottom:0"><span>Sudah terkirim</span><b id="anTerkirim">0 foto</b></div>
+        <button class="tombol" id="btnSyncManual">Kirim Sekarang</button>
+        <p class="catatan-kecil" id="anKeterangan"></p>
+      </div>
+      <div id="isiAntrian"></div>
+    </section>
+
+    <!-- PENGATURAN -->
+    <section class="screen" id="scPengaturan">
+      <div class="kartu" id="kartuAdmin" style="display:none;border-left:4px solid var(--hijau)">
+        <div class="kartu-judul">Admin</div>
+        <p class="catatan-kecil" style="margin:0 0 4px">Akun Anda terdaftar sebagai admin, jadi
+          panel pengelolaan bisa dibuka langsung dari sini — tanpa perlu mengetik alamat server
+          maupun token.</p>
+        <button class="tombol" id="btnPanelAdmin">Buka Panel Admin</button>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Server</div>
+        <div class="meta-baris" style="border-bottom:0"><span>Mode saat ini</span><b id="stMode">—</b></div>
+        <!-- Alamat backend sengaja disembunyikan dari petugas: sudah terisi
+             sendiri lewat link undangan, dan salah ubah membuat foto gagal
+             terkirim. Bisa dibuka admin lewat ketukan pada nomor versi. -->
+        <div id="lanjutanServer" style="display:none">
+          <label class="f" for="inEndpoint">Alamat Backend (URL Apps Script /exec)</label>
+          <input class="f" id="inEndpoint" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url" autocomplete="off">
+          <div class="baris-tombol">
+            <button class="tombol sekunder" id="btnUjiServer">Uji Koneksi</button>
+            <button class="tombol" id="btnSimpanServer">Simpan</button>
+          </div>
+          <p class="catatan-kecil">Hanya untuk admin. Kosongkan untuk kembali ke mode simulasi.</p>
+        </div>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Room Perangkat Ini</div>
+        <div id="daftarRoomSetelan"></div>
+        <p class="catatan-kecil">Room bertambah otomatis saat Anda membuka link undangan dari admin.</p>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Watermark</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="login-logo" id="logoPreview" style="margin:0;width:64px;height:64px;border-radius:16px;background:var(--hijau-terang);border-color:var(--hijau-2);color:var(--hijau)">LOGO</div>
+          <div style="flex:1">
+            <input type="file" id="inLogo" accept="image/png,image/jpeg,image/webp" style="display:none">
+            <button class="tombol sekunder" id="btnPilihLogo" style="margin-top:0">Pilih File Logo</button>
+            <p class="catatan-kecil">PNG latar transparan, minimal 512&times;512 px.</p>
+          </div>
+        </div>
+        <label class="f" for="inKantor">Nama Kantor</label>
+        <input class="f" id="inKantor" value="BPKH WILAYAH XI">
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Kompresi Foto</div>
+        <label class="f" for="inTarget" style="margin-top:0">Target ukuran maksimal (KB)</label>
+        <input class="f" id="inTarget" type="number" min="100" max="2000" step="50" value="500">
+        <label class="f" for="inLebar">Lebar maksimal (piksel)</label>
+        <input class="f" id="inLebar" type="number" min="800" max="4000" step="100" value="1600">
+        <p class="catatan-kecil">Di bawah ~200 KB watermark mulai buram dan foto berkurang nilainya sebagai bukti dokumentasi.</p>
+        <button class="tombol" id="btnSimpanSetting">Simpan Pengaturan</button>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Penyimpanan</div>
+        <div class="meta-baris"><span>Foto tersimpan</span><b id="stJumlah">0</b></div>
+        <div class="meta-baris"><span>Perkiraan ruang dipakai</span><b id="stRuang">0 MB</b></div>
+        <div class="meta-baris" style="border-bottom:0"><span>Perlindungan data</span><b id="stAwet">—</b></div>
+        <p class="catatan-kecil" id="stKetAwet"></p>
+        <label class="saklar" for="inHapusKirim">
+          <input type="checkbox" id="inHapusKirim">
+          <span>Hapus foto dari HP setelah berhasil terkirim ke Drive</span>
+        </label>
+        <p class="catatan-kecil">Menghemat ruang HP, tetapi foto yang sudah terkirim tidak lagi
+          muncul di Galeri dan Tabel Rekap di HP ini — hanya bisa dilihat lewat Drive atau panel admin.</p>
+        <button class="tombol abu" id="btnEkspor">Ekspor Metadata (JSON)</button>
+      </div>
+      <div class="kartu">
+        <div class="kartu-judul">Akun</div>
+        <div id="kartuAkun"></div>
+        <div class="meta-baris"><span>Room aktif</span><b id="stRoom">—</b></div>
+        <div class="meta-baris" style="border-bottom:0"><span>Versi</span><b id="stVersi" style="cursor:pointer">—</b></div>
+        <button class="tombol abu" id="btnKeluar" style="color:var(--merah)">Keluar</button>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="navbar" class="sembunyi">
+    <button class="nav-item" data-nav="beranda"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.8 20v-6h4.4v6"/></svg></span>Beranda</button>
+    <button class="nav-item" data-nav="galeri"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 16l4.5-4.5 3.5 3.5 3-3L21 17"/><circle cx="8.5" cy="9.5" r="1.4"/></svg></span>Galeri</button>
+    <div class="nav-fab"><button id="fabKamera" aria-label="Ambil foto">
+      <svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><circle cx="12" cy="13.5" r="3.6"/></svg></button></div>
+    <button class="nav-item" data-nav="tabel"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M3.5 9.2h17M9.5 9.2V20M3.5 14.6h17"/></svg></span>Tabel</button>
+    <button class="nav-item" data-nav="pengaturan"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.9 1.9 0 1 1-2.69 2.69l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47v.17a1.9 1.9 0 1 1-3.8 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a1.9 1.9 0 1 1-2.69-2.69l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97h-.17a1.9 1.9 0 1 1 0-3.8h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.9 1.9 0 1 1 2.69-2.69l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10.05 3.13V3a1.9 1.9 0 1 1 3.8 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a1.9 1.9 0 1 1 2.69 2.69l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.97h.17a1.9 1.9 0 1 1 0 3.8h-.09a1.6 1.6 0 0 0-1.47.97Z"/></svg></span>Setelan</button>
+  </div>
+
+  <div id="snackbar"></div>
+  <div id="dialog"><div class="dialog-isi" id="dialogIsi"></div></div>
+</div>
+
+<div id="areaCetak"></div>
+
+<script>
+/* =======================================================================
+   PORTAL DOKUMENTASI BPKH WILAYAH XI
+   PWA satu halaman — satu layar aktif dalam satu waktu.
+   ======================================================================= */
+const VERSI = '2.6.0';
+
+/* Daftar room di perangkat ini. Bentuknya [{nama, token}] — token berasal
+   dari link undangan yang dibagikan admin. */
+function bacaRooms(){
+  try{
+    const isi = JSON.parse(localStorage.getItem('bpkh_rooms_v2') || 'null');
+    if(Array.isArray(isi) && isi.length) return isi;
+  }catch(e){}
+  return [{nama:'PPTPKH KEDIRI', token:''}];        // bawaan untuk mode simulasi
+}
+function simpanRooms(){ localStorage.setItem('bpkh_rooms_v2', JSON.stringify(S.rooms)); }
+function tokenRoom(nama){ const r=S.rooms.find(x=>x.nama===nama); return r?r.token:''; }
+
+/* Identitas Google di aplikasi ini. Client ID boleh terlihat publik —
+   memang tertanam di halaman; yang menjaga adalah pemeriksaan di backend. */
+const CLIENT_ID = '40977446964-7tep8466rpjlhod7dqm3vbondlg9ejt4.apps.googleusercontent.com';
+
+/* Logo bawaan watermark: lambang Kemenhut, latar sudah transparan.
+   Ikut tersimpan service worker, jadi tetap terpasang saat tanpa sinyal.
+   Petugas boleh menggantinya lewat Setelan; kosongkan untuk kembali ke ini. */
+const LOGO_BAWAAN = 'icons/logo-kemenhut.png';
+
+const S = {
+  nama:'', room:'',
+  email: localStorage.getItem('bpkh_email') || '',
+  sesi:  localStorage.getItem('bpkh_sesi')  || '',
+  admin: localStorage.getItem('bpkh_admin') === '1',
+  foto:  localStorage.getItem('bpkh_foto')  || '',
+  rooms: bacaRooms(),
+  endpoint: localStorage.getItem('bpkh_endpoint') || '',
+  kantor: localStorage.getItem('bpkh_kantor') || 'BPKH WILAYAH XI',
+  logo: localStorage.getItem('bpkh_logo') || '',
+  logoImg: null,
+  targetKB: +(localStorage.getItem('bpkh_target') || 500),
+  lebarMax: +(localStorage.getItem('bpkh_lebar') || 1600),
+  hapusSetelahKirim: localStorage.getItem('bpkh_hapus_kirim')==='1',
+  posisi:null, stream:null, facing:'environment', penyimpananAwet:false,
+  detailId:null,
+  lingkupGaleri:'room', lingkupTabel:'room', lingkupPeta:'room',
+  modePilih:false, terpilih:new Set(),
+  promptPasang:null, waktuBack:0
+};
+
+const $ = id => document.getElementById(id);
+const JUDUL = {login:'Portal Dokumentasi',beranda:'Portal Dokumentasi',kamera:'Ambil Foto',
+  galeri:'Galeri',detail:'Detail Foto',tabel:'Tabel Rekap',peta:'Peta Sebaran',
+  antrian:'Antrian Upload',pengaturan:'Pengaturan'};
+const SCREEN = {login:'scLogin',beranda:'scBeranda',kamera:'scKamera',galeri:'scGaleri',
+  detail:'scDetail',tabel:'scTabel',peta:'scPeta',antrian:'scAntrian',pengaturan:'scPengaturan'};
+const TOP_LEVEL = ['beranda','galeri','tabel','pengaturan'];
+/* Layar tempat aplikasi berdiri setelah login. Kamera dipilih supaya petugas
+   bisa langsung memotret begitu membuka aplikasi, tanpa satu ketukan pun. */
+const LAYAR_UTAMA = 'kamera';
+
+/* ---------- IndexedDB ---------- */
+const DBNAMA='bpkh_portal', STORE='foto';
+function buka(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DBNAMA,1);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'});};
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+async function simpanFoto(rec){
+  const d=await buka();
+  return new Promise((res,rej)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put(rec);t.oncomplete=res;t.onerror=()=>rej(t.error);});
+}
+async function ambilSemua(){
+  const d=await buka();
+  return new Promise((res,rej)=>{const r=d.transaction(STORE,'readonly').objectStore(STORE).getAll();
+    r.onsuccess=()=>res((r.result||[]).sort((a,b)=>b.ts-a.ts)); r.onerror=()=>rej(r.error);});
+}
+async function hapusFoto(id){
+  const d=await buka();
+  return new Promise((res,rej)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).delete(id);t.oncomplete=res;t.onerror=()=>rej(t.error);});
+}
+const saring = (arr, lingkup) => lingkup==='semua' ? arr : arr.filter(f=>f.room===S.room);
+
+/* ---------- Navigasi ---------- */
+function ke(nama, dorong=true){
+  if(nama==='room'){ ke('beranda', dorong); bukaDialogRoom(); return; }
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('aktif'));
+  const el=$(SCREEN[nama]); el.classList.add('aktif'); el.scrollTop=0;
+  $('judulBar').textContent = JUDUL[nama];
+
+  const login = nama==='login';
+  $('appbar').classList.toggle('sembunyi', login || nama==='kamera');
+  $('navbar').classList.toggle('sembunyi', login || nama==='kamera');
+  $('btnBack').classList.toggle('tampil', !login && !TOP_LEVEL.includes(nama));
+  $('btnSync').style.display = login ? 'none' : '';
+  $('pilStatus').style.display = login ? 'none' : '';
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('aktif', b.dataset.nav===nama));
+
+  if(nama!=='kamera') matikanKamera();
+  if(nama!=='galeri' && S.modePilih){ S.modePilih=false; S.terpilih.clear(); }
+  if(dorong) history.pushState({layar:nama},'');
+
+  ({beranda:muatBeranda, galeri:muatGaleri, tabel:muatTabel, peta:muatPeta,
+    antrian:muatAntrian, pengaturan:muatPengaturan, kamera:nyalakanKamera}[nama] || (()=>{}))();
+}
+window.addEventListener('popstate', e=>{
+  if($('dialog').classList.contains('tampil')){ tutupDialog(); history.pushState({layar:layarSekarang()},''); return; }
+  // Back saat memilih foto: batalkan pilihan dulu, jangan langsung pindah layar.
+  if(S.modePilih && layarSekarang()==='galeri'){
+    S.modePilih=false; S.terpilih.clear(); muatGaleri();
+    history.pushState({layar:'galeri'},''); return;
+  }
+  const t=(e.state&&e.state.layar) || (S.nama?LAYAR_UTAMA:'login');
+  if(t===LAYAR_UTAMA && layarSekarang()===LAYAR_UTAMA){
+    const now=Date.now();
+    if(now - S.waktuBack < 2000) return;      // tekan dua kali -> keluar
+    S.waktuBack=now; pesan('Tekan sekali lagi untuk keluar');
+    history.pushState({layar:LAYAR_UTAMA},''); return;
+  }
+  ke(t,false);
+});
+const layarSekarang = ()=> Object.keys(SCREEN).find(k=>SCREEN[k]===(document.querySelector('.screen.aktif')||{}).id) || 'login';
+$('btnBack').onclick = ()=> history.back();
+
+/* ---------- Snackbar & dialog ---------- */
+let timerSnack;
+function pesan(t){
+  const s=$('snackbar'); s.textContent=t; s.classList.add('tampil');
+  clearTimeout(timerSnack); timerSnack=setTimeout(()=>s.classList.remove('tampil'),2600);
+}
+function dialog(html){ $('dialogIsi').innerHTML=html; $('dialog').classList.add('tampil'); }
+function tutupDialog(){ $('dialog').classList.remove('tampil'); }
+$('dialog').onclick = e => { if(e.target.id==='dialog') tutupDialog(); };
+
+/* ---------- Koneksi ---------- */
+function perbaruiKoneksi(){
+  const on=navigator.onLine;
+  $('pilStatus').textContent = on?'Online':'Offline';
+  $('pilStatus').classList.toggle('offline', !on);
+}
+addEventListener('online', ()=>{perbaruiKoneksi(); pesan('Kembali online — mengirim antrian…'); sinkron(true);});
+addEventListener('offline', ()=>{perbaruiKoneksi(); pesan('Mode offline — foto disimpan di antrian lokal');});
+
+/* ---------- GPS ---------- */
+function mulaiGPS(){
+  if(!navigator.geolocation){ $('chipGps').textContent='GPS tidak tersedia di perangkat ini'; return; }
+  navigator.geolocation.watchPosition(
+    p=>{
+      S.posisi={lat:p.coords.latitude, lon:p.coords.longitude, akurasi:Math.round(p.coords.accuracy)};
+      $('chipGps').textContent = '\u{1F4CD} ' + fmtKoord(S.posisi) + ' · ±' + S.posisi.akurasi + ' m';
+      $('wmKoord').textContent = 'Koordinat: ' + fmtKoord(S.posisi);
+    },
+    ()=>{ $('chipGps').textContent='⚠️ GPS tidak aktif / izin ditolak'; },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:10000}
+  );
+}
+const fmtKoord = p => p ? p.lat.toFixed(6)+', '+p.lon.toFixed(6) : 'Tidak tersedia';
+const fmtWaktu = ts => new Date(ts).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+setInterval(()=>{ $('wmWaktu').textContent = fmtWaktu(Date.now())+' WIB'; },1000);
+
+/* ---------- Kamera ---------- */
+async function nyalakanKamera(){
+  $('pesanKamera').style.display='none';
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ gagalKamera('Browser ini tidak mendukung akses kamera.'); return; }
+  try{
+    S.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:S.facing}, width:{ideal:1920}}, audio:false});
+    $('video').srcObject = S.stream; $('video').style.visibility='visible';
+  }catch(e){
+    gagalKamera(e.name==='NotAllowedError'
+      ? 'Izin kamera ditolak. Buka pengaturan situs/aplikasi lalu izinkan Kamera.'
+      : 'Kamera tidak bisa diakses.<br><br>Kamera hanya jalan lewat <b>https://</b> atau <b>localhost</b> — bukan file yang dibuka langsung dari penyimpanan.');
+  }
+}
+function gagalKamera(html){
+  $('video').style.visibility='hidden';
+  $('pesanKamera').style.display='block';
+  $('pesanKamera').innerHTML = '\u{1F4F5}<br><br>'+html;
+}
+function matikanKamera(){ if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; } }
+$('btnGantiKamera').onclick = ()=>{ S.facing = S.facing==='environment'?'user':'environment'; matikanKamera(); nyalakanKamera(); };
+
+/* ---------- Watermark + kompresi ---------- */
+function gambarWatermark(ctx,W,H){
+  const pad=Math.round(W*0.025);
+  const fBesar=Math.max(14,Math.round(W*0.032));
+  const fKecil=Math.max(11,Math.round(W*0.023));
+  const tinggiBar=fBesar+fKecil*2+pad*2.4;
+
+  const grad=ctx.createLinearGradient(0,H-tinggiBar*1.7,0,H);
+  grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.fillStyle=grad; ctx.fillRect(0,H-tinggiBar*1.7,W,tinggiBar*1.7);
+
+  const sisi=tinggiBar*0.62, xL=pad, yL=H-tinggiBar+(tinggiBar-sisi)/2;
+  if(S.logoImg){
+    const r=Math.min(sisi/S.logoImg.width, sisi/S.logoImg.height);
+    const w=S.logoImg.width*r, h=S.logoImg.height*r;
+    ctx.drawImage(S.logoImg, xL+(sisi-w)/2, yL+(sisi-h)/2, w, h);
+  }else{
+    ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=Math.max(1.5,W*0.003);
+    ctx.strokeRect(xL,yL,sisi,sisi);
+    ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.font='bold '+Math.round(sisi*0.2)+'px Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('LOGO', xL+sisi/2, yL+sisi/2);
+  }
+
+  const x=xL+sisi+pad*0.8; let y=H-tinggiBar+pad*0.7;
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.shadowColor='rgba(0,0,0,.85)'; ctx.shadowBlur=Math.max(2,W*0.006);
+  ctx.fillStyle='#fff';
+  ctx.font='bold '+fBesar+'px Roboto, sans-serif';
+  ctx.fillText(S.kantor,x,y); y+=fBesar*1.28;
+  ctx.font=fKecil+'px Roboto, sans-serif';
+  ctx.fillText('\u{1F4CD} '+fmtKoord(S.posisi),x,y); y+=fKecil*1.35;
+  ctx.fillText(fmtWaktu(Date.now())+' WIB',x,y);
+  ctx.shadowBlur=0;
+}
+const keBlob=(c,q)=>new Promise(r=>c.toBlob(r,'image/jpeg',q));
+
+async function prosesFoto(sumber,wAsli,hAsli){
+  const sk=Math.min(1,S.lebarMax/wAsli);
+  const W=Math.round(wAsli*sk), H=Math.round(hAsli*sk);
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(sumber,0,0,W,H);
+  gambarWatermark(ctx,W,H);
+  let q=0.85, blob=await keBlob(c,q);
+  while(blob.size/1024>S.targetKB && q>0.35){ q-=0.08; blob=await keBlob(c,q); }
+  const dataUrl=await new Promise(r=>{const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob);});
+  return {dataUrl, ukuran:blob.size, w:W, h:H};
+}
+
+$('shutter').onclick = async ()=>{
+  const v=$('video');
+  if(!S.stream || !v.videoWidth){ pesan('Kamera belum siap — pakai Foto Simulasi untuk uji alur'); return; }
+  $('tirai').classList.add('kilat'); setTimeout(()=>$('tirai').classList.remove('kilat'),90);
+  if(navigator.vibrate) navigator.vibrate(35);
+  await simpanLangsung(await prosesFoto(v, v.videoWidth, v.videoHeight));
+};
+
+$('btnMenu').onclick = ()=> ke('beranda');
+
+/* Foto tiruan untuk peragaan dan pemeriksaan teknis. Tidak ada tombolnya di
+   layar — dijalankan dari konsol dengan fotoSimulasi(). Gambarnya dibuat
+   sendiri di canvas, bukan diambil dari galeri, supaya aturan camera-only
+   tetap utuh. */
+window.fotoSimulasi = async ()=>{
+  const c=document.createElement('canvas'); c.width=1600; c.height=1200;
+  const x=c.getContext('2d');
+  const langit=x.createLinearGradient(0,0,0,700);
+  langit.addColorStop(0,'#7FB3D5'); langit.addColorStop(1,'#D6EAF8');
+  x.fillStyle=langit; x.fillRect(0,0,1600,700);
+  x.fillStyle='#5D8233'; x.fillRect(0,700,1600,500);
+  for(let i=0;i<26;i++){
+    const px=Math.random()*1600, py=640+Math.random()*420, r=32+Math.random()*58;
+    x.fillStyle='#6B4423'; x.fillRect(px-5,py,10,r*0.75);
+    x.fillStyle='#3E6B27'; x.beginPath(); x.arc(px,py,r,0,7); x.fill();
+  }
+  x.fillStyle='rgba(255,255,255,.55)'; x.font='bold 34px Roboto, sans-serif'; x.textAlign='center';
+  x.fillText('GAMBAR SIMULASI — BUKAN FOTO ASLI',800,120);
+  await simpanLangsung(await prosesFoto(c,1600,1200));
+};
+
+/* Foto langsung tersimpan begitu rana ditekan — tanpa layar konfirmasi,
+   supaya bisa memotret beruntun. Catatan diambil dari kotak di layar kamera. */
+let sedangSimpan = false;
+async function simpanLangsung(hasil){
+  if(sedangSimpan) return;
+  sedangSimpan = true;
+  const ts = Date.now();
+  // Catatan kosong disimpan sebagai "-" supaya kolom rekap tidak pernah
+  // melompong — di tabel, PDF, dan spreadsheet tetap terbaca sebagai isian.
+  const catatan = $('inCatatanKamera').value.trim() || '-';
+  try{
+    await simpanFoto({id:'F'+ts, ts, nama:S.nama, room:S.room, catatan,
+      lat:S.posisi?S.posisi.lat:null, lon:S.posisi?S.posisi.lon:null,
+      akurasi:S.posisi?S.posisi.akurasi:null,
+      dataUrl:hasil.dataUrl, ukuran:hasil.ukuran, status:'pending'});
+  }catch(err){
+    const penuh = /quota|storage|space/i.test(err.name+' '+err.message);
+    dialog('<h3>Foto gagal disimpan</h3><p>'+
+      (penuh ? 'Penyimpanan HP penuh. Kirim dulu foto yang masih mengantre, lalu hapus beberapa foto lama dari Galeri.'
+             : esc(err.message))+'</p><button class="tombol" onclick="tutupDialog()">Mengerti</button>');
+    return;
+  }finally{
+    sedangSimpan = false;
+  }
+  $('inCatatanKamera').value='';                     // siap untuk foto berikutnya
+  $('inCatatanKamera').blur();
+  pesan((hasil.ukuran/1024).toFixed(0)+' KB tersimpan'+
+    (navigator.onLine ? ' — mengunggah ke Drive…' : ' — menunggu sinyal'));
+  if(navigator.onLine) setTimeout(()=>sinkron(true), 900);
+}
+
+/* ---------- Hubungan ke backend ---------- */
+const adaServer = ()=> !!S.endpoint;
+
+/* Content-Type text/plain supaya tidak memicu preflight CORS —
+   Apps Script tidak menjawab permintaan OPTIONS. */
+async function panggilServer(muatan, batasMs){
+  const kendali = new AbortController();
+  const jam = setTimeout(()=>kendali.abort(), batasMs || 60000);
+  let res;
+  try{
+    res = await fetch(S.endpoint, {
+      method:'POST', redirect:'follow', signal:kendali.signal,
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(muatan)
+    });
+  }catch(e){
+    // Ditandai supaya pemanggil bisa membedakan "server menolak" dari
+    // "server tidak terjangkau" — dua hal yang perlu ditangani berbeda.
+    const err = new Error(e.name==='AbortError'
+      ? 'Waktu tunggu habis — sinyal terlalu lemah'
+      : 'Tidak bisa menghubungi server (periksa sinyal atau alamat backend)');
+    err.jaringan = true;
+    throw err;
+  }finally{ clearTimeout(jam); }
+
+  const teks = await res.text();
+  let j;
+  try{ j = JSON.parse(teks); }
+  catch(e){ throw new Error('Jawaban server tidak dikenali — periksa alamat backend di Pengaturan'); }
+  if(!j.ok) throw new Error(j.pesan || 'Ditolak server');
+  return j;
+}
+
+const potongBase64 = d => d.slice(d.indexOf(',')+1);
+
+/* ---------- Sinkronisasi ---------- */
+let sedangSinkron = false;
+async function sinkron(diam){
+  if(sedangSinkron) return;
+  if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — antrian tetap tersimpan'); return; }
+  const antri=(await ambilSemua()).filter(f=>f.status!=='terkirim');
+  if(!antri.length){ if(!diam) pesan('Tidak ada foto di antrian'); return; }
+
+  sedangSinkron = true;
+  try{
+    if(!adaServer()){                                   // mode simulasi
+      pesan('Mode simulasi — '+antri.length+' foto ditandai terkirim');
+      for(const f of antri){ f.status='terkirim'; f.simulasi=true; await simpanFoto(f); }
+      segarkanLayar(); return;
+    }
+
+    let sukses=0, gagal=0, pesanGagal='';
+    for(let i=0;i<antri.length;i++){
+      const f=antri[i];
+      pesan('Mengunggah '+(i+1)+' dari '+antri.length+'…');
+      try{
+        const j = await panggilServer({
+          aksi:'unggah', room:f.room, token:tokenRoom(f.room), sesi:S.sesi,
+          id:f.id, nama:f.nama, catatan:f.catatan,
+          lat:f.lat, lon:f.lon, akurasi:f.akurasi,
+          waktu:new Date(f.ts).toISOString(),
+          mime:'image/jpeg', berkas:potongBase64(f.dataUrl)
+        });
+        f.status='terkirim'; f.linkDrive=j.linkDrive; f.pesanGagal=''; sukses++;
+        if(S.hapusSetelahKirim){ await hapusFoto(f.id); continue; }   // hemat ruang HP
+      }catch(err){
+        f.status='gagal';
+        f.percobaan=(f.percobaan||0)+1;
+        f.pesanGagal=err.message;
+        pesanGagal=err.message; gagal++;
+        // Sesi habis atau akses dicabut: bukan foto ini yang bermasalah, dan
+        // percobaan berikutnya percuma sampai petugas masuk ulang. Statusnya
+        // dikembalikan ke "menunggu" supaya tidak tampil sebagai foto rusak.
+        if(/sesi|masuk ulang|dicabut/i.test(err.message)){
+          f.status='pending'; f.pesanGagal='';
+          await simpanFoto(f);
+          perluMasukUlang(err.message);
+          break;
+        }
+      }
+      await simpanFoto(f);
+      segarkanLayar();
+    }
+    if(gagal) pesan(sukses+' terkirim, '+gagal+' gagal: '+pesanGagal);
+    else pesan(sukses+' foto terkirim ke Drive');
+  }finally{
+    sedangSinkron = false;
+    segarkanLayar();
+  }
+}
+/* Foto tetap aman di HP — yang dicabut hanya izin mengirimnya. */
+let sudahDiberitahu = false;
+function perluMasukUlang(alasan){
+  S.sesi=''; localStorage.removeItem('bpkh_sesi');
+  if(sudahDiberitahu) return;
+  sudahDiberitahu = true;
+  dialog('<h3>Perlu masuk ulang</h3><p>'+esc(alasan)+'</p>'+
+    '<p>Foto yang belum terkirim <b>tetap tersimpan di HP</b> dan akan dikirim otomatis '+
+    'setelah Anda masuk lagi.</p>'+
+    '<button class="tombol" onclick="tutupDialog(); keluar()">Masuk Ulang</button>'+
+    '<button class="tombol abu" onclick="tutupDialog()">Nanti</button>');
+}
+
+function segarkanLayar(){
+  const l=layarSekarang();
+  ({galeri:muatGaleri,antrian:muatAntrian,beranda:muatBeranda,tabel:muatTabel}[l]||(()=>{}))();
+}
+$('btnSync').onclick = ()=>sinkron(false);
+$('btnSyncManual').onclick = ()=>sinkron(false);
+
+/* ---------- Beranda ---------- */
+async function muatBeranda(){
+  $('spandukSimulasi').classList.toggle('tampil', !adaServer());
+  $('heroNama').textContent=S.nama;
+  $('heroRoom').querySelector('span').textContent=S.room;
+  const semua=await ambilSemua();
+  const h0=new Date(); h0.setHours(0,0,0,0);
+  $('statTotal').textContent=semua.length;
+  $('statPending').textContent=semua.filter(f=>f.status!=='terkirim').length;
+  $('statHariIni').textContent=semua.filter(f=>f.ts>=h0.getTime()).length;
+}
+document.querySelectorAll('.menu-kartu').forEach(b=> b.onclick=()=>ke(b.dataset.menu));
+$('heroRoom').onclick = bukaDialogRoom;
+
+/* ---------- Galeri ---------- */
+document.querySelectorAll('#scGaleri .filter button').forEach(b=> b.onclick=()=>{
+  S.lingkupGaleri=b.dataset.lingkup;
+  document.querySelectorAll('#scGaleri .filter button').forEach(x=>x.classList.toggle('pilih',x===b));
+  muatGaleri();
+});
+async function muatGaleri(){
+  const data=saring(await ambilSemua(), S.lingkupGaleri);
+  const box=$('isiGaleri');
+  if(!data.length){
+    box.innerHTML='<div class="kosong"><span class="ic">\u{1F5BC}️</span><p>Belum ada foto'+
+      (S.lingkupGaleri==='room'?' di room <b>'+esc(S.room)+'</b>':'')+'.<br>Tekan tombol kamera untuk mulai dokumentasi.</p></div>';
+    return;
+  }
+  const belum=data.filter(f=>f.status!=='terkirim').length;
+  const ada=new Set(data.map(f=>f.id));
+  S.terpilih.forEach(id=>{ if(!ada.has(id)) S.terpilih.delete(id); });   // buang sisa saringan lama
+
+  box.innerHTML='<p style="font-size:12.5px;color:var(--teks-2);margin:0 0 10px">'+data.length+' foto'+
+    (belum?' · <b style="color:var(--oranye)">'+belum+' belum terkirim</b>':'')+'</p><div class="grid-galeri">'+
+    data.map(f=>'<button class="sel-galeri'+(S.terpilih.has(f.id)?' terpilih':'')+'" data-id="'+f.id+'">'+
+      '<img src="'+f.dataUrl+'" alt="">'+
+      (S.modePilih?'<span class="centang"><svg viewBox="0 0 24 24"><path d="m5 12.5 5 5 9-10"/></svg></span>'
+                  :'<span class="tanda '+kelasTanda(f)+'"></span>')+
+      '</button>').join('')+'</div>';
+
+  box.querySelectorAll('.sel-galeri').forEach(b=>{
+    const id=b.dataset.id;
+    b.onclick=()=>{ if(S.modePilih) alihPilih(id); else bukaDetail(id); };
+    // tekan-tahan: cara paling wajar masuk mode pilih di Android
+    let jam;
+    const mulai=()=>{ jam=setTimeout(()=>{ if(!S.modePilih){ S.modePilih=true; alihPilih(id); } },500); };
+    const batal=()=>clearTimeout(jam);
+    b.addEventListener('pointerdown',mulai);
+    ['pointerup','pointerleave','pointercancel','pointermove'].forEach(t=>b.addEventListener(t,batal));
+  });
+  gambarAksiGaleri(data);
+}
+
+/* Mode pilih hanya berakhir lewat tombol Batal atau tombol Back — tidak
+   otomatis saat pilihan kosong, supaya bilah tombolnya tidak hilang mendadak
+   di tengah petugas memilih. */
+function alihPilih(id){
+  if(S.terpilih.has(id)) S.terpilih.delete(id); else S.terpilih.add(id);
+  muatGaleri();
+}
+
+function gambarAksiGaleri(data){
+  const kotak=$('aksiGaleri');
+  if(!data.length){ kotak.innerHTML=''; return; }
+  if(!S.modePilih){
+    kotak.innerHTML='<span class="jml"></span>'+
+      '<button class="tombol-mini" id="btnModePilih">Pilih foto</button>';
+    $('btnModePilih').onclick=()=>{ S.modePilih=true; muatGaleri(); };
+    return;
+  }
+  const n=S.terpilih.size, semua=n===data.length;
+  kotak.innerHTML=
+    '<span class="jml">'+n+' dipilih</span>'+
+    '<button class="tombol-mini" id="btnSemua">'+(semua?'Kosongkan':'Pilih semua')+'</button>'+
+    '<button class="tombol-mini utama" id="btnUnduhPilihan"'+(n?'':' disabled')+'>Unduh</button>'+
+    '<button class="tombol-mini bahaya" id="btnHapusPilihan"'+(n?'':' disabled')+'>Hapus</button>'+
+    '<button class="tombol-mini" id="btnBatalPilih">Batal</button>';
+
+  $('btnSemua').onclick=()=>{
+    if(semua) S.terpilih.clear(); else data.forEach(f=>S.terpilih.add(f.id));
+    muatGaleri();
+  };
+  $('btnBatalPilih').onclick=()=>{ S.modePilih=false; S.terpilih.clear(); muatGaleri(); };
+  $('btnUnduhPilihan').onclick=unduhPilihan;
+  $('btnHapusPilihan').onclick=()=>{
+    const n=S.terpilih.size;
+    dialog('<h3>Hapus '+n+' foto?</h3><p>Foto dan catatannya hilang dari HP ini dan tidak bisa dikembalikan.'+
+      '<br><br>Yang sudah terkirim tetap aman di Google Drive.</p>'+
+      '<div class="baris-tombol"><button class="tombol abu" onclick="tutupDialog()" style="margin-top:0">Batal</button>'+
+      '<button class="tombol" style="background:var(--merah);margin-top:0" onclick="hapusPilihan()">Hapus</button></div>');
+  };
+}
+
+async function hapusPilihan(){
+  tutupDialog();
+  const daftar=[...S.terpilih];
+  for(const id of daftar) await hapusFoto(id);
+  S.terpilih.clear(); S.modePilih=false;
+  pesan(daftar.length+' foto dihapus');
+  muatGaleri();
+}
+
+async function unduhPilihan(){
+  const semua=await ambilSemua();
+  const pilih=semua.filter(f=>S.terpilih.has(f.id));
+  if(!pilih.length) return;
+  pesan('Menyiapkan '+pilih.length+' foto…');
+  try{
+    const berkas=pilih.map(f=>({
+      nama:'DOK_'+f.room.replace(/[^\w-]/g,'_')+'_'+
+           new Date(f.ts).toISOString().slice(0,19).replace(/[:T]/g,'-')+'.jpg',
+      data:dataUrlKeBytes(f.dataUrl),
+      tanggal:new Date(f.ts)
+    }));
+    const zip=buatZip(berkas);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(zip);
+    a.download='Dokumentasi_'+(S.lingkupGaleri==='room'?S.room.replace(/\s+/g,'_'):'SemuaRoom')+
+               '_'+new Date().toISOString().slice(0,10)+'.zip';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+    pesan(pilih.length+' foto diunduh ('+(zip.size/1048576).toFixed(1)+' MB)');
+    S.terpilih.clear(); S.modePilih=false; muatGaleri();
+  }catch(e){
+    dialog('<h3>Gagal menyiapkan berkas</h3><p>'+esc(e.message)+
+      '</p><button class="tombol" onclick="tutupDialog()">Tutup</button>');
+  }
+}
+async function bukaDetail(id){
+  const f=(await ambilSemua()).find(x=>x.id===id); if(!f) return;
+  S.detailId=id;
+  $('fotoDetail').src=f.dataUrl;
+  $('dtNama').textContent=f.nama; $('dtRoom').textContent=f.room;
+  $('dtKoord').textContent=f.lat!=null?f.lat.toFixed(6)+', '+f.lon.toFixed(6):'Tidak tersedia';
+  $('dtWaktu').textContent=fmtWaktu(f.ts);
+  $('dtUkuran').textContent=(f.ukuran/1024).toFixed(0)+' KB';
+  $('dtStatus').innerHTML='<span class="badge '+kelasTanda(f)+'">'+labelStatus(f)+'</span>';
+  $('dtCatatan').textContent = f.catatan || '(tanpa catatan)';
+  $('dtCatatan').style.color = f.catatan ? '' : 'var(--teks-2)';
+  $('barisDrive').style.display = f.linkDrive ? '' : 'none';
+  if(f.linkDrive) $('dtDrive').innerHTML='<a href="'+esc(f.linkDrive)+'" target="_blank" rel="noopener">Buka berkas</a>';
+  $('kartuGagal').style.display = (f.status==='gagal' && f.pesanGagal) ? '' : 'none';
+  if(f.status==='gagal') $('dtGagal').textContent=f.pesanGagal;
+  ke('detail');
+}
+$('btnUnduhFoto').onclick = async ()=>{
+  const f=(await ambilSemua()).find(x=>x.id===S.detailId); if(!f) return;
+  const a=document.createElement('a');
+  a.href=f.dataUrl;
+  a.download='DOK_'+f.room.replace(/\s+/g,'_')+'_'+new Date(f.ts).toISOString().slice(0,19).replace(/[:T]/g,'-')+'.jpg';
+  a.click(); pesan('Foto diunduh');
+};
+$('btnHapusFoto').onclick = ()=>{
+  dialog('<h3>Hapus foto ini?</h3><p>Foto dan catatannya akan hilang dari perangkat. Tindakan ini tidak bisa dibatalkan.</p>'+
+    '<div class="baris-tombol"><button class="tombol abu" onclick="tutupDialog()" style="margin-top:0">Batal</button>'+
+    '<button class="tombol" style="background:var(--merah);margin-top:0" onclick="konfirmasiHapus()">Hapus</button></div>');
+};
+async function konfirmasiHapus(){ await hapusFoto(S.detailId); tutupDialog(); pesan('Foto dihapus'); history.back(); }
+
+/* ---------- Tabel rekap ---------- */
+document.querySelectorAll('#scTabel .filter button').forEach(b=> b.onclick=()=>{
+  S.lingkupTabel=b.dataset.lingkup;
+  document.querySelectorAll('#scTabel .filter button').forEach(x=>x.classList.toggle('pilih',x===b));
+  muatTabel();
+});
+async function muatTabel(){
+  const data=saring(await ambilSemua(), S.lingkupTabel);
+  const box=$('isiTabel');
+  if(!data.length){ box.innerHTML='<div class="kosong"><span class="ic">\u{1F4CB}</span><p>Belum ada data untuk direkap.</p></div>'; return; }
+  box.innerHTML='<div class="bungkus-tabel"><table><thead><tr><th>No</th><th>Nama</th><th>Room</th><th>Koordinat</th><th>Catatan</th><th>Waktu</th><th>Foto</th><th>Status</th></tr></thead><tbody>'+
+    data.map((f,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(f.nama)+'</td><td>'+esc(f.room)+'</td><td>'+
+      (f.lat!=null?f.lat.toFixed(5)+',<br>'+f.lon.toFixed(5):'—')+'</td><td>'+esc(f.catatan)+'</td><td>'+fmtWaktu(f.ts)+
+      '</td><td><img src="'+f.dataUrl+'" alt=""></td><td><span class="badge '+kelasTanda(f)+'">'+
+      labelStatus(f)+'</span></td></tr>').join('')+
+    '</tbody></table></div><p class="catatan-kecil" style="padding:0 4px">Geser tabel ke samping untuk melihat kolom lainnya.</p>';
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function labelStatus(f){
+  if(f.status==='terkirim') return f.simulasi ? 'Simulasi — belum di Drive' : 'Terkirim ke Drive';
+  if(f.status==='gagal') return 'Gagal kirim';
+  return 'Menunggu upload';
+}
+/* Warna penanda di galeri. Foto simulasi sengaja dibedakan dari hijau,
+   supaya tidak disangka sudah benar-benar sampai di Drive. */
+function kelasTanda(f){ return (f.status==='terkirim' && f.simulasi) ? 'simulasi' : f.status; }
+
+/* Saat alamat server akhirnya diisi, foto yang dulu ditandai "terkirim"
+   secara simulasi dikembalikan ke antrian supaya benar-benar diunggah. */
+async function pulihkanSimulasi(){
+  const simulasi=(await ambilSemua()).filter(f=>f.simulasi);
+  for(const f of simulasi){ f.status='pending'; delete f.simulasi; await simpanFoto(f); }
+  return simulasi.length;
+}
+
+async function htmlRekap(){
+  const data=saring(await ambilSemua(), S.lingkupTabel);
+  return {jumlah:data.length, html:
+    '<h2>REKAP DOKUMENTASI FOTO LAPANGAN</h2><p class="sub">'+esc(S.kantor)+' &mdash; '+
+    (S.lingkupTabel==='room'?'Room: '+esc(S.room):'Semua Room')+'<br>Dicetak: '+fmtWaktu(Date.now())+'</p>'+
+    '<table><thead><tr><th>No</th><th>Nama Petugas</th><th>Room</th><th>Koordinat</th><th>Catatan</th><th>Waktu</th><th>Foto</th></tr></thead><tbody>'+
+    data.map((f,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(f.nama)+'</td><td>'+esc(f.room)+'</td><td>'+
+      (f.lat!=null?f.lat.toFixed(6)+', '+f.lon.toFixed(6):'-')+'</td><td>'+esc(f.catatan)+'</td><td>'+
+      fmtWaktu(f.ts)+'</td><td><img src="'+f.dataUrl+'" width="90"></td></tr>').join('')+'</tbody></table>'};
+}
+$('btnPdf').onclick = async ()=>{
+  const r=await htmlRekap();
+  if(!r.jumlah){ pesan('Belum ada data untuk dicetak'); return; }
+  $('areaCetak').innerHTML=r.html;
+  pesan('Membuka dialog cetak — pilih "Simpan sebagai PDF"');
+  setTimeout(()=>window.print(),400);
+};
+$('btnDocx').onclick = async ()=>{
+  const r=await htmlRekap();
+  if(!r.jumlah){ pesan('Belum ada data untuk diunduh'); return; }
+  const doc='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'+
+    '<head><meta charset="utf-8"><title>Rekap Dokumentasi</title><style>@page{size:29.7cm 21cm;margin:1.5cm}'+
+    'body{font-family:\'Times New Roman\',serif;font-size:11pt}h2{text-align:center;font-size:14pt;margin:0 0 3pt}'+
+    '.sub{text-align:center;font-size:10pt;margin:0 0 12pt}table{border-collapse:collapse;width:100%}'+
+    'th,td{border:1px solid #000;padding:4pt;vertical-align:top;font-size:9pt;text-align:left}th{background:#E8F5E9}</style></head><body>'+r.html+'</body></html>';
+  const blob=new Blob(['﻿',doc],{type:'application/msword'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Rekap_'+(S.lingkupTabel==='room'?S.room.replace(/\s+/g,'_'):'SemuaRoom')+'_'+new Date().toISOString().slice(0,10)+'.doc';
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  pesan('Berkas DOCX diunduh');
+};
+
+/* ===========================================================================
+   Pembungkus ZIP sederhana (metode "store", tanpa pemampatan).
+   Dipakai untuk mengunduh banyak foto sekaligus sebagai satu berkas —
+   kalau diunduh satu per satu, Android memblokir sisanya setelah berkas
+   pertama. JPEG sudah termampat, jadi tidak ada ruang yang terbuang.
+   =========================================================================== */
+const TABEL_CRC = (()=>{
+  const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c=n;
+    for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+    t[n]=c>>>0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c=0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) c = TABEL_CRC[(c ^ bytes[i]) & 0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF)>>>0;
+}
+function waktuDos(d){
+  return {
+    waktu: ((d.getHours()&31)<<11) | ((d.getMinutes()&63)<<5) | ((d.getSeconds()/2)&31),
+    tanggal: (((d.getFullYear()-1980)&127)<<9) | (((d.getMonth()+1)&15)<<5) | (d.getDate()&31)
+  };
+}
+function buatZip(berkas){                      // [{nama, data:Uint8Array, tanggal:Date}]
+  const enc=new TextEncoder();
+  const potongan=[], pusat=[];
+  let offset=0;
+
+  berkas.forEach(f=>{
+    const nama=enc.encode(f.nama);
+    const crc=crc32(f.data);
+    const dt=waktuDos(f.tanggal||new Date());
+
+    const lokal=new DataView(new ArrayBuffer(30));
+    lokal.setUint32(0,0x04034b50,true);        // tanda header lokal
+    lokal.setUint16(4,20,true);                // versi minimal
+    lokal.setUint16(6,0x0800,true);            // nama berkas UTF-8
+    lokal.setUint16(8,0,true);                 // metode: store
+    lokal.setUint16(10,dt.waktu,true);
+    lokal.setUint16(12,dt.tanggal,true);
+    lokal.setUint32(14,crc,true);
+    lokal.setUint32(18,f.data.length,true);
+    lokal.setUint32(22,f.data.length,true);
+    lokal.setUint16(26,nama.length,true);
+    lokal.setUint16(28,0,true);
+    potongan.push(new Uint8Array(lokal.buffer), nama, f.data);
+
+    const dir=new DataView(new ArrayBuffer(46));
+    dir.setUint32(0,0x02014b50,true);          // tanda direktori pusat
+    dir.setUint16(4,20,true); dir.setUint16(6,20,true);
+    dir.setUint16(8,0x0800,true); dir.setUint16(10,0,true);
+    dir.setUint16(12,dt.waktu,true); dir.setUint16(14,dt.tanggal,true);
+    dir.setUint32(16,crc,true);
+    dir.setUint32(20,f.data.length,true); dir.setUint32(24,f.data.length,true);
+    dir.setUint16(28,nama.length,true);
+    dir.setUint32(42,offset,true);
+    pusat.push(new Uint8Array(dir.buffer), nama);
+
+    offset += 30 + nama.length + f.data.length;
+  });
+
+  const ukuranPusat = pusat.reduce((a,b)=>a+b.length,0);
+  const akhir=new DataView(new ArrayBuffer(22));
+  akhir.setUint32(0,0x06054b50,true);          // tanda akhir direktori
+  akhir.setUint16(8,berkas.length,true);
+  akhir.setUint16(10,berkas.length,true);
+  akhir.setUint32(12,ukuranPusat,true);
+  akhir.setUint32(16,offset,true);
+
+  return new Blob([...potongan, ...pusat, new Uint8Array(akhir.buffer)],
+                  {type:'application/zip'});
+}
+function dataUrlKeBytes(dataUrl){
+  const b64=dataUrl.slice(dataUrl.indexOf(',')+1);
+  const biner=atob(b64);
+  const arr=new Uint8Array(biner.length);
+  for(let i=0;i<biner.length;i++) arr[i]=biner.charCodeAt(i);
+  return arr;
+}
+
+/* ---------- Peta sebaran ---------- */
+document.querySelectorAll('#scPeta .filter button').forEach(b=> b.onclick=()=>{
+  S.lingkupPeta=b.dataset.lingkup;
+  document.querySelectorAll('#scPeta .filter button').forEach(x=>x.classList.toggle('pilih',x===b));
+  muatPeta();
+});
+async function titikPeta(){
+  return saring(await ambilSemua(), S.lingkupPeta).map(f=>({
+    lat:f.lat, lon:f.lon, akurasi:f.akurasi, nama:f.nama, room:f.room,
+    waktu:fmtWaktu(f.ts), catatan:f.catatan, email:S.email,
+    namaBerkas:'', linkDrive:f.linkDrive||'', thumb:f.dataUrl
+  }));
+}
+async function muatPeta(){
+  const titik=await titikPeta();
+  const hasil=await PETA.gambar($('peta'), titik);
+  const tanpa=titik.length - PETA.jumlahBerkoordinat(titik);
+  $('ketPeta').innerHTML = hasil.jumlah+' titik'+
+    (tanpa?' · <b style="color:var(--oranye)">'+tanpa+' foto tanpa koordinat</b>':'');
+}
+$('btnKml').onclick = async ()=>{
+  const t=await titikPeta();
+  if(!PETA.jumlahBerkoordinat(t)){ pesan('Belum ada titik berkoordinat'); return; }
+  PETA.unduhKML(t, (S.lingkupPeta==='room'?S.room:'SemuaRoom').replace(/\s+/g,'_'));
+  pesan('Berkas KML diunduh');
+};
+$('btnGeojson').onclick = async ()=>{
+  const t=await titikPeta();
+  if(!PETA.jumlahBerkoordinat(t)){ pesan('Belum ada titik berkoordinat'); return; }
+  PETA.unduhGeoJSON(t, (S.lingkupPeta==='room'?S.room:'SemuaRoom').replace(/\s+/g,'_'));
+  pesan('Berkas GeoJSON diunduh');
+};
+
+/* ---------- Antrian ---------- */
+async function muatAntrian(){
+  const semua=await ambilSemua(), antri=semua.filter(f=>f.status!=='terkirim');
+  $('anMode').innerHTML = adaServer()
+    ? '<span class="badge terkirim">Terhubung ke Drive</span>'
+    : '<span class="badge pending">Mode simulasi</span>';
+  $('anKeterangan').textContent = adaServer()
+    ? 'Foto dikirim ke Drive master melalui backend Apps Script, lalu dicatat otomatis di spreadsheet rekap.'
+    : 'Alamat backend belum diisi, jadi foto hanya ditandai terkirim tanpa benar-benar diunggah. Isi di menu Pengaturan → Server.';
+  $('anKoneksi').textContent=navigator.onLine?'Tersambung':'Terputus';
+  $('anPending').textContent=antri.length+' foto';
+  $('anTerkirim').textContent=(semua.length-antri.length)+' foto';
+  $('isiAntrian').innerHTML = !antri.length
+    ? '<div class="kosong"><span class="ic">✅</span><p>Semua foto sudah terkirim.</p></div>'
+    : '<div class="kartu"><div class="kartu-judul">Menunggu Dikirim</div>'+antri.map(f=>
+        '<div class="meta-baris"><span>'+fmtWaktu(f.ts)+'<br><small style="color:var(--teks-2)">'+esc((f.catatan||'(tanpa catatan)').slice(0,34))+
+        '</small>'+(f.status==='gagal'?'<br><small style="color:var(--merah)">'+esc((f.pesanGagal||'').slice(0,60))+'</small>':'')+
+        '</span><b>'+(f.ukuran/1024).toFixed(0)+' KB</b></div>').join('')+'</div>';
+}
+
+/* ---------- Room ---------- */
+/* Tarik daftar room milik akun yang sedang masuk, lalu gabungkan ke daftar
+   perangkat. Room yang sudah ada diperbarui tokennya, yang belum ditambahkan.
+   Dengan ini room menempel ke akun, bukan ke HP — petugas yang tergabung di
+   beberapa room tidak perlu membuka link undangan satu per satu di tiap HP. */
+async function segarkanRoomSaya(){
+  if(!adaServer() || !S.sesi || !navigator.onLine) return 0;
+  const j = await panggilServer({aksi:'roomSaya', sesi:S.sesi}, 20000);
+  let baru = 0;
+  (j.rooms||[]).forEach(r=>{
+    const lama = S.rooms.find(x=>x.nama===r.nama);
+    if(lama){ if(r.token) lama.token = r.token; }
+    else { S.rooms.push({nama:r.nama, token:r.token}); baru++; }
+  });
+  simpanRooms();
+  $('inRoomLogin').innerHTML = S.rooms.map(r=>'<option>'+esc(r.nama)+'</option>').join('');
+  if(S.room) $('inRoomLogin').value = S.room;
+  return baru;
+}
+
+function gambarDialogRoom(status){
+  const daftar = S.rooms.length
+    ? S.rooms.map(r=>'<div class="opsi-room '+(r.nama===S.room?'pilih':'')+'" data-room="'+esc(r.nama)+'">\u{1F4C1} '+esc(r.nama)+
+        (r.token?'':' <small style="color:var(--oranye);font-weight:400">(tanpa undangan)</small>')+'</div>').join('')
+    : '<p class="catatan-kecil" style="margin:10px 0">Belum ada room di perangkat ini. Minta link undangan ke admin, lalu buka sekali di HP ini.</p>';
+  dialog('<h3>Pilih Room Kerja</h3><p>Foto akan tersimpan ke subfolder Drive sesuai room yang dipilih. Room boleh diganti kapan saja tanpa keluar dari akun.</p>'+
+    daftar+
+    (status?'<p class="catatan-kecil" style="margin:10px 0">'+status+'</p>':'')+
+    '<p class="catatan-kecil">Room baru hanya bisa dibuat oleh admin.</p>'+
+    '<button class="tombol abu" onclick="tutupDialog()">Tutup</button>');
+  $('dialogIsi').querySelectorAll('.opsi-room').forEach(el=> el.onclick=()=>pilihRoom(el.dataset.room));
+}
+
+async function bukaDialogRoom(){
+  const bisaTarik = adaServer() && S.sesi && navigator.onLine;
+  gambarDialogRoom(bisaTarik ? 'Memuat room milik akun Anda…' : '');
+  if(!bisaTarik) return;
+  try{
+    await segarkanRoomSaya();
+    // Jangan gambar ulang kalau dialognya sudah ditutup petugas selama menunggu.
+    if($('dialog').classList.contains('tampil')) gambarDialogRoom('');
+  }catch(e){
+    if($('dialog').classList.contains('tampil'))
+      gambarDialogRoom('Daftar room dari server belum bisa dimuat: '+esc(e.message));
+  }
+}
+
+/* Link undangan: https://alamat-aplikasi/?room=NAMA&token=XXXX
+   Dibuka sekali di HP petugas, room langsung tersimpan di perangkat. */
+async function terimaUndangan(q){
+  const nama = q.get('room'), token = q.get('token'), api = q.get('api');
+  if(!nama || !token) return false;
+
+  // bersihkan alamat supaya token tidak ikut tersimpan di riwayat browser
+  history.replaceState(history.state, '', location.pathname);
+
+  // Alamat server dibawa serta oleh link undangan, jadi petugas tidak perlu
+  // mengetiknya sendiri di menu Setelan.
+  if(api && /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(api)){
+    S.endpoint = api;
+    localStorage.setItem('bpkh_endpoint', api);
+  }
+
+  let belumTerverifikasi = false;
+  if(adaServer()){
+    try{
+      await panggilServer({aksi:'cekRoom', room:nama, token}, 20000);
+    }catch(e){
+      if(!e.jaringan){                       // server benar-benar menolak tokennya
+        dialog('<h3>Undangan tidak berlaku</h3><p>'+esc(e.message)+'</p>'+
+          '<button class="tombol" onclick="tutupDialog()">Tutup</button>');
+        return false;
+      }
+      // Server tidak terjangkau — kemungkinan besar sinyal, bukan undangan palsu.
+      // Undangan tetap diterima; keabsahannya diuji nanti saat foto dikirim.
+      belumTerverifikasi = true;
+    }
+  }
+  const lama = S.rooms.find(r=>r.nama===nama);
+  if(lama) lama.token = token; else S.rooms.push({nama, token});
+  simpanRooms();
+  S.room = nama; localStorage.setItem('bpkh_room', nama);
+  $('inRoomLogin').innerHTML = S.rooms.map(r=>'<option>'+esc(r.nama)+'</option>').join('');
+  $('inRoomLogin').value = nama;
+
+  const dipulihkan = adaServer() ? await pulihkanSimulasi() : 0;
+  dialog('<h3>Undangan diterima</h3><p>Perangkat ini sekarang punya akses ke room <b>'+esc(nama)+
+    '</b>. Semua foto yang diambil akan masuk ke subfolder room tersebut.'+
+    (adaServer() ? ' Alamat server ikut tersimpan, jadi tidak perlu diisi manual.' : '')+
+    (dipulihkan ? '<br><br>'+dipulihkan+' foto lama yang belum benar-benar terkirim dimasukkan kembali ke antrian.' : '')+
+    (belumTerverifikasi ? '<br><br><b>Catatan:</b> server belum bisa dihubungi saat ini, jadi undangan belum sempat diperiksa. Foto tetap bisa diambil dan akan terkirim begitu ada sinyal.' : '')+
+    '</p><button class="tombol" onclick="tutupDialog()">Mengerti</button>');
+  if(dipulihkan && navigator.onLine) setTimeout(()=>sinkron(false), 1500);
+  return true;
+}
+function pilihRoom(r){
+  S.room=r; localStorage.setItem('bpkh_room',r);
+  tutupDialog(); pesan('Room aktif: '+r);
+  const l=layarSekarang();
+  ({beranda:muatBeranda,pengaturan:muatPengaturan,galeri:muatGaleri,tabel:muatTabel}[l]||(()=>{}))();
+}
+
+/* ---------- Pengaturan ---------- */
+async function muatPengaturan(){
+  $('kartuAkun').innerHTML = S.email
+    ? '<div class="akun-kartu">'+
+        (S.foto?'<img src="'+esc(S.foto)+'" alt="">':'<div class="akun-kartu-kosong"></div>')+
+        '<div><b>'+esc(S.nama)+'</b><small>'+esc(S.email)+'</small></div></div>'+
+      '<div class="meta-baris" style="margin-top:8px"><span>Identitas</span>'+
+        '<b><span class="badge terkirim">Terverifikasi Google</span></b></div>'
+    : '<div class="meta-baris"><span>Petugas</span><b>'+esc(S.nama||'—')+'</b></div>'+
+      '<div class="meta-baris"><span>Identitas</span>'+
+        '<b><span class="badge pending">Nama ketikan</span></b></div>';
+  $('kartuAdmin').style.display = S.admin ? '' : 'none';
+  $('stRoom').textContent=S.room; $('stVersi').textContent=VERSI;
+  $('inKantor').value=S.kantor; $('inTarget').value=S.targetKB; $('inLebar').value=S.lebarMax;
+  $('inEndpoint').value=S.endpoint;
+  $('stMode').innerHTML = adaServer()
+    ? '<span class="badge terkirim">Terhubung ke Drive</span>'
+    : '<span class="badge pending">Mode simulasi</span>';
+  $('daftarRoomSetelan').innerHTML = S.rooms.map(r=>
+    '<div class="meta-baris"><span>\u{1F4C1} '+esc(r.nama)+'</span><b>'+
+    (r.token?'<span class="badge terkirim">Ada undangan</span>':'<span class="badge pending">Tanpa undangan</span>')+
+    '</b></div>').join('') || '<p class="catatan-kecil" style="margin:0">Belum ada room.</p>';
+  terapkanLogo();
+  const semua=await ambilSemua();
+  $('stJumlah').textContent=semua.length+' foto';
+  $('stRuang').textContent=(semua.reduce((a,f)=>a+f.ukuran,0)/1048576).toFixed(1)+' MB';
+  $('inHapusKirim').checked=S.hapusSetelahKirim;
+  $('stAwet').innerHTML = S.penyimpananAwet
+    ? '<span class="badge terkirim">Terkunci</span>'
+    : '<span class="badge pending">Biasa</span>';
+  $('stKetAwet').textContent = S.penyimpananAwet
+    ? 'Foto di HP ini terlindung dari pembersihan otomatis Android.'
+    : 'Android masih boleh membuang data aplikasi ini kalau memori HP menipis. '+
+      'Pasang aplikasi ke layar utama supaya perlindungan aktif, dan jangan biarkan foto lama menumpuk belum terkirim.';
+  try{
+    const e = await navigator.storage.estimate();
+    $('stRuang').textContent = (semua.reduce((a,f)=>a+f.ukuran,0)/1048576).toFixed(1)+
+      ' MB dari ' + Math.round(e.quota/1048576) + ' MB';
+  }catch(err){}
+}
+$('inHapusKirim').onchange = e=>{
+  S.hapusSetelahKirim = e.target.checked;
+  localStorage.setItem('bpkh_hapus_kirim', S.hapusSetelahKirim?'1':'0');
+  pesan(S.hapusSetelahKirim
+    ? 'Foto akan dihapus dari HP setelah terkirim'
+    : 'Foto tetap disimpan di HP setelah terkirim');
+};
+/* Pintu belakang untuk admin: ketuk nomor versi 5 kali untuk memunculkan
+   isian alamat backend. Sengaja tidak ada petunjuknya di layar. */
+let ketukVersi = 0, jamKetuk;
+$('stVersi').onclick = ()=>{
+  clearTimeout(jamKetuk);
+  jamKetuk = setTimeout(()=>ketukVersi=0, 1500);
+  if(++ketukVersi < 5) return;
+  ketukVersi = 0;
+  const buka = $('lanjutanServer').style.display==='none';
+  $('lanjutanServer').style.display = buka ? 'block' : 'none';
+  pesan(buka ? 'Pengaturan server terbuka' : 'Pengaturan server disembunyikan');
+  if(buka) $('lanjutanServer').scrollIntoView({behavior:'smooth', block:'center'});
+};
+
+$('btnPanelAdmin').onclick = ()=>{
+  localStorage.setItem('bpkh_admin_endpoint', S.endpoint);
+  localStorage.setItem('bpkh_admin_sesi', S.sesi);
+  window.open('admin.html', '_blank');
+};
+
+$('btnSimpanServer').onclick = ()=>{
+  const url=$('inEndpoint').value.trim().replace(/\/+$/,'');
+  if(url && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){
+    pesan('Alamat harus berupa URL Apps Script yang diakhiri /exec'); return;
+  }
+  S.endpoint=url;
+  if(url) localStorage.setItem('bpkh_endpoint',url); else localStorage.removeItem('bpkh_endpoint');
+  muatPengaturan();
+  if(!url){ pesan('Kembali ke mode simulasi'); return; }
+  pulihkanSimulasi().then(n=>{
+    pesan(n ? 'Alamat tersimpan — '+n+' foto simulasi dikirim ulang' : 'Alamat backend tersimpan');
+    if(n && navigator.onLine) setTimeout(()=>sinkron(false), 800);
+  });
+};
+$('btnUjiServer').onclick = async ()=>{
+  const url=$('inEndpoint').value.trim().replace(/\/+$/,'');
+  if(!url){ pesan('Isi alamat backend dulu'); return; }
+  const simpanan=S.endpoint; S.endpoint=url;
+  $('btnUjiServer').disabled=true; pesan('Menghubungi server…');
+  try{
+    const j=await panggilServer({aksi:'ping'},20000);
+    pesan('Berhasil terhubung — backend versi '+j.versi);
+  }catch(e){
+    pesan('Gagal: '+e.message);
+  }finally{
+    S.endpoint=simpanan; $('btnUjiServer').disabled=false;
+  }
+};
+$('btnCobaLagi').onclick = async ()=>{ history.back(); setTimeout(()=>sinkron(false),300); };
+$('btnPilihLogo').onclick = ()=>$('inLogo').click();
+$('inLogo').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>2*1024*1024){ pesan('Berkas logo terlalu besar (maks 2 MB)'); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{ S.logo=fr.result; localStorage.setItem('bpkh_logo',S.logo); terapkanLogo(); pesan('Logo diperbarui'); };
+  fr.readAsDataURL(f);
+};
+function terapkanLogo(){
+  const sumber = S.logo || LOGO_BAWAAN;
+  ['logoPreview','logoLogin','overlayLogo'].forEach(id=>{
+    const el=$(id); if(!el) return;
+    el.innerHTML = '<img src="'+esc(sumber)+'" alt="Logo">';
+    el.style.border='0';
+  });
+  const im=new Image();
+  im.onload=()=>S.logoImg=im;
+  im.onerror=()=>S.logoImg=null;   // watermark jatuh ke kotak "LOGO" kalau berkas hilang
+  im.src=sumber;
+}
+$('btnSimpanSetting').onclick = ()=>{
+  S.kantor=$('inKantor').value.trim()||'BPKH WILAYAH XI';
+  S.targetKB=Math.min(2000,Math.max(100,+$('inTarget').value||500));
+  S.lebarMax=Math.min(4000,Math.max(800,+$('inLebar').value||1600));
+  localStorage.setItem('bpkh_kantor',S.kantor);
+  localStorage.setItem('bpkh_target',S.targetKB);
+  localStorage.setItem('bpkh_lebar',S.lebarMax);
+  $('inTarget').value=S.targetKB; $('inLebar').value=S.lebarMax;
+  document.querySelector('#overlayWm .kantor').textContent=S.kantor;
+  pesan('Pengaturan tersimpan');
+};
+$('btnEkspor').onclick = async ()=>{
+  const data=(await ambilSemua()).map(({dataUrl,...sisa})=>sisa);
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='metadata_dokumentasi_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  pesan('Metadata diekspor (tanpa gambar)');
+};
+$('btnKeluar').onclick = ()=>{
+  dialog('<h3>Keluar dari aplikasi?</h3><p>Foto yang sudah tersimpan tetap ada di perangkat.</p>'+
+    '<div class="baris-tombol"><button class="tombol abu" onclick="tutupDialog()" style="margin-top:0">Batal</button>'+
+    '<button class="tombol" style="margin-top:0" onclick="keluar()">Keluar</button></div>');
+};
+function keluar(){
+  ['bpkh_nama','bpkh_email','bpkh_sesi','bpkh_foto','bpkh_admin','bpkh_admin_sesi']
+    .forEach(k=>localStorage.removeItem(k));
+  S.nama=''; S.email=''; S.sesi=''; S.foto=''; S.admin=false; sudahDiberitahu=false;
+  try{ if(window.google && google.accounts) google.accounts.id.disableAutoSelect(); }catch(e){}
+  tutupDialog();
+  history.replaceState({layar:'login'},''); ke('login',false);
+  siapkanLoginGoogle();
+}
+
+/* ---------- Nav & login ---------- */
+document.querySelectorAll('.nav-item').forEach(b=> b.onclick=()=>ke(b.dataset.nav));
+$('fabKamera').onclick = ()=>ke('kamera');
+
+/* Login manual — cadangan saat login Google tidak tersedia (tanpa sinyal,
+   atau alamat server belum diisi). Identitasnya tidak terverifikasi. */
+$('btnMasuk').onclick = ()=>{
+  const n=$('inNama').value.trim();
+  if(!n){ pesan('Nama petugas wajib diisi'); $('inNama').focus(); return; }
+  S.nama=n; S.email=''; S.sesi=''; S.room=$('inRoomLogin').value;
+  localStorage.setItem('bpkh_nama',n); localStorage.setItem('bpkh_room',S.room);
+  localStorage.removeItem('bpkh_email'); localStorage.removeItem('bpkh_sesi');
+  mulaiGPS(); ke(LAYAR_UTAMA);
+};
+
+/* ---------- Login Google ---------- */
+function muatSkripGoogle(){
+  return new Promise((res,rej)=>{
+    if(window.google && google.accounts) return res();
+    const s=document.createElement('script');
+    s.src='https://accounts.google.com/gsi/client';
+    s.async=true; s.defer=true;
+    s.onload=res; s.onerror=()=>rej(new Error('gagal memuat'));
+    document.head.appendChild(s);
+  });
+}
+
+async function siapkanLoginGoogle(){
+  // Tanpa alamat server, tanda pengenal Google tidak ada yang memeriksa —
+  // jadi tombolnya tidak ditampilkan supaya tidak menyesatkan.
+  if(!adaServer()){
+    $('areaGoogle').classList.add('sembunyi');
+    $('areaManual').classList.add('tampil');
+    $('ketManual').textContent='Alamat server belum diisi, jadi login Google belum bisa dipakai. '+
+      'Buka link undangan dari admin, atau isi alamat server di menu Setelan.';
+    return;
+  }
+  try{
+    await muatSkripGoogle();
+    google.accounts.id.initialize({
+      client_id: CLIENT_ID,
+      callback: terimaLoginGoogle,
+      cancel_on_tap_outside: true
+    });
+    google.accounts.id.renderButton($('tombolGoogle'),
+      {theme:'filled_blue', size:'large', shape:'pill', text:'signin_with',
+       locale:'id', width:280});
+    $('areaGoogle').classList.remove('sembunyi');
+  }catch(e){
+    // Biasanya karena offline: skrip Google tidak bisa diunduh.
+    $('areaGoogle').classList.add('sembunyi');
+    $('areaManual').classList.add('tampil');
+    $('ketManual').textContent='Login Google tidak bisa dimuat — kemungkinan tidak ada sinyal. '+
+      'Anda tetap bisa bekerja dengan mengisi nama, tapi identitasnya tidak terverifikasi.';
+  }
+}
+
+async function terimaLoginGoogle(jawab){
+  const room=$('inRoomLogin').value;
+  const t=tokenRoom(room);
+  if(!t){
+    dialog('<h3>Room belum punya undangan</h3><p>Perangkat ini belum menerima link undangan '+
+      'untuk room <b>'+esc(room)+'</b>. Minta linknya ke admin, lalu buka sekali di HP ini.</p>'+
+      '<button class="tombol" onclick="tutupDialog()">Mengerti</button>');
+    return;
+  }
+  pesan('Memeriksa akun…');
+  try{
+    const j=await panggilServer({aksi:'masuk', room, token:t, idToken:jawab.credential}, 30000);
+    S.nama=j.nama; S.email=j.email; S.sesi=j.sesi; S.room=j.room; S.admin=!!j.admin;
+    localStorage.setItem('bpkh_nama',S.nama);
+    localStorage.setItem('bpkh_email',S.email);
+    localStorage.setItem('bpkh_sesi',S.sesi);
+    localStorage.setItem('bpkh_room',S.room);
+    localStorage.setItem('bpkh_admin', S.admin?'1':'0');
+    // Panel admin sehalaman-asal, jadi cukup dititipkan lewat penyimpanan —
+    // tidak perlu menaruh sesi di alamat yang bisa tersalin tidak sengaja.
+    if(S.admin){
+      localStorage.setItem('bpkh_admin_endpoint', S.endpoint);
+      localStorage.setItem('bpkh_admin_sesi', S.sesi);
+    }else{
+      localStorage.removeItem('bpkh_admin_sesi');
+    }
+    // foto profil diambil dari tanda pengenal, sekadar untuk ditampilkan
+    try{
+      const isi=JSON.parse(atob(jawab.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      if(isi.picture){ S.foto=isi.picture; localStorage.setItem('bpkh_foto',S.foto); }
+    }catch(e){}
+    mulaiGPS(); ke(LAYAR_UTAMA);
+    pesan('Masuk sebagai '+S.email);
+    // Room lain milik akun ini ikut ditarik di latar belakang. Gagal pun tidak
+    // apa-apa — room yang dipakai untuk masuk sudah ada di perangkat.
+    segarkanRoomSaya().catch(()=>{});
+  }catch(e){
+    dialog('<h3>Gagal masuk</h3><p>'+esc(e.message)+'</p>'+
+      '<button class="tombol" onclick="tutupDialog()">Tutup</button>');
+  }
+}
+
+/* ---------- Pemasangan aplikasi (Add to Home Screen) ---------- */
+addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); S.promptPasang=e;
+  if(!matchMedia('(display-mode: standalone)').matches) $('spandukPasang').classList.add('tampil');
+});
+$('btnPasang').onclick = async ()=>{
+  if(!S.promptPasang){ pesan('Pakai menu browser → "Tambahkan ke layar utama"'); return; }
+  S.promptPasang.prompt();
+  const {outcome}=await S.promptPasang.userChoice;
+  if(outcome==='accepted'){ $('spandukPasang').classList.remove('tampil'); pesan('Aplikasi terpasang'); }
+  S.promptPasang=null;
+};
+addEventListener('appinstalled', ()=>$('spandukPasang').classList.remove('tampil'));
+
+/* ---------- Service worker ---------- */
+if('serviceWorker' in navigator){
+  addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
+/* ---------- Mulai ---------- */
+/* Android boleh membuang data situs saat penyimpanan menipis. Foto di sini
+   adalah bukti lapangan yang belum tentu sudah terkirim, jadi kita minta
+   status penyimpanan awet supaya tidak ikut dibersihkan sistem. */
+async function kunciPenyimpanan(){
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      S.penyimpananAwet = await navigator.storage.persisted()
+        || await navigator.storage.persist();
+    }
+  }catch(e){ S.penyimpananAwet=false; }
+}
+
+/* Kirim sisa antrian begitu aplikasi dibuka kembali dari latar belakang. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && navigator.onLine && S.nama) sinkron(true);
+});
+
+(async function mulai(){
+  const q = new URLSearchParams(location.search);   // dibaca dulu, nanti alamat dibersihkan
+  perbaruiKoneksi();
+  kunciPenyimpanan();
+  $('inRoomLogin').innerHTML = S.rooms.map(r=>'<option>'+esc(r.nama)+'</option>').join('');
+  terapkanLogo();
+  document.querySelector('#overlayWm .kantor').textContent=S.kantor;
+
+  const nama=localStorage.getItem('bpkh_nama'), room=localStorage.getItem('bpkh_room');
+  if(nama){
+    S.nama=nama; S.room=room||S.rooms[0].nama;
+    mulaiGPS();
+    history.replaceState({layar:LAYAR_UTAMA},''); ke(LAYAR_UTAMA,false);
+    // Satu langkah cadangan di riwayat, supaya tombol Back yang tertekan tidak
+    // sengaja saat memotret cukup memunculkan peringatan, bukan menutup aplikasi.
+    history.pushState({layar:LAYAR_UTAMA},'');
+  }else{
+    history.replaceState({layar:'login'},'');
+  }
+
+  await terimaUndangan(q);                // link undangan dari admin
+  if(!nama) siapkanLoginGoogle();         // alamat server sudah pasti terisi di sini
+  if(nama && navigator.onLine) setTimeout(()=>sinkron(true), 2500);  // kirim sisa antrian
+})();
+</script>
+</body>
+</html>

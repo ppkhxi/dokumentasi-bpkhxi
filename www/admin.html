@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1B5E20">
+<link rel="icon" href="icons/favicon-96.png" sizes="96x96">
+<title>Panel Admin — Portal Dokumentasi BPKH XI</title>
+<script src="peta.js"></script>
+<style>
+:root{
+  --hijau:#1B5E20;--hijau-2:#2E7D32;--hijau-terang:#E8F5E9;--bg:#F5F6F5;--surface:#fff;
+  --teks:#1A1C19;--teks-2:#5F6560;--garis:#DDE3DC;--merah:#C62828;--oranye:#EF6C00;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--teks);font-family:'Roboto','Segoe UI',system-ui,sans-serif;font-size:14px}
+header{background:var(--hijau);color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header img{width:34px;height:34px;border-radius:8px}
+header h1{font-size:18px;margin:0;flex:1;min-width:220px}
+header .info{font-size:12px;opacity:.85}
+main{max-width:1080px;margin:0 auto;padding:22px 16px 60px}
+.kartu{background:var(--surface);border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+h2{font-size:15px;margin:0 0 14px;color:var(--hijau);text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:12px;font-weight:600;color:var(--teks-2);margin:12px 0 5px}
+input,select{width:100%;padding:11px 13px;border:1.5px solid var(--garis);border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--teks)}
+input:focus,select:focus{border-color:var(--hijau-2)}
+button{padding:11px 18px;border:0;border-radius:10px;background:var(--hijau);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+button:hover{background:var(--hijau-2)}
+button.abu{background:#ECEFEC;color:var(--teks)}
+button.kecil{padding:7px 11px;font-size:12px;border-radius:8px}
+button.bahaya{background:#FDECEA;color:var(--merah)}
+button:disabled{opacity:.5;cursor:default}
+.baris{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.baris>div{flex:1;min-width:200px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--hijau-terang);color:var(--hijau);text-align:left;padding:10px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+td{padding:10px;border-top:1px solid var(--garis);vertical-align:top}
+td img{width:56px;height:56px;object-fit:cover;border-radius:6px}
+.gulir{overflow-x:auto}
+code{background:#F0F2F0;padding:2px 6px;border-radius:5px;font-size:12px;word-break:break-all}
+.link-undangan{display:flex;gap:8px;align-items:center;margin-top:6px}
+.link-undangan input{font-size:12px;padding:8px 10px;font-family:ui-monospace,Consolas,monospace}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap}
+.badge.aktif{background:#E8F5E9;color:#2E7D32}
+.badge.mati{background:#FFEBEE;color:var(--merah)}
+.kabar{padding:12px 15px;border-radius:10px;margin-bottom:14px;font-size:13.5px;display:none;line-height:1.55}
+.kabar.tampil{display:block}
+.kabar.ok{background:#E8F5E9;color:#1B5E20}
+.kabar.salah{background:#FDECEA;color:var(--merah)}
+.catatan{font-size:12px;color:var(--teks-2);line-height:1.6;margin:10px 0 0}
+.sembunyi{display:none!important}
+.kosong{text-align:center;padding:36px;color:var(--teks-2)}
+#peta{height:480px;border-radius:12px;overflow:hidden;border:1px solid var(--garis);background:#EAEFEA}
+.peta-kosong{display:flex;align-items:center;justify-content:center;height:100%;
+  text-align:center;padding:30px;color:var(--teks-2);font-size:13.5px;line-height:1.7}
+.peta-popup{font-family:inherit;font-size:12.5px;line-height:1.5}
+.peta-popup img{width:100%;border-radius:8px;margin-bottom:8px;display:block}
+.peta-popup b{font-size:13.5px}
+.peta-popup .baris{color:var(--teks-2)}
+.peta-popup .catatan{margin:6px 0;color:var(--teks)}
+.legenda{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12.5px}
+.legenda span{display:flex;align-items:center;gap:6px}
+.legenda i{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;
+  box-shadow:0 0 0 1px var(--garis)}
+
+/* ---- Galeri foto ---- */
+.galeri-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:16px}
+.galeri-sel{position:relative;border:0;padding:0;background:#EAEEEA;border-radius:10px;overflow:hidden;
+  aspect-ratio:3/4;cursor:pointer;display:block;width:100%}
+.galeri-sel img{width:100%;height:100%;object-fit:cover;display:block;background:#EAEEEA}
+.galeri-sel .tutup{position:absolute;left:0;right:0;bottom:0;padding:14px 7px 6px;color:#fff;font-size:10.5px;
+  line-height:1.35;text-align:left;background:linear-gradient(to top,rgba(0,0,0,.78),rgba(0,0,0,0))}
+.galeri-sel .tutup b{display:block;font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.galeri-sel .pil{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:9.5px;
+  font-weight:700;padding:2px 7px;border-radius:20px;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.galeri-sel .gagal{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;color:var(--teks-2);font-size:10.5px;text-align:center;padding:10px;line-height:1.4}
+
+#kotakFoto{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px}
+#kotakFoto.tampil{display:flex}
+#kotakFoto .latar{position:absolute;inset:0;background:rgba(0,0,0,.82)}
+#kotakFoto .isi{position:relative;background:var(--surface);border-radius:14px;overflow:hidden;
+  max-width:820px;width:100%;max-height:92vh;display:flex;flex-direction:column}
+#kotakFoto img{width:100%;max-height:58vh;object-fit:contain;background:#111;display:block}
+#kotakFoto .ket{padding:14px 18px 18px;overflow-y:auto;font-size:13px;line-height:1.6}
+#kotakFoto .ket dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:10px 0 0}
+#kotakFoto .ket dt{color:var(--teks-2);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+#kotakFoto .ket dd{margin:0;word-break:break-word}
+#kotakFoto .tutupX{position:absolute;top:8px;right:8px;z-index:2;width:36px;height:36px;padding:0;border-radius:50%;
+  background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1}
+#kotakFoto .tutupX:hover{background:rgba(0,0,0,.75)}
+
+/* ---- Pengelola admin ---- */
+.admin-baris{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--garis);flex-wrap:wrap}
+.admin-baris:first-child{border-top:0}
+.admin-baris .surel{flex:1;min-width:200px;word-break:break-all;font-size:13.5px}
+.admin-baris .asal{font-size:11.5px;color:var(--teks-2)}
+.badge.kunci{background:#EEF1EE;color:var(--teks-2)}
+.setuju{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:12.5px;line-height:1.5;color:var(--teks-2)}
+.setuju input{width:auto;flex:0 0 auto;margin-top:2px}
+
+/* ---- Bagian yang bisa dilipat ---- */
+.judul-lipat{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:0;user-select:none}
+.judul-lipat::after{content:'';width:9px;height:9px;flex:0 0 auto;margin-right:4px;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s}
+.kartu.buka>.judul-lipat::after{transform:rotate(-135deg)}
+.judul-lipat:hover{opacity:.75}
+.isi-kartu{display:none}
+.kartu.buka>.isi-kartu{display:block;margin-top:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="icons/icon-192.png" alt="">
+  <h1>Panel Admin — Portal Dokumentasi</h1>
+  <div class="info" id="infoAkun"></div>
+  <button class="abu kecil sembunyi" id="btnKeluar">Keluar</button>
+</header>
+
+<main>
+  <div class="kabar" id="kabar"></div>
+
+  <!-- ===== MASUK ===== -->
+  <section class="kartu" id="kartuMasuk">
+    <h2>Masuk sebagai Admin</h2>
+    <label for="inEndpoint">Alamat Backend (URL Apps Script /exec)</label>
+    <input id="inEndpoint" placeholder="https://script.google.com/macros/s/AKfy…/exec">
+    <label for="inToken">Token Admin</label>
+    <input id="inToken" type="password" placeholder="Token yang Anda tulis di Code.gs">
+    <div style="margin-top:16px"><button id="btnMasuk">Masuk</button></div>
+    <p class="catatan">Token admin adalah nilai <code>TOKEN_ADMIN</code> di berkas <code>Code.gs</code>.
+      Token disimpan di browser ini saja — jangan dipakai di komputer bersama.</p>
+  </section>
+
+  <!-- ===== ROOM ===== -->
+  <section class="kartu sembunyi" id="kartuRoom">
+    <h2>Buat Room Baru</h2>
+    <div class="baris">
+      <div>
+        <label for="inNamaRoom">Nama Room / Project</label>
+        <input id="inNamaRoom" placeholder="Contoh: PPTPKH BLITAR">
+      </div>
+      <button id="btnBuatRoom">Buat Room</button>
+    </div>
+    <p class="catatan">Membuat room otomatis membuat subfolder baru di Drive master dan menerbitkan
+      link undangan. Petugas cukup membuka link itu di HP untuk masuk ke room tersebut.</p>
+  </section>
+
+  <section class="kartu sembunyi" id="kartuDaftar">
+    <h2>Daftar Room</h2>
+    <div id="isiRoom"></div>
+  </section>
+
+  <!-- ===== ANGGOTA ===== -->
+  <section class="kartu sembunyi" id="kartuAnggota">
+    <h2>Anggota Room</h2>
+    <div class="baris">
+      <div>
+        <label for="pilihRoomAnggota">Saring per room</label>
+        <select id="pilihRoomAnggota"><option value="">Semua room</option></select>
+      </div>
+      <button class="abu" id="btnMuatAnggota">Muat Ulang</button>
+    </div>
+    <div class="gulir" id="isiAnggota" style="margin-top:16px"></div>
+    <p class="catatan">Petugas mendaftar sendiri saat membuka link undangan dan login dengan
+      akun Google. Tekan <b>Keluarkan</b> untuk mencabut aksesnya — foto yang sudah terkirim
+      tetap tersimpan, hanya pengiriman berikutnya yang ditolak.</p>
+  </section>
+
+  <!-- ===== REKAP ===== -->>
+  <section class="kartu sembunyi" id="kartuRekap">
+    <h2>Rekap Dokumentasi</h2>
+    <div class="baris">
+      <div>
+        <label for="pilihRoom">Saring per room</label>
+        <select id="pilihRoom"><option value="">Semua room</option></select>
+      </div>
+      <button class="abu" id="btnMuatRekap">Muat Ulang</button>
+      <button class="abu" id="btnCsv">Unduh CSV</button>
+      <button class="abu" id="btnSheet">Buka Spreadsheet</button>
+    </div>
+    <div class="gulir" id="isiRekap" style="margin-top:16px"></div>
+  </section>
+
+  <!-- ===== GALERI ===== -->
+  <section class="kartu sembunyi" id="kartuGaleri">
+    <h2>Galeri Foto</h2>
+    <div class="baris">
+      <div>
+        <label for="pilihRoomGaleri">Saring per room</label>
+        <select id="pilihRoomGaleri"><option value="">Semua room</option></select>
+      </div>
+      <button class="abu" id="btnMuatGaleri">Muat Ulang</button>
+    </div>
+    <p class="catatan" id="ketGaleri">Belum dimuat.</p>
+    <div class="galeri-grid" id="isiGaleri"></div>
+    <div id="galeriLagi" class="sembunyi" style="text-align:center;margin-top:16px">
+      <button class="abu" id="btnGaleriLagi">Tampilkan lebih banyak</button>
+    </div>
+    <p class="catatan" id="notaGaleri">Gambar diambil langsung dari Google Drive, jadi peramban ini
+      harus sedang masuk ke akun Google yang punya akses ke folder DOKUMENTASI. Kalau kotaknya kosong
+      dan tertulis &ldquo;tidak bisa dimuat&rdquo;, masuk dulu ke akun itu di tab lain lalu muat ulang
+      halaman ini.</p>
+  </section>
+
+  <!-- ===== PETA ===== -->
+  <section class="kartu sembunyi" id="kartuPeta">
+    <h2>Peta Sebaran</h2>
+    <div class="baris" style="margin-bottom:14px">
+      <div style="flex:1;min-width:220px">
+        <p class="catatan" style="margin:0" id="ketPeta">Mengikuti saringan room di bagian Rekap di atas.</p>
+      </div>
+      <button class="abu" id="btnKml">Unduh KML</button>
+      <button class="abu" id="btnGeojson">Unduh GeoJSON</button>
+    </div>
+    <div id="peta"></div>
+    <div id="legendaPeta" class="legenda"></div>
+    <p class="catatan">Lingkaran samar di sekeliling titik menunjukkan ketelitian GPS saat foto
+      diambil. Koordinat dari HP berkisar &plusmn;5 sampai &plusmn;80 meter tergantung sinyal dan
+      tutupan tajuk — cukup untuk menunjukkan lokasi dokumentasi, tetapi bukan pengganti
+      pengukuran geodetik untuk penetapan batas.</p>
+  </section>
+
+  <!-- ===== PENGELOLA ADMIN ===== -->
+  <section class="kartu sembunyi" id="kartuAdmin">
+    <h2>Pengelola Admin</h2>
+    <div id="isiAdmin"></div>
+
+    <div class="baris" style="margin-top:18px">
+      <div>
+        <label for="inAdminBaru">Jadikan orang lain admin</label>
+        <input id="inAdminBaru" type="email" placeholder="nama@gmail.com" autocomplete="off">
+      </div>
+      <button id="btnTambahAdmin">Tambah Admin</button>
+    </div>
+    <label class="setuju">
+      <input type="checkbox" id="cbBagikanDrive" checked>
+      <span>Bagikan folder Drive <b>DOKUMENTASI</b> ke email itu sebagai <b>pembaca</b>.
+        Tanpa ini dia bisa membuka panel, tapi foto di Galeri tidak akan tampil untuknya.</span>
+    </label>
+
+    <p class="catatan">Orang yang ditambahkan cukup <b>Masuk dengan Google</b> di aplikasi petugas
+      memakai email itu, lalu kartu <b>Admin</b> muncul di menu Setelan &mdash; berisi tombol
+      <b>Buka Panel Admin</b>. Tidak perlu token dan tidak perlu menerbitkan ulang Code.gs.</p>
+    <p class="catatan">Mencabut berlaku seketika: backend memeriksa daftar ini setiap permintaan,
+      bukan hanya saat login. Foto yang sudah masuk Drive tetap tersimpan.</p>
+    <p class="catatan">Admin bertanda <b>terkunci</b> berasal dari <code>ADMIN_EMAIL</code> di
+      <code>Code.gs</code> dan sengaja tidak bisa dicabut dari sini &mdash; itu pengaman supaya panel
+      tidak pernah kehilangan seluruh adminnya. Untuk mengubahnya, sunting Code.gs lalu terbitkan
+      versi baru.</p>
+  </section>
+</main>
+
+<!-- Kotak foto galeri -->
+<div id="kotakFoto">
+  <div class="latar" id="kfLatar"></div>
+  <div class="isi">
+    <button class="tutupX" id="kfTutup" aria-label="Tutup">&times;</button>
+    <img id="kfGambar" alt="">
+    <div class="ket" id="kfKet"></div>
+  </div>
+</div>
+
+
+<script>
+const $ = id => document.getElementById(id);
+const A = {
+  endpoint: localStorage.getItem('bpkh_admin_endpoint') || '',
+  token: sessionStorage.getItem('bpkh_admin_token') || '',
+  // Sesi admin ditulis oleh aplikasi petugas saat pemegang akun admin menekan
+  // "Panel Admin" di menu Setelan. Keduanya sehalaman-asal, jadi berbagi
+  // penyimpanan tanpa perlu menaruh rahasia di alamat.
+  sesiAdmin: localStorage.getItem('bpkh_admin_sesi') || '',
+  rooms: [], anggota: [], data: [], folderMaster: '',
+  galeri: [], galeriTampil: 0,
+  adminTetap: [], adminTambahan: [], sayaAdmin: ''
+};
+
+function kabar(teks, salah){
+  const k=$('kabar');
+  k.textContent=teks;
+  k.className='kabar tampil '+(salah?'salah':'ok');
+  clearTimeout(kabar.t); kabar.t=setTimeout(()=>k.classList.remove('tampil'), salah?9000:4500);
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* Content-Type text/plain supaya tidak memicu preflight CORS —
+   Apps Script tidak menjawab permintaan OPTIONS. */
+async function panggil(muatan){
+  if(!A.endpoint) throw new Error('Alamat backend belum diisi');
+  // Sesi admin dipakai kalau ada; token hanya untuk jalan masuk manual.
+  if(muatan.tokenAdmin !== undefined){
+    if(A.sesiAdmin){ delete muatan.tokenAdmin; muatan.sesiAdmin = A.sesiAdmin; }
+  }
+  const res = await fetch(A.endpoint, {
+    method:'POST', redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(muatan)
+  });
+  const teks = await res.text();
+  let j;
+  try{ j = JSON.parse(teks); }
+  catch(e){ throw new Error('Jawaban server bukan JSON. Pastikan Apps Script di-deploy dengan akses "Siapa saja".'); }
+  if(!j.ok) throw new Error(j.pesan || 'Permintaan ditolak server');
+  return j;
+}
+
+/* ---------- Masuk ---------- */
+async function masukAdmin(){
+  const j = await panggil({aksi:'adminMasuk', tokenAdmin:A.token});
+  A.folderMaster = j.folderMaster || '';
+  localStorage.setItem('bpkh_admin_endpoint', A.endpoint);
+  if(!A.sesiAdmin) sessionStorage.setItem('bpkh_admin_token', A.token);
+  $('infoAkun').textContent = 'Backend v'+j.versi+
+    (j.sebagai && j.sebagai.indexOf('@')>0 ? ' · '+j.sebagai : '');
+  return j;
+}
+
+$('btnMasuk').onclick = async ()=>{
+  A.endpoint = $('inEndpoint').value.trim().replace(/\/+$/,'');
+  A.token = $('inToken').value.trim();
+  A.sesiAdmin = '';                       // masuk manual: jangan pakai sesi
+  if(!A.endpoint || !A.token){ kabar('Alamat backend dan token admin wajib diisi', true); return; }
+  $('btnMasuk').disabled = true;
+  try{
+    const j = await masukAdmin();
+    if(j.alamatAplikasi && j.alamatAplikasi.indexOf('GANTI')>=0)
+      kabar('Terhubung, tetapi ALAMAT_APLIKASI di Code.gs belum diisi — link undangan akan salah. Perbaiki dulu di Apps Script.', true);
+    else kabar('Berhasil masuk sebagai admin');
+    tampilPanel();
+    await muatRoom();
+    await muatAnggota();
+    await muatRekap();
+    await muatGaleri();
+    await muatAdmin();
+  }catch(e){ kabar(e.message, true); }
+  finally{ $('btnMasuk').disabled = false; }
+};
+/* Isi tiap bagian dilipat supaya panel terbaca sebagai daftar menu dulu, bukan
+   dinding tabel. Pembungkusnya dibuat saat jalan, bukan ditulis di markah —
+   supaya menambah bagian baru nanti tidak perlu ingat menulis wadahnya. */
+function pasangLipat(){
+  document.querySelectorAll('section.kartu').forEach((kartu, i)=>{
+    if(kartu.id === 'kartuMasuk' || kartu.dataset.lipat) return;
+    const judul = kartu.querySelector(':scope > h2');
+    if(!judul) return;
+    kartu.dataset.lipat = '1';
+    const isi = document.createElement('div');
+    isi.className = 'isi-kartu';
+    while(judul.nextSibling) isi.appendChild(judul.nextSibling);
+    kartu.appendChild(isi);
+    judul.classList.add('judul-lipat');
+    judul.setAttribute('role','button');
+    judul.setAttribute('tabindex','0');
+    const kunci = 'bpkh_admin_lipat_' + (kartu.id || i);
+    if(localStorage.getItem(kunci) === '1') kartu.classList.add('buka');
+    const alih = ()=>{
+      const buka = kartu.classList.toggle('buka');
+      localStorage.setItem(kunci, buka ? '1' : '0');
+      // Peta digambar Leaflet memakai ukuran wadahnya. Kalau digambar saat
+      // wadahnya masih display:none, ukurannya nol dan petanya kosong.
+      if(buka && kartu.id === 'kartuPeta') gambarPeta();
+    };
+    judul.onclick = alih;
+    judul.onkeydown = e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); alih(); } };
+  });
+}
+
+function tampilPanel(){
+  $('kartuMasuk').classList.add('sembunyi');
+  ['kartuRoom','kartuDaftar','kartuAnggota','kartuRekap','kartuGaleri','kartuPeta','kartuAdmin'].forEach(id=>$(id).classList.remove('sembunyi'));
+  $('btnKeluar').classList.remove('sembunyi');
+  pasangLipat();
+}
+$('btnKeluar').onclick = ()=>{
+  sessionStorage.removeItem('bpkh_admin_token');
+  localStorage.removeItem('bpkh_admin_sesi');
+  location.reload();
+};
+
+/* ---------- Room ---------- */
+$('btnBuatRoom').onclick = async ()=>{
+  const nama = $('inNamaRoom').value.trim();
+  if(!nama){ kabar('Nama room wajib diisi', true); return; }
+  $('btnBuatRoom').disabled = true;
+  try{
+    const j = await panggil({aksi:'buatRoom', tokenAdmin:A.token, nama});
+    $('inNamaRoom').value='';
+    kabar('Room "'+j.room.nama+'" dibuat — subfolder Drive sudah tersedia');
+    await muatRoom();
+  }catch(e){ kabar(e.message, true); }
+  finally{ $('btnBuatRoom').disabled = false; }
+};
+
+async function muatRoom(){
+  try{
+    const j = await panggil({aksi:'daftarRoom', tokenAdmin:A.token});
+    A.rooms = j.rooms;
+    const opsi = '<option value="">Semua room</option>' +
+      A.rooms.map(r=>'<option>'+esc(r.nama)+'</option>').join('');
+    ['pilihRoom','pilihRoomAnggota','pilihRoomGaleri'].forEach(id=>{
+      const el=$(id), lama=el.value;
+      el.innerHTML=opsi; el.value=lama;
+    });
+    gambarRoom();
+  }catch(e){ kabar(e.message, true); }
+}
+
+/* Link undangan dibuat membawa alamat backend sekalian, supaya petugas cukup
+   membuka satu link — tidak perlu mengetik alamat server di menu Setelan. */
+function linkLengkap(r){
+  return r.linkUndangan + '&api=' + encodeURIComponent(A.endpoint);
+}
+
+function gambarRoom(){
+  if(!A.rooms.length){
+    $('isiRoom').innerHTML = '<div class="kosong">Belum ada room. Buat room pertama di atas.</div>';
+    return;
+  }
+  $('isiRoom').innerHTML = A.rooms.map((r,i)=>`
+    <div style="border:1px solid var(--garis);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b style="font-size:15px">📁 ${esc(r.nama)}</b>
+        <span class="badge ${r.aktif?'aktif':'mati'}">${r.aktif?'Aktif':'Nonaktif'}</span>
+        <span class="badge aktif">${r.jumlahAnggota||0} anggota</span>
+        <span style="flex:1"></span>
+        <a href="${esc(r.linkFolder)}" target="_blank" rel="noopener"><button class="abu kecil">Buka Folder Drive</button></a>
+        <button class="abu kecil" data-aksi="${r.aktif?'nonaktifkan':'aktifkan'}" data-room="${esc(r.nama)}">${r.aktif?'Nonaktifkan':'Aktifkan'}</button>
+        <button class="bahaya kecil" data-aksi="tokenBaru" data-room="${esc(r.nama)}">Ganti Link</button>
+      </div>
+      <div class="link-undangan">
+        <input readonly value="${esc(linkLengkap(r))}" id="tautan${i}">
+        <button class="kecil" data-salin="tautan${i}">Salin</button>
+      </div>
+      <p class="catatan" style="margin-top:6px">Link ini sudah membawa alamat server — petugas
+        cukup membukanya sekali di HP, tidak perlu mengisi apa pun di menu Setelan.</p>
+    </div>`).join('');
+
+  $('isiRoom').querySelectorAll('[data-salin]').forEach(b=> b.onclick=()=>{
+    const el = $(b.dataset.salin); el.select();
+    navigator.clipboard.writeText(el.value)
+      .then(()=>kabar('Link undangan disalin — kirim ke petugas lewat WhatsApp'))
+      .catch(()=>{ document.execCommand('copy'); kabar('Link undangan disalin'); });
+  });
+  $('isiRoom').querySelectorAll('[data-aksi]').forEach(b=> b.onclick=async ()=>{
+    const perintah=b.dataset.aksi, nama=b.dataset.room;
+    if(perintah==='tokenBaru' && !confirm('Ganti link undangan room "'+nama+'"?\n\nLink lama langsung tidak berlaku dan semua petugas harus dikirimi link baru.')) return;
+    try{
+      await panggil({aksi:'ubahRoom', tokenAdmin:A.token, nama, perintah});
+      kabar(perintah==='tokenBaru' ? 'Link undangan baru diterbitkan — kirim ulang ke petugas' : 'Status room diperbarui');
+      await muatRoom();
+    }catch(e){ kabar(e.message, true); }
+  });
+}
+
+/* ---------- Anggota ---------- */
+$('btnMuatAnggota').onclick = ()=>muatAnggota();
+$('pilihRoomAnggota').onchange = ()=>muatAnggota();
+async function muatAnggota(){
+  try{
+    const j = await panggil({aksi:'daftarAnggota', tokenAdmin:A.token, room:$('pilihRoomAnggota').value});
+    A.anggota = j.anggota;
+    gambarAnggota();
+  }catch(e){ kabar(e.message, true); }
+}
+function gambarAnggota(){
+  if(!A.anggota.length){
+    $('isiAnggota').innerHTML = '<div class="kosong">Belum ada petugas yang bergabung. '+
+      'Mereka masuk sendiri setelah membuka link undangan dan login Google.</div>';
+    return;
+  }
+  $('isiAnggota').innerHTML = '<table><thead><tr><th>No</th><th>Nama</th><th>Email</th>'+
+    '<th>Room</th><th>Bergabung</th><th>Status</th><th></th></tr></thead><tbody>'+
+    A.anggota.map((a,i)=>`<tr>
+      <td>${i+1}</td><td>${esc(a.nama)}</td><td>${esc(a.email)}</td>
+      <td>${esc(a.room)}</td><td>${esc(a.bergabung)}</td>
+      <td><span class="badge ${a.status==='aktif'?'aktif':'mati'}">${a.status==='aktif'?'Aktif':'Dikeluarkan'}</span></td>
+      <td><button class="${a.status==='aktif'?'bahaya':'abu'} kecil"
+        data-email="${esc(a.email)}" data-room="${esc(a.room)}"
+        data-perintah="${a.status==='aktif'?'keluarkan':'aktifkan'}">${a.status==='aktif'?'Keluarkan':'Aktifkan'}</button></td>
+    </tr>`).join('')+'</tbody></table>';
+
+  $('isiAnggota').querySelectorAll('[data-perintah]').forEach(b=> b.onclick=async ()=>{
+    if(b.dataset.perintah==='keluarkan' &&
+       !confirm('Cabut akses '+b.dataset.email+' dari room "'+b.dataset.room+'"?\n\n'+
+                'Foto yang sudah terkirim tetap tersimpan. Yang masih mengantre di HP-nya tidak akan bisa dikirim.')) return;
+    try{
+      await panggil({aksi:'ubahAnggota', tokenAdmin:A.token, room:b.dataset.room,
+                     email:b.dataset.email, perintah:b.dataset.perintah});
+      kabar(b.dataset.perintah==='keluarkan' ? 'Akses dicabut' : 'Akses dipulihkan');
+      await muatAnggota(); await muatRoom();
+    }catch(e){ kabar(e.message, true); }
+  });
+}
+
+/* ---------- Rekap ---------- */
+$('btnMuatRekap').onclick = ()=>muatRekap();
+$('pilihRoom').onchange = ()=>muatRekap();
+async function muatRekap(){
+  try{
+    const j = await panggil({aksi:'rekapAdmin', tokenAdmin:A.token, room:$('pilihRoom').value});
+    A.data = j.data;
+    gambarRekap();
+    gambarPeta();
+  }catch(e){ kabar(e.message, true); }
+}
+
+/* ---------- Peta sebaran ---------- */
+async function gambarPeta(){
+  const hasil = await PETA.gambar($('peta'), A.data);
+  const saring = $('pilihRoom').value;
+  const tanpaKoordinat = A.data.length - PETA.jumlahBerkoordinat(A.data);
+  $('ketPeta').innerHTML =
+    (saring ? 'Room <b>'+esc(saring)+'</b>' : 'Semua room') + ' · ' +
+    hasil.jumlah + ' titik' +
+    (tanpaKoordinat ? ' · <b style="color:var(--oranye)">'+tanpaKoordinat+' foto tanpa koordinat</b>' : '');
+
+  const room = [...new Set(A.data.filter(d=>d.lat!=null).map(d=>d.room))];
+  $('legendaPeta').innerHTML = room.length>1
+    ? room.map(r=>'<span><i style="background:'+PETA.warnaRoom(r)+'"></i>'+esc(r)+'</span>').join('')
+    : '';
+}
+$('btnKml').onclick = ()=>{
+  if(!PETA.jumlahBerkoordinat(A.data)){ kabar('Belum ada titik berkoordinat untuk diunduh', true); return; }
+  PETA.unduhKML(A.data, ($('pilihRoom').value||'SemuaRoom').replace(/\s+/g,'_'));
+  kabar('Berkas KML diunduh — buka dengan Google Earth');
+};
+$('btnGeojson').onclick = ()=>{
+  if(!PETA.jumlahBerkoordinat(A.data)){ kabar('Belum ada titik berkoordinat untuk diunduh', true); return; }
+  PETA.unduhGeoJSON(A.data, ($('pilihRoom').value||'SemuaRoom').replace(/\s+/g,'_'));
+  kabar('Berkas GeoJSON diunduh — bisa dibuka di ArcGIS Pro atau QGIS');
+};
+function gambarRekap(){
+  if(!A.data.length){
+    $('isiRekap').innerHTML = '<div class="kosong">Belum ada foto yang masuk.</div>';
+    return;
+  }
+  $('isiRekap').innerHTML = '<table><thead><tr><th>No</th><th>Waktu Ambil</th><th>Petugas</th><th>Room</th>'+
+    '<th>Koordinat</th><th>Catatan</th><th>Ukuran</th><th>Berkas</th></tr></thead><tbody>'+
+    A.data.map((d,i)=>`<tr>
+      <td>${i+1}</td><td>${esc(d.waktu)}</td><td>${esc(d.nama)}</td><td>${esc(d.room)}</td>
+      <td>${d.lat!=null?d.lat.toFixed(5)+',<br>'+d.lon.toFixed(5)+'<br><a href="https://www.google.com/maps?q='+d.lat+','+d.lon+'" target="_blank" rel="noopener">peta</a>':'—'}</td>
+      <td>${esc(d.catatan)}</td><td>${d.ukuranKB} KB</td>
+      <td><a href="${esc(d.linkDrive)}" target="_blank" rel="noopener">Buka</a></td></tr>`).join('')+
+    '</tbody></table>';
+}
+$('btnCsv').onclick = ()=>{
+  if(!A.data.length){ kabar('Belum ada data untuk diunduh', true); return; }
+  const kol=['No','Waktu Ambil','Waktu Diterima','Petugas','Room','Latitude','Longitude','Akurasi (m)','Catatan','Nama Berkas','Link Drive','Ukuran (KB)'];
+  const sel = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const isi = [kol.map(sel).join(',')].concat(A.data.map((d,i)=>
+    [i+1,d.waktu,d.diterima,d.nama,d.room,d.lat,d.lon,d.akurasi,d.catatan,d.namaBerkas,d.linkDrive,d.ukuranKB].map(sel).join(',')
+  )).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+isi],{type:'text/csv;charset=utf-8'}));
+  a.download='rekap_dokumentasi_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  kabar('Berkas CSV diunduh — bisa dibuka di Excel');
+};
+$('btnSheet').onclick = ()=>{
+  window.open('https://drive.google.com/drive/folders/'+(A.folderMaster||''), '_blank');
+};
+
+
+/* ---------- Galeri foto ----------
+   Gambarnya diambil langsung dari Google Drive lewat alamat thumbnail, bukan
+   lewat backend. Konsekuensinya: peramban harus sedang masuk ke akun Google
+   yang berhak melihat folder DOKUMENTASI. Ditukar dengan itu, foto tidak perlu
+   dibuka ke publik dan Apps Script tidak perlu mengangkut berkas gambar. */
+const GALERI_SEKALI = 60;
+const idDrive = link => { const m = String(link||'').match(/[-\w]{25,}/); return m ? m[0] : ''; };
+const thumbDrive = (link, lebar) => {
+  const id = idDrive(link);
+  return id ? 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+lebar : '';
+};
+
+$('btnMuatGaleri').onclick = ()=>muatGaleri();
+$('pilihRoomGaleri').onchange = ()=>muatGaleri();
+$('btnGaleriLagi').onclick = ()=>{ A.galeriTampil += GALERI_SEKALI; gambarGaleri(); };
+
+async function muatGaleri(){
+  try{
+    $('ketGaleri').textContent = 'Memuat…';
+    const j = await panggil({aksi:'rekapAdmin', tokenAdmin:A.token, room:$('pilihRoomGaleri').value});
+    A.galeri = j.data;
+    A.galeriTampil = GALERI_SEKALI;
+    gambarGaleri();
+  }catch(e){ $('ketGaleri').textContent = ''; kabar(e.message, true); }
+}
+
+function gambarGaleri(){
+  const semua = A.galeri || [];
+  const saring = $('pilihRoomGaleri').value;
+  if(!semua.length){
+    $('isiGaleri').innerHTML = '<div class="kosong">Belum ada foto pada saringan ini.</div>';
+    $('ketGaleri').textContent = '';
+    $('galeriLagi').classList.add('sembunyi');
+    return;
+  }
+  const tampil = Math.min(A.galeriTampil, semua.length);
+  $('ketGaleri').innerHTML = (saring ? 'Room <b>'+esc(saring)+'</b>' : 'Semua room') +
+    ' · menampilkan ' + tampil + ' dari ' + semua.length + ' foto · terbaru di depan';
+  $('isiGaleri').innerHTML = semua.slice(0, tampil).map((d,i)=>{
+    const src = thumbDrive(d.linkDrive, 400);
+    const gbr = src
+      ? '<img loading="lazy" src="'+esc(src)+'" alt="'+esc(d.namaBerkas||'Foto')+'"' +
+        ' onerror="tandaiGagal(this)">'
+      : '<div class="gagal">Tidak ada berkas Drive</div>';
+    return '<button class="galeri-sel" data-i="'+i+'" title="'+esc(d.namaBerkas||'')+'">' +
+      gbr +
+      '<span class="pil">'+esc(d.room)+'</span>' +
+      '<span class="tutup"><b>'+esc(d.nama)+'</b>'+esc(d.waktu)+'</span>' +
+    '</button>';
+  }).join('');
+  $('galeriLagi').classList.toggle('sembunyi', tampil >= semua.length);
+  document.querySelectorAll('#isiGaleri .galeri-sel').forEach(b=>{
+    b.onclick = ()=> bukaKotakFoto(semua[+b.dataset.i]);
+  });
+}
+
+/* Thumbnail gagal biasanya berarti peramban tidak masuk ke akun yang berhak. */
+function tandaiGagal(img){
+  img.style.display='none';
+  const sel = img.parentElement;
+  if(sel.querySelector('.gagal')) return;
+  const d = document.createElement('div');
+  d.className = 'gagal';
+  d.innerHTML = '<b>Tidak bisa dimuat</b><span>Perlu masuk ke akun Google pemilik folder</span>';
+  sel.appendChild(d);
+}
+
+function bukaKotakFoto(d){
+  if(!d) return;
+  const src = thumbDrive(d.linkDrive, 1200);
+  const g = $('kfGambar');
+  g.style.display = src ? '' : 'none';
+  if(src) g.src = src;
+  const koord = d.lat!=null
+    ? esc(d.lat.toFixed(6)+', '+d.lon.toFixed(6)) +
+      (d.akurasi!=null ? ' · &plusmn;'+d.akurasi+' m' : '') +
+      ' &middot; <a href="https://www.google.com/maps?q='+d.lat+','+d.lon+'" target="_blank" rel="noopener">buka di peta</a>'
+    : '&mdash;';
+  $('kfKet').innerHTML =
+    '<b>'+esc(d.nama)+'</b>' + (d.email ? ' <span class="admin-baris asal">&lt;'+esc(d.email)+'&gt;</span>' : '') +
+    '<dl>' +
+      '<dt>Room</dt><dd>'+esc(d.room)+'</dd>' +
+      '<dt>Waktu ambil</dt><dd>'+esc(d.waktu)+'</dd>' +
+      '<dt>Diterima</dt><dd>'+esc(d.diterima)+'</dd>' +
+      '<dt>Koordinat</dt><dd>'+koord+'</dd>' +
+      '<dt>Catatan</dt><dd>'+esc(d.catatan||'-')+'</dd>' +
+      '<dt>Berkas</dt><dd>'+esc(d.namaBerkas)+' · '+d.ukuranKB+' KB</dd>' +
+      '<dt>Drive</dt><dd>'+(d.linkDrive
+        ? '<a href="'+esc(d.linkDrive)+'" target="_blank" rel="noopener">Buka berkas asli di Google Drive</a>'
+        : '&mdash;')+'</dd>' +
+    '</dl>';
+  $('kotakFoto').classList.add('tampil');
+}
+function tutupKotakFoto(){ $('kotakFoto').classList.remove('tampil'); $('kfGambar').removeAttribute('src'); }
+$('kfTutup').onclick = tutupKotakFoto;
+$('kfLatar').onclick = tutupKotakFoto;
+addEventListener('keydown', e=>{ if(e.key==='Escape') tutupKotakFoto(); });
+
+/* ---------- Pengelola admin ---------- */
+async function muatAdmin(){
+  try{
+    const j = await panggil({aksi:'daftarAdmin', tokenAdmin:A.token});
+    A.adminTetap = j.tetap || [];
+    A.adminTambahan = j.tambahan || [];
+    A.sayaAdmin = j.saya || '';
+    gambarAdmin();
+  }catch(e){ kabar(e.message, true); }
+}
+
+function gambarAdmin(){
+  const tetap = (A.adminTetap||[]).map(e =>
+    '<div class="admin-baris"><span class="surel">'+esc(e)+
+      '<div class="asal">Dikunci di ADMIN_EMAIL pada Code.gs</div></span>' +
+      '<span class="badge kunci">terkunci</span></div>');
+  const tambahan = (A.adminTambahan||[]).map(a =>
+    '<div class="admin-baris"><span class="surel">'+esc(a.email)+
+      '<div class="asal">Ditambahkan '+esc(a.waktu||'—')+
+        (a.olehSiapa ? ' oleh '+esc(a.olehSiapa) : '')+'</div></span>' +
+      '<span class="badge aktif">aktif</span>' +
+      (A.sayaAdmin && A.sayaAdmin === String(a.email).toLowerCase()
+        ? '<span class="asal">akun Anda</span>'
+        : '<button class="bahaya kecil" data-cabut="'+esc(a.email)+'">Cabut</button>') +
+    '</div>');
+  $('isiAdmin').innerHTML = tetap.concat(tambahan).join('') ||
+    '<div class="kosong">Belum ada admin terdaftar.</div>';
+  document.querySelectorAll('#isiAdmin [data-cabut]').forEach(b=>{
+    b.onclick = ()=> ubahAdmin('cabut', b.dataset.cabut);
+  });
+}
+
+$('btnTambahAdmin').onclick = ()=>{
+  const email = $('inAdminBaru').value.trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ kabar('Alamat email tidak sah', true); return; }
+  ubahAdmin('tambah', email);
+};
+
+async function ubahAdmin(perintah, email){
+  const bagikan = perintah==='tambah' && $('cbBagikanDrive').checked;
+  const tanya = perintah==='tambah'
+    ? 'Jadikan ' + email + ' admin penuh?\n\n' +
+      'Dia akan bisa melihat semua foto, membuat dan menonaktifkan room, mengeluarkan anggota, ' +
+      'serta menambah atau mencabut admin lain.' +
+      (bagikan ? '\n\nFolder Drive DOKUMENTASI juga akan dibagikan ke email itu sebagai pembaca.' : '')
+    : 'Cabut hak admin ' + email + '?\n\nBerlaku seketika. Akses folder Drive ikut dicabut ' +
+      'kalau sebelumnya dibagikan dari sini.';
+  if(!confirm(tanya)) return;
+  $('btnTambahAdmin').disabled = true;
+  try{
+    const j = await panggil({aksi:'ubahAdmin', tokenAdmin:A.token, perintah, email, bagikanDrive:bagikan});
+    $('inAdminBaru').value = '';
+    kabar((perintah==='tambah' ? 'Ditambahkan sebagai admin: ' : 'Hak admin dicabut: ') + j.email +
+          (j.catatan ? ' — ' + j.catatan : ''));
+    await muatAdmin();
+  }catch(e){ kabar(e.message, true); }
+  finally{ $('btnTambahAdmin').disabled = false; }
+}
+
+/* ---------- Mulai ---------- */
+$('inEndpoint').value = A.endpoint;
+
+(async function mulai(){
+  // Datang dari tombol Panel Admin di aplikasi: sesi sudah tersedia,
+  // tidak perlu mengetik alamat maupun token sama sekali.
+  if(A.endpoint && A.sesiAdmin){
+    $('kartuMasuk').innerHTML = '<h2>Masuk sebagai Admin</h2><p class="catatan">Memeriksa sesi…</p>';
+    try{
+      await masukAdmin();
+      kabar('Masuk lewat akun Google Anda');
+      tampilPanel();
+      await muatRoom(); await muatAnggota(); await muatRekap();
+      await muatGaleri(); await muatAdmin();
+      return;
+    }catch(e){
+      A.sesiAdmin=''; localStorage.removeItem('bpkh_admin_sesi');
+      location.reload();                 // jatuh kembali ke isian manual
+      return;
+    }
+  }
+  if(A.endpoint && A.token){ $('inToken').value = A.token; $('btnMasuk').click(); }
+})();
+</script>
+</body>
+</html>
