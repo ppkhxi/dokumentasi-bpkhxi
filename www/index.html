@@ -2300,7 +2300,7 @@ $('btnMasuk').onclick = ()=>{
   localStorage.setItem('bpkh_nama',n); localStorage.setItem('bpkh_room',S.room);
   localStorage.removeItem('bpkh_email'); localStorage.removeItem('bpkh_sesi');
   mulaiGPS();
-  bukaModalMegaDrive('');
+  //bukaModalMegaDrive('');
 };
 
 /* ---------- Login Google ---------- */
@@ -2378,7 +2378,7 @@ async function terimaLoginGoogle(jawab){
       if(isi.picture){ S.foto=isi.picture; localStorage.setItem('bpkh_foto',S.foto); }
     }catch(e){}
     mulaiGPS();
-    bukaModalMegaDrive(S.email);
+    //bukaModalMegaDrive(S.email);
     pesan('Masuk sebagai '+S.email);
     segarkanRoomSaya().catch(()=>{});
   }catch(e){
