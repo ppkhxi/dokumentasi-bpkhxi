@@ -14,7 +14,7 @@
 const KONFIG = {
   ID_FOLDER_MASTER: '1c9p-VDSYLzAPeZgcSI99negl2PiEmP72',
   TOKEN_ADMIN: 'bpkhXI-muecTDPyd5s5oO4st1ub',
-  ALAMAT_APLIKASI: 'https://dokumentasi-bpkhxi.netlify.app',
+  ALAMAT_APLIKASI: 'https://ppkhxi.github.io/dokumentasi-bpkhxi/www',
 
   // Identitas aplikasi di Google Cloud — dipakai memeriksa keaslian login.
   CLIENT_ID: '40977446964-7tep8466rpjlhod7dqm3vbondlg9ejt4.apps.googleusercontent.com',
