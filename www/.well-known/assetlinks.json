@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.netlify.dkpoint.twa",
+    "sha256_cert_fingerprints": [
+      "04:54:EA:9F:81:07:D6:05:F8:7A:C2:01:80:80:B8:47:5B:76:4D:FF:5B:3E:40:A7:06:06:6A:D6:9C:82:7F:74"
+    ]
+  }
+}]

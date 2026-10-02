@@ -40,7 +40,34 @@ aplikasi dibuka lagi dalam keadaan online.
 
 ---
 
-## Cara 2 — Bangun berkas APK sungguhan (Capacitor)
+## Cara 1.5 — Unduh APK Instan via PWABuilder (Paling Praktis, 30 Detik) ⚡
+
+Jika Anda membutuhkan berkas fisik `.apk` untuk dikirim via WhatsApp ke petugas tanpa repot setup lokal:
+1. Buka situs resmi Microsoft PWABuilder: <https://www.pwabuilder.com>
+2. Masukkan URL PWA Netlify Anda: `https://dokumentasi-bpkhxi.netlify.app` lalu klik **Start**.
+3. Di tab **Android**, klik tombol **Package for Android**.
+4. Pilih opsi **Generate APK** (atau Download Package).
+5. Unduh berkas ZIP hasil build, ekstrak, dan Anda akan langsung mendapatkan berkas `app-debug.apk` atau `app-release.apk` siap instal di seluruh HP Android!
+
+---
+
+## Cara 2 — Bangun APK Menggunakan Bubblewrap CLI (Sudah Terpasang di Komputer) 🚀
+
+Lingkungan lokal komputer Anda sudah memiliki **JDK 17** dan **Android SDK Command-Line Tools** yang tervalidasi di folder `.bubblewrap`.
+
+Jalankan perintah ini di PowerShell / Terminal:
+```bash
+npx.cmd @bubblewrap/cli init --manifest=https://dokumentasi-bpkhxi.netlify.app/manifest.webmanifest
+```
+Ikuti petunjuk konfigurasi di layar (cukup tekan `Enter` untuk opsi default), lalu jalankan:
+```bash
+npx.cmd @bubblewrap/cli build
+```
+Berkas `.apk` yang ditandatangani (*signed APK*) akan otomatis dibuat di folder proyek Anda.
+
+---
+
+## Cara 3 — Bangun berkas APK sungguhan (Capacitor)
 
 Perlu dipasang lebih dulu di komputer (belum ada saat ini):
 

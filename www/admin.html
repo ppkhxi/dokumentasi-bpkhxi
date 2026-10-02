@@ -3,39 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#1B5E20">
+<meta name="theme-color" content="#000000">
 <link rel="icon" href="icons/favicon-96.png" sizes="96x96">
-<title>Panel Admin — Portal Dokumentasi BPKH XI</title>
+<title>Panel Admin — Portal Dokumentasi dkpoint</title>
+<script src="js/security.js"></script>
 <script src="peta.js"></script>
 <style>
 :root{
-  --hijau:#1B5E20;--hijau-2:#2E7D32;--hijau-terang:#E8F5E9;--bg:#F5F6F5;--surface:#fff;
-  --teks:#1A1C19;--teks-2:#5F6560;--garis:#DDE3DC;--merah:#C62828;--oranye:#EF6C00;
+  --hijau:#000000;--hijau-2:#1C1C1E;--hijau-terang:#F2F2F7;--bg:#F8F9FA;--surface:#fff;
+  --teks:#111111;--teks-2:#6C6C70;--garis:#E5E5EA;--merah:#FF3B30;--oranye:#FF9500;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--teks);font-family:'Roboto','Segoe UI',system-ui,sans-serif;font-size:14px}
-header{background:var(--hijau);color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-header img{width:34px;height:34px;border-radius:8px}
-header h1{font-size:18px;margin:0;flex:1;min-width:220px}
-header .info{font-size:12px;opacity:.85}
-main{max-width:1080px;margin:0 auto;padding:22px 16px 60px}
-.kartu{background:var(--surface);border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-h2{font-size:15px;margin:0 0 14px;color:var(--hijau);text-transform:uppercase;letter-spacing:.5px}
+body{margin:0;background:var(--bg);color:var(--teks);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",system-ui,sans-serif;font-size:14px;letter-spacing:-0.2px}
+header{background:#000;color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.1)}
+header img{width:34px;height:34px;border-radius:10px}
+header h1{font-size:18px;margin:0;flex:1;min-width:220px;font-weight:700;letter-spacing:-0.3px}
+header .info{font-size:12px;opacity:.75}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 60px}
+.kartu{background:var(--surface);border-radius:20px;padding:22px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,.03);border:1px solid var(--garis)}
+h2{font-size:15px;margin:0 0 14px;color:#000;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
 label{display:block;font-size:12px;font-weight:600;color:var(--teks-2);margin:12px 0 5px}
-input,select{width:100%;padding:11px 13px;border:1.5px solid var(--garis);border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--teks)}
-input:focus,select:focus{border-color:var(--hijau-2)}
-button{padding:11px 18px;border:0;border-radius:10px;background:var(--hijau);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
-button:hover{background:var(--hijau-2)}
-button.abu{background:#ECEFEC;color:var(--teks)}
-button.kecil{padding:7px 11px;font-size:12px;border-radius:8px}
+input,select{width:100%;padding:12px 14px;border:1.5px solid var(--garis);border-radius:12px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--teks);transition:border-color .15s}
+input:focus,select:focus{border-color:#000}
+button{padding:12px 20px;border:0;border-radius:14px;background:#000;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .12s, background .12s}
+button:hover{background:#2C2C2E}
+button:active{transform:scale(.98)}
+button.abu{background:#F2F2F7;color:var(--teks);border:1px solid rgba(0,0,0,0.04)}
+button.abu:hover{background:#E5E5EA}
+button.kecil{padding:8px 12px;font-size:12px;border-radius:10px}
 button.bahaya{background:#FDECEA;color:var(--merah)}
 button:disabled{opacity:.5;cursor:default}
 .baris{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .baris>div{flex:1;min-width:200px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:var(--hijau-terang);color:var(--hijau);text-align:left;padding:10px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+th{background:#F2F2F7;color:#000;text-align:left;padding:11px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid var(--garis)}
 td{padding:10px;border-top:1px solid var(--garis);vertical-align:top}
-td img{width:56px;height:56px;object-fit:cover;border-radius:6px}
+td img{width:56px;height:56px;object-fit:cover;border-radius:8px}
 .gulir{overflow-x:auto}
 code{background:#F0F2F0;padding:2px 6px;border-radius:5px;font-size:12px;word-break:break-all}
 .link-undangan{display:flex;gap:8px;align-items:center;margin-top:6px}
@@ -135,13 +138,37 @@ code{background:#F0F2F0;padding:2px 6px;border-radius:5px;font-size:12px;word-br
       Token disimpan di browser ini saja — jangan dipakai di komputer bersama.</p>
   </section>
 
+  <!-- ===== STATISTIK PENGGUNA & TELEMETRI ===== -->
+  <section class="kartu sembunyi" id="kartuTelemetri">
+    <h2>Statistik & Perangkat Pengguna Lapangan</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:18px">
+      <div style="background:#F2F2F7;padding:16px 20px;border-radius:14px">
+        <div style="font-size:12px;color:var(--teks-2);font-weight:600">Total Perangkat Terpasang</div>
+        <div style="font-size:32px;font-weight:700;color:#000;margin-top:4px" id="statTotalPerangkat">0</div>
+      </div>
+      <div style="background:#E8F5E9;padding:16px 20px;border-radius:14px">
+        <div style="font-size:12px;color:#2E7D32;font-weight:600">Aktif (7 Hari Terakhir)</div>
+        <div style="font-size:32px;font-weight:700;color:#1B5E20;margin-top:4px" id="statAktif7Hari">0</div>
+      </div>
+      <div style="background:#E3F2FD;padding:16px 20px;border-radius:14px">
+        <div style="font-size:12px;color:#1565C0;font-weight:600">Terpasang PWA / APK</div>
+        <div style="font-size:32px;font-weight:700;color:#0D47A1;margin-top:4px" id="statApkPwa">0</div>
+      </div>
+    </div>
+    <div class="baris">
+      <button class="abu" id="btnMuatTelemetri">Segarkan Data Pengguna</button>
+    </div>
+    <div class="gulir" id="isiTelemetri" style="margin-top:16px"></div>
+    <p class="catatan">Setiap HP/perangkat yang membuka dkpoint tercatat otomatis di spreadsheet tab <code>Telemetri</code>.</p>
+  </section>
+
   <!-- ===== ROOM ===== -->
   <section class="kartu sembunyi" id="kartuRoom">
     <h2>Buat Room Baru</h2>
     <div class="baris">
       <div>
         <label for="inNamaRoom">Nama Room / Project</label>
-        <input id="inNamaRoom" placeholder="Contoh: PPTPKH BLITAR">
+        <input id="inNamaRoom" placeholder="Contoh: REGU 1">
       </div>
       <button id="btnBuatRoom">Buat Room</button>
     </div>
@@ -331,6 +358,7 @@ $('btnMasuk').onclick = async ()=>{
       kabar('Terhubung, tetapi ALAMAT_APLIKASI di Code.gs belum diisi — link undangan akan salah. Perbaiki dulu di Apps Script.', true);
     else kabar('Berhasil masuk sebagai admin');
     tampilPanel();
+    await muatTelemetri();
     await muatRoom();
     await muatAnggota();
     await muatRekap();
@@ -371,7 +399,7 @@ function pasangLipat(){
 
 function tampilPanel(){
   $('kartuMasuk').classList.add('sembunyi');
-  ['kartuRoom','kartuDaftar','kartuAnggota','kartuRekap','kartuGaleri','kartuPeta','kartuAdmin'].forEach(id=>$(id).classList.remove('sembunyi'));
+  ['kartuTelemetri','kartuRoom','kartuDaftar','kartuAnggota','kartuRekap','kartuGaleri','kartuPeta','kartuAdmin'].forEach(id=>$(id)&&$(id).classList.remove('sembunyi'));
   $('btnKeluar').classList.remove('sembunyi');
   pasangLipat();
 }
@@ -380,6 +408,51 @@ $('btnKeluar').onclick = ()=>{
   localStorage.removeItem('bpkh_admin_sesi');
   location.reload();
 };
+
+/* ---------- Telemetri & Statistik Pengguna ---------- */
+async function muatTelemetri(){
+  const w = $('isiTelemetri');
+  if(!w) return;
+  w.innerHTML = '<p class="catatan">Memuat statistik perangkat pengguna…</p>';
+  try{
+    const j = await panggil({aksi:'ambilTelemetri', tokenAdmin:A.token});
+    if($('statTotalPerangkat')) $('statTotalPerangkat').textContent = j.total || 0;
+    if($('statAktif7Hari')) $('statAktif7Hari').textContent = j.aktif7Hari || 0;
+    if($('statApkPwa')) $('statApkPwa').textContent = j.apkPwa || 0;
+
+    if(!j.daftar || !j.daftar.length){
+      w.innerHTML = '<p class="kosong">Belum ada perangkat yang terhubung ke backend. Setiap kali petugas membuka aplikasi dkpoint dengan koneksi internet, perangkatnya otomatis tercatat di sini.</p>';
+      return;
+    }
+
+    let h = '<table><thead><tr>' +
+      '<th>Nama Petugas</th><th>Room</th><th>Platform</th><th>Mode Tampilan</th>' +
+      '<th>Versi</th><th>Total Sesi</th><th>Terakhir Aktif</th><th>Status</th>' +
+      '</tr></thead><tbody>';
+
+    j.daftar.forEach(p => {
+      const statusBadge = p.isAktif
+        ? '<span class="badge aktif">Aktif (7 hari)</span>'
+        : '<span class="badge" style="background:#f2f2f7;color:#8e8e93">Offline</span>';
+
+      h += '<tr>' +
+        '<td><b>' + esc(p.nama) + '</b><br><small style="color:var(--teks-2)">' + esc(p.deviceId) + '</small></td>' +
+        '<td>' + esc(p.room || '—') + '</td>' +
+        '<td><b>' + esc(p.platform) + '</b></td>' +
+        '<td>' + esc(p.modeTampilan) + '</td>' +
+        '<td>v' + esc(p.versi) + '</td>' +
+        '<td>' + esc(p.totalSesi || 1) + ' kali</td>' +
+        '<td><small>' + esc(p.terakhirAktif) + '</small></td>' +
+        '<td>' + statusBadge + '</td>' +
+        '</tr>';
+    });
+    h += '</tbody></table>';
+    w.innerHTML = h;
+  }catch(e){
+    w.innerHTML = '<p class="kabar salah tampil">Gagal memuat telemetri: ' + esc(e.message) + '</p>';
+  }
+}
+$('btnMuatTelemetri').onclick = () => muatTelemetri();
 
 /* ---------- Room ---------- */
 $('btnBuatRoom').onclick = async ()=>{

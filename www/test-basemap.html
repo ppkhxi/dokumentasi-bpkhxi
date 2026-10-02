@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet - Basemap Satelit Tanpa API Key</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize map centered on Indonesia
+        var map = L.map('map', {
+            center: [-0.789275, 113.921327],
+            zoom: 5,
+            maxZoom: 22
+        });
+        // ---------------------------------------------------------
+        // LAYER 1: Google Maps Satellite (quick & lightweight)
+        // ---------------------------------------------------------
+        var googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            attribution: '&copy; Google',
+            keepBuffer: 2,           // keep a small buffer of tiles for smooth panning
+            updateWhenIdle: true,    // only request new tiles when map is idle
+            updateWhenZooming: false // avoid excessive tile loads while zooming
+        });
+        // ---------------------------------------------------------
+        // LAYER 2: Esri World Imagery (stable alternative)
+        // ---------------------------------------------------------
+        var esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: '&copy; Esri',
+            keepBuffer: 2,
+            updateWhenIdle: true,
+            updateWhenZooming: false
+        });
+        // ---------------------------------------------------------
+        // LAYER 3: EOX Sentinel‑2 (regional overview)
+        // ---------------------------------------------------------
+        var sentinelSat = L.tileLayer('https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg', {
+            maxZoom: 14, // limit zoom to keep tiles lightweight
+            attribution: '&copy; EOX IT Services GmbH',
+            keepBuffer: 2,
+            updateWhenIdle: true,
+            updateWhenZooming: false
+        });
+        // Show Google Satellite as default basemap
+        googleSat.addTo(map);
+        // ---------------------------------------------------------
+        // Layer control (top‑right corner)
+        // ---------------------------------------------------------
+        var baseMaps = {
+            "Google Satellite (Super Cepat)": googleSat,
+            "Esri World Imagery": esriSat,
+            "Sentinel‑2 (Skala Regional)": sentinelSat
+        };
+        L.control.layers(baseMaps).addTo(map);
+    </script>
+</body>
+</html>

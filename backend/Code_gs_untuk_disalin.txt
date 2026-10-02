@@ -14,7 +14,7 @@
 const KONFIG = {
   ID_FOLDER_MASTER: '1c9p-VDSYLzAPeZgcSI99negl2PiEmP72',
   TOKEN_ADMIN: 'bpkhXI-muecTDPyd5s5oO4st1ub',
-  ALAMAT_APLIKASI: 'https://dokumentasi-bpkhxi.netlify.app',
+  ALAMAT_APLIKASI: 'https://ppkhxi.github.io/dokumentasi-bpkhxi/www',
 
   // Identitas aplikasi di Google Cloud — dipakai memeriksa keaslian login.
   CLIENT_ID: '40977446964-7tep8466rpjlhod7dqm3vbondlg9ejt4.apps.googleusercontent.com',
@@ -47,6 +47,9 @@ const KOLOM = ['ID', 'Waktu Ambil', 'Waktu Diterima', 'Nama Petugas', 'Room',
   'Link Drive', 'Ukuran (KB)', 'Email Petugas'];
 
 const KOLOM_ANGGOTA = ['Room', 'Email', 'Nama', 'Bergabung', 'Status'];
+const KOLOM_TELEMETRI = ['Device ID', 'Nama Petugas', 'ID Petugas', 'Room Aktif',
+  'Platform', 'Mode Tampilan', 'Versi App', 'Pertama Kali',
+  'Terakhir Aktif', 'Total Sesi', 'Resolusi Layar'];
 
 // ============ TITIK MASUK ==================================================
 
@@ -83,6 +86,8 @@ function doPost(e) {
       case 'rekapAdmin':    return balas(rekapAdmin(p));
       case 'daftarAdmin':   return balas(daftarAdmin(p));
       case 'ubahAdmin':     return balas(ubahAdmin(p));
+      case 'telemetri':     return balas(catatTelemetri(p));
+      case 'ambilTelemetri': return balas(ambilTelemetri(p));
       default:              return balas({ ok: false, pesan: 'Aksi tidak dikenal: ' + aksi });
     }
   } catch (err) {
@@ -428,6 +433,111 @@ function bukaLembar(nama, kolom) {
 
 function bukaSheet()        { return bukaLembar('Data', KOLOM); }
 function bukaSheetAnggota() { return bukaLembar('Anggota', KOLOM_ANGGOTA); }
+function bukaSheetTelemetri() { return bukaLembar('Telemetri', KOLOM_TELEMETRI); }
+
+function catatTelemetri(p) {
+  try {
+    if (!p.deviceId) return { ok: false, pesan: 'Device ID wajib ada' };
+    const sh = bukaSheetTelemetri();
+    const jml = sh.getLastRow();
+    const tglSekarang = Utilities.formatDate(new Date(), KONFIG.ZONA_WAKTU, 'yyyy-MM-dd HH:mm:ss');
+    let barisTarget = -1;
+    let sesiLama = 0;
+
+    if (jml >= 2) {
+      const data = sh.getRange(2, 1, jml - 1, 1).getValues();
+      for (var i = 0; i < data.length; i++) {
+        if (String(data[i][0]) === String(p.deviceId)) {
+          barisTarget = i + 2;
+          sesiLama = Number(sh.getRange(barisTarget, 10).getValue()) || 0;
+          break;
+        }
+      }
+    }
+
+    const sesiBaru = (p.jmlSesi != null ? Number(p.jmlSesi) : (sesiLama + 1));
+
+    if (barisTarget > 0) {
+      sh.getRange(barisTarget, 2, 1, 6).setValues([[
+        p.nama || '',
+        p.userId || '',
+        p.room || '',
+        p.platform || '',
+        p.modeTampilan || '',
+        p.versi || ''
+      ]]);
+      sh.getRange(barisTarget, 9, 1, 3).setValues([[
+        tglSekarang,
+        sesiBaru,
+        p.layar || ''
+      ]]);
+    } else {
+      sh.appendRow([
+        p.deviceId,
+        p.nama || '',
+        p.userId || '',
+        p.room || '',
+        p.platform || '',
+        p.modeTampilan || '',
+        p.versi || '',
+        p.pertamaKali || tglSekarang,
+        tglSekarang,
+        sesiBaru,
+        p.layar || ''
+      ]);
+    }
+
+    return { ok: true, pesan: 'Telemetri tercatat' };
+  } catch (err) {
+    return { ok: false, pesan: err.message };
+  }
+}
+
+function ambilTelemetri(p) {
+  try {
+    wajibAdmin(p);
+    const sh = bukaSheetTelemetri();
+    const jml = sh.getLastRow();
+    if (jml < 2) return { ok: true, total: 0, aktif7Hari: 0, apkPwa: 0, daftar: [] };
+
+    const batas7Hari = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const rows = sh.getRange(2, 1, jml - 1, KOLOM_TELEMETRI.length).getValues();
+    let aktifCount = 0;
+    let apkPwaCount = 0;
+
+    const daftar = rows.map(function(b) {
+      const tAktif = new Date(b[8]);
+      const isAktif = !isNaN(tAktif.getTime()) && tAktif >= batas7Hari;
+      if (isAktif) aktifCount++;
+      if (String(b[5]).toLowerCase().indexOf('pwa') >= 0 || String(b[5]).toLowerCase().indexOf('apk') >= 0) {
+        apkPwaCount++;
+      }
+      return {
+        deviceId: b[0],
+        nama: b[1],
+        userId: b[2],
+        room: b[3],
+        platform: b[4],
+        modeTampilan: b[5],
+        versi: b[6],
+        pertamaKali: b[7],
+        terakhirAktif: b[8],
+        totalSesi: b[9],
+        isAktif: isAktif
+      };
+    }).reverse();
+
+    return {
+      ok: true,
+      total: daftar.length,
+      aktif7Hari: aktifCount,
+      apkPwa: apkPwaCount,
+      daftar: daftar
+    };
+  } catch (err) {
+    return { ok: false, pesan: err.message };
+  }
+}
 
 function bacaAnggota() {
   const sh = bukaSheetAnggota();
@@ -570,7 +680,7 @@ function unggah(p) {
     const waktuAmbil = p.waktu ? new Date(p.waktu) : new Date();
     const cap = Utilities.formatDate(waktuAmbil, KONFIG.ZONA_WAKTU, 'yyyyMMdd_HHmmss');
     const petugas = namaPetugas.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
-    const namaBerkas = 'DOK_' + room.nama.replace(/[^\w-]/g, '_') + '_' + cap + '_' + petugas + '.jpg';
+    const namaBerkas = p.namaBerkas || ('DOK_' + room.nama.replace(/[^\w-]/g, '_') + '_' + cap + '_' + petugas + '.jpg');
 
     const idFoto = String(p.id || cap + '_' + petugas);
     const sh = bukaSheet();

@@ -1,13 +1,20 @@
-/* Service worker Portal Dokumentasi BPKH Wilayah XI
+/* Service worker Portal Dokumentasi dkpoint
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'bpkh-dok-v2.9.2';
+const VERSI = 'dkpoint-v3.9.7';
+const CACHE_TILES = 'dkpoint-tiles-v1';
 const BERKAS = [
   './',
   './index.html',
   './admin.html',
   './peta.js',
+  './js/security.js',
+  './js/exif-gps.js',
+  './js/leaflet.js',
+  './js/leaflet.css',
+  './js/megajs.umd.js',
+  './js/mega-engine.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -28,7 +35,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(k => Promise.all(k.filter(n => n !== VERSI).map(n => caches.delete(n))))
+      .then(k => Promise.all(k.filter(n => n !== VERSI && n !== CACHE_TILES).map(n => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -38,6 +45,30 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+
+  // 1. Tile Peta & CDN Eksternal: Cache-First agar peta tetap tampil saat offline di hutan/lapangan
+  const isTile = (url.hostname.includes('google.com') && url.pathname.includes('/vt')) ||
+                 url.hostname.includes('openstreetmap.org') ||
+                 url.hostname.includes('arcgisonline.com');
+  const isCdn = url.hostname.includes('unpkg.com') || url.hostname.includes('cdnjs.cloudflare.com');
+
+  if (isTile || isCdn) {
+    e.respondWith(
+      caches.open(CACHE_TILES).then(cache => {
+        return cache.match(req).then(cached => {
+          if (cached) return cached;
+          return fetch(req).then(networkRes => {
+            if (networkRes && (networkRes.status === 200 || networkRes.type === 'opaque')) {
+              cache.put(req, networkRes.clone());
+            }
+            return networkRes;
+          }).catch(() => cached);
+        });
+      })
+    );
+    return;
+  }
+
   if (url.origin !== location.origin) return;
 
   // Navigasi: coba jaringan dulu supaya versi baru cepat terpakai,
