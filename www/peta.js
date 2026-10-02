@@ -206,11 +206,12 @@ const PETA = (function () {
 
     tanda.bindPopup(htmlPopup, { maxWidth: 240, minWidth: 190, className: 'popup-dkpoint-wadah' });
 
-    // Label Titik Foto Lapangan (bisa di-ON/OFF-kan sendiri tanpa mengganggu KML)
+    // Label Titik Foto Lapangan (digeser sedikit ke kanan atas agar tidak tumpang tindih dengan pin)
     const labelTeks = t.catatan && t.catatan !== '-' ? t.catatan : (t.nama || 'Foto');
     tanda.bindTooltip(esc(labelTeks), {
       permanent: true,
-      direction: 'top',
+      direction: 'right',
+      offset: [12, -10],
       className: 'label-titik-foto'
     });
 
@@ -351,7 +352,7 @@ const PETA = (function () {
       
       const labelText = props[labelCol] || '';
 
-      const addTooltip = (layer) => {
+      const addTooltip = (layer, jenis = 'polygon') => {
         const kmlPopupHtml = `
           <div class="popup-kml-card">
             <div class="popup-kml-title"><b>${esc(nama)}</b></div>
@@ -359,7 +360,15 @@ const PETA = (function () {
           </div>`;
         layer.bindPopup(kmlPopupHtml, { maxWidth: 250, className: 'popup-kml-card' });
         if (tampilkanLabel !== false && labelText) {
-          layer.bindTooltip(labelText, { permanent: true, direction: 'center', className: 'kml-label' });
+          // Sedikit digeser agar tidak tumpang tindih dengan fitur aslinya
+          const arah = jenis === 'point' ? 'right' : 'center';
+          const offset = jenis === 'point' ? [10, -6] : [0, -10];
+          layer.bindTooltip(labelText, {
+            permanent: true,
+            direction: arah,
+            offset: offset,
+            className: 'kml-label'
+          });
         }
         group.addLayer(layer);
       };
@@ -374,7 +383,7 @@ const PETA = (function () {
             const layer = L.polygon(latlngs, {
               color: warnaDefault, weight: 2, fillColor: warnaDefault, fillOpacity: 0.25
             });
-            addTooltip(layer);
+            addTooltip(layer, 'polygon');
           }
         }
       });
@@ -387,7 +396,7 @@ const PETA = (function () {
           const latlngs = parseKoordinatKML(coords.textContent);
           if (latlngs.length >= 2) {
             const layer = L.polyline(latlngs, { color: warnaDefault, weight: 3, opacity: 0.85 });
-            addTooltip(layer);
+            addTooltip(layer, 'line');
           }
         }
       });
@@ -402,7 +411,7 @@ const PETA = (function () {
             const layer = L.circleMarker(latlngs[0], {
               radius: 6, color: '#fff', weight: 2, fillColor: warnaDefault, fillOpacity: 0.9
             });
-            addTooltip(layer);
+            addTooltip(layer, 'point');
           }
         }
       });

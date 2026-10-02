@@ -827,17 +827,30 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .btn-alat-peta.btn-capture-peta svg{stroke:#000}
 
 /* Styling Label Titik Foto Lapangan & KML */
-.label-titik-foto{
-  background:rgba(0,0,0,0.8);color:#fff;border-radius:6px;
-  padding:2px 6px;font-size:10px;border:none;box-shadow:0 2px 6px rgba(0,0,0,0.3);
-  pointer-events:none;font-weight:500;
+.label-titik-foto,
+.kml-label {
+  background: rgba(18, 18, 18, 0.78) !important;
+  color: #f5f5f7 !important;
+  border-radius: 4px !important;
+  padding: 1px 5px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+  line-height: 14px !important;
+}
+.label-titik-foto:before,
+.kml-label:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before,
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before {
+  display: none !important;
 }
 .sembunyi-label-foto .label-titik-foto{display:none !important}
-.kml-label{
-  background:rgba(0,0,0,0.78);color:#fff;border-radius:6px;
-  padding:2px 6px;font-size:10.5px;border:none;box-shadow:0 2px 6px rgba(0,0,0,0.25);
-  font-weight:600;pointer-events:none;
-}
 
 /* Popup KML Bersih & Rapi */
 .popup-kml-card .leaflet-popup-content-wrapper{
@@ -1082,6 +1095,66 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .lb-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.3); }
 .lb-btn svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
+/* Sheet Metadata Lightbox Apple HIG */
+.lb-sheet-info {
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%) translateY(0);
+  width: 100%; max-width: 480px; max-height: 72vh;
+  background: rgba(24, 24, 26, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px 20px 0 0;
+  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  z-index: 120; display: flex; flex-direction: column;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.2s;
+  pointer-events: auto;
+}
+.lb-sheet-info.sembunyi {
+  transform: translateX(-50%) translateY(105%);
+  pointer-events: none;
+  opacity: 0;
+}
+.lb-sheet-handle {
+  width: 38px; height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  margin: 10px auto 4px;
+}
+.lb-sheet-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 18px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.lb-tutup-sheet {
+  width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 255, 0.15);
+  color: #fff; border: none; font-size: 18px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.lb-tutup-sheet:active { background: rgba(255, 255, 255, 0.3); }
+.lb-sheet-body {
+  padding: 14px 18px 24px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.lb-meta-item {
+  display: flex; flex-direction: column; gap: 3px;
+  background: rgba(255, 255, 255, 0.06); padding: 8px 12px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lb-meta-label {
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5); display: flex; align-items: center; gap: 6px;
+}
+.lb-meta-val {
+  font-size: 13px; font-weight: 500; color: #f5f5f7; word-break: break-word; line-height: 1.4;
+}
+.lb-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.lb-btn-salin-koord {
+  padding: 5px 9px; background: rgba(10, 132, 255, 0.2);
+  border: 1px solid rgba(10, 132, 255, 0.4); border-radius: 6px;
+  color: #5ac8fa; font-size: 11px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; width: fit-content;
+}
+.lb-btn-salin-koord:active { background: rgba(10, 132, 255, 0.4); }
+
 /* Opsi Watermark Kamera Langsung */
 .bar-opsi-wm-kamera {
   display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;
@@ -1104,7 +1177,6 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .btn-opsi-wm.aktif .indikator-titik {
   background: #30D158; box-shadow: 0 0 6px #30D158;
 }
-.kml-label { background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 6px; font-size: 11px; border: none; box-shadow: none; }
 
 /* Quick Chips Catatan Kamera */
 .chips-cepat-catatan {
@@ -1250,7 +1322,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.7</span>
+            dkpoint <span id="loginVersi">v3.9.8</span>
           </div>
         </div>
       </div>
@@ -1824,7 +1896,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   <div id="lightbox">
     <div class="lb-top-bar">
       <div id="lbIndikator">Foto 1 / 1</div>
-      <div style="display:flex;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <button id="lbInfo" class="lb-icon-btn" title="Lihat Metadata Foto (i)" aria-label="Metadata Foto">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </button>
         <button id="lbRotate" class="lb-icon-btn" title="Putar 90°"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.57L21 8M21 3v5h-5"/></svg></button>
         <button id="lbClose" class="lb-icon-btn" aria-label="Tutup"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       </div>
@@ -1839,6 +1914,21 @@ td img.thumb-tabel:active{transform:scale(0.92)}
       <button class="lb-btn" id="lbZoomReset" aria-label="Reset Zoom" style="font-size:12px;font-weight:700">1x</button>
       <button class="lb-btn" id="lbZoomIn" aria-label="Perbesar"><svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM11 7v6m-3-3h6"/></svg></button>
     </div>
+
+    <!-- Sheet Modal Metadata Lightbox -->
+    <div id="lbSheetInfo" class="lb-sheet-info sembunyi">
+      <div class="lb-sheet-handle"></div>
+      <div class="lb-sheet-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-flex;color:var(--apple-blue,#0A84FF)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </span>
+          <h4 style="margin:0;font-size:15px;font-weight:700;color:#fff">Informasi & Metadata Foto</h4>
+        </div>
+        <button id="lbTutupInfo" class="lb-tutup-sheet" aria-label="Tutup Metadata">&times;</button>
+      </div>
+      <div id="lbKontenInfo" class="lb-sheet-body"></div>
+    </div>
   </div>
 
 </div>
@@ -1851,7 +1941,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.7';
+const VERSI = '3.9.8';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -3425,8 +3515,114 @@ async function bukaLightbox(id){
   lbIndeks = lbDaftar.findIndex(f => f.id === id);
   if(lbIndeks < 0) return;
   
+  if ($('lbSheetInfo')) $('lbSheetInfo').classList.add('sembunyi');
+  if ($('lbInfo')) { $('lbInfo').style.background = ''; $('lbInfo').style.borderColor = ''; }
+
   tampilkanLightboxFoto();
   $('lightbox').classList.add('tampil');
+}
+
+function formatUkuranBytes(bytes) {
+  if (!bytes) return '-';
+  if (bytes > 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+  return Math.round(bytes / 1024) + ' KB';
+}
+
+function salinTeks(teks, msg = 'Teks disalin!') {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(teks).then(() => pesan(msg)).catch(() => {
+      prompt('Salin teks:', teks);
+    });
+  } else {
+    prompt('Salin teks:', teks);
+  }
+}
+
+function tutupLightboxDanLihatPeta(lat, lon) {
+  $('lightbox').classList.remove('tampil');
+  if ($('lbSheetInfo')) $('lbSheetInfo').classList.add('sembunyi');
+  if ($('lbInfo')) { $('lbInfo').style.background = ''; $('lbInfo').style.borderColor = ''; }
+  if (typeof navigasi === 'function') navigasi('peta');
+  setTimeout(() => {
+    if (window.petaAktif && typeof window.petaAktif.setView === 'function') {
+      window.petaAktif.setView([lat, lon], 18);
+    }
+  }, 350);
+}
+
+function muatMetadataLightbox() {
+  const f = lbDaftar[lbIndeks];
+  if (!f || !$('lbKontenInfo')) return;
+  const img = $('lbFoto');
+  const dimensiStr = (img && img.naturalWidth) ? `${img.naturalWidth} × ${img.naturalHeight} px` : '-';
+  const waktuStr = f.ts ? new Date(f.ts).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' }) : (f.waktu || '-');
+  const latStr = (f.lat != null && f.lon != null) ? `${Number(f.lat).toFixed(6)}, ${Number(f.lon).toFixed(6)}` : null;
+  const akurasiStr = f.akurasi ? `±${Math.round(f.akurasi)} meter` : null;
+
+  let html = `
+    <div class="lb-meta-item">
+      <div class="lb-meta-label">📁 Nama Berkas</div>
+      <div class="lb-meta-val" style="font-family:monospace;font-size:12px;color:#64D2FF">${esc(f.namaBerkas || (f.id + '.jpg'))}</div>
+    </div>
+    
+    <div class="lb-meta-item">
+      <div class="lb-meta-label">📝 Catatan Lapangan</div>
+      <div class="lb-meta-val" style="font-weight:600;color:#fff">${esc(f.catatan || '(Tidak ada catatan)')}</div>
+    </div>
+
+    <div class="lb-meta-item">
+      <div class="lb-meta-label">📍 Koordinat GPS</div>
+      <div class="lb-meta-val">
+        ${latStr ? `
+          <div style="font-family:monospace;font-size:12.5px;color:#30D158">${latStr} ${akurasiStr ? `<span style="font-size:11px;color:rgba(255,255,255,0.6)">(${akurasiStr})</span>` : ''}</div>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button class="lb-btn-salin-koord" onclick="salinTeks('${latStr}', 'Koordinat disalin!')">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Salin Koordinat
+            </button>
+            <button class="lb-btn-salin-koord" onclick="tutupLightboxDanLihatPeta(${Number(f.lat)}, ${Number(f.lon)})" style="background:rgba(48,209,88,0.2);border-color:rgba(48,209,88,0.4);color:#30D158">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>
+              Tampilkan di Peta
+            </button>
+          </div>
+        ` : '<span style="color:rgba(255,255,255,0.45)">Tidak ada data koordinat</span>'}
+      </div>
+    </div>
+
+    <div class="lb-meta-grid">
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">👤 Petugas</div>
+        <div class="lb-meta-val">${esc(f.nama || 'Petugas')} ${f.userId ? `<span style="font-size:11px;color:rgba(255,255,255,0.5)">(${esc(f.userId)})</span>` : ''}</div>
+      </div>
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">🏷️ Room</div>
+        <div class="lb-meta-val">${esc(f.room || 'LOKAL')}</div>
+      </div>
+    </div>
+
+    <div class="lb-meta-grid">
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">🕒 Waktu Jepret</div>
+        <div class="lb-meta-val" style="font-size:11.5px">${esc(waktuStr)}</div>
+      </div>
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">📐 Resolusi</div>
+        <div class="lb-meta-val" style="font-size:11.5px">${dimensiStr}</div>
+      </div>
+    </div>
+
+    <div class="lb-meta-grid">
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">💾 Ukuran File</div>
+        <div class="lb-meta-val" style="font-size:11.5px">${formatUkuranBytes(f.ukuran)}</div>
+      </div>
+      <div class="lb-meta-item">
+        <div class="lb-meta-label">☁️ Status Cloud</div>
+        <div class="lb-meta-val" style="font-size:11.5px">${f.status === 'terkirim' ? '<span style="color:#30D158">Terkirim (Cloud)</span>' : '<span style="color:#FF9F0A">Tersimpan di HP</span>'}</div>
+      </div>
+    </div>
+  `;
+  $('lbKontenInfo').innerHTML = html;
 }
 
 function tampilkanLightboxFoto(){
@@ -3452,6 +3648,9 @@ function tampilkanLightboxFoto(){
       lbRotasi = 0;
     }
     terapkanTransformLightbox(true);
+    if ($('lbSheetInfo') && !$('lbSheetInfo').classList.contains('sembunyi')) {
+      muatMetadataLightbox();
+    }
   };
 
   img.onload = periksaDimensiDanRotasi;
@@ -3460,6 +3659,9 @@ function tampilkanLightboxFoto(){
     periksaDimensiDanRotasi();
   } else {
     terapkanTransformLightbox(false);
+    if ($('lbSheetInfo') && !$('lbSheetInfo').classList.contains('sembunyi')) {
+      muatMetadataLightbox();
+    }
   }
 }
 
@@ -3485,12 +3687,37 @@ function terapkanTransformLightbox(animasi = true) {
 
 $('lbClose').onclick = () => {
   $('lightbox').classList.remove('tampil');
+  if ($('lbSheetInfo')) $('lbSheetInfo').classList.add('sembunyi');
+  if ($('lbInfo')) { $('lbInfo').style.background = ''; $('lbInfo').style.borderColor = ''; }
   lbZoom = 1; lbPanX = 0; lbPanY = 0;
 };
 if ($('lbRotate')) {
   $('lbRotate').onclick = () => {
     lbRotasi = (lbRotasi + 90) % 360;
     terapkanTransformLightbox(true);
+  };
+}
+if ($('lbInfo')) {
+  $('lbInfo').onclick = () => {
+    const sheet = $('lbSheetInfo');
+    if (!sheet) return;
+    const buka = sheet.classList.contains('sembunyi');
+    if (buka) {
+      muatMetadataLightbox();
+      sheet.classList.remove('sembunyi');
+      $('lbInfo').style.background = 'rgba(10,132,255,0.4)';
+      $('lbInfo').style.borderColor = '#0A84FF';
+    } else {
+      sheet.classList.add('sembunyi');
+      $('lbInfo').style.background = '';
+      $('lbInfo').style.borderColor = '';
+    }
+  };
+}
+if ($('lbTutupInfo')) {
+  $('lbTutupInfo').onclick = () => {
+    if ($('lbSheetInfo')) $('lbSheetInfo').classList.add('sembunyi');
+    if ($('lbInfo')) { $('lbInfo').style.background = ''; $('lbInfo').style.borderColor = ''; }
   };
 }
 $('lbPrev').onclick = () => {
@@ -3518,6 +3745,13 @@ if ($('lbZoomReset')) {
 
 // Touch Gestures: Pinch-to-zoom (2 jari) + Pan (geser 1 jari saat zoom > 1) + Double Tap + Swipe
 const wadahLb = $('lbFotoWadah');
+wadahLb.addEventListener('click', () => {
+  if ($('lbSheetInfo') && !$('lbSheetInfo').classList.contains('sembunyi')) {
+    $('lbSheetInfo').classList.add('sembunyi');
+    if ($('lbInfo')) { $('lbInfo').style.background = ''; $('lbInfo').style.borderColor = ''; }
+  }
+});
+
 wadahLb.addEventListener('touchstart', (e) => {
   if(e.touches.length === 2) {
     // Mulai gesture pinch 2 jari
