@@ -186,6 +186,36 @@ const PETA = (function () {
       };
       peta.on('zoomend', peta.perbaruiVisibilitasLabel);
 
+      // Culling label: hanya buka tooltip permanen untuk fitur yang ada di dalam
+      // layar (viewport) saat zoom cukup dekat. Fitur di luar layar / zoom jauh
+      // tooltipnya ditutup (DOM dilepas) → pan jauh lebih ringan di HP.
+      peta.perbaruiCullingLabel = function () {
+        let b, z;
+        try { z = peta.getZoom(); b = peta.getBounds().pad(0.25); } catch (e) { return; }
+        const bolehTampil = z >= peta.ambangLabel;
+        const proses = (layer) => {
+          if (layer && layer.getLayers) { layer.getLayers().forEach(proses); return; }
+          if (!layer || !layer.getTooltip) return;
+          const tt = layer.getTooltip();
+          if (!tt || !tt.options || !tt.options.permanent) return;
+          let inView = false;
+          if (bolehTampil) {
+            try {
+              if (layer.getLatLng) inView = b.contains(layer.getLatLng());
+              else if (layer.getBounds) inView = b.intersects(layer.getBounds());
+              else inView = true;
+            } catch (e) { inView = true; }
+          }
+          try {
+            if (inView) { if (!layer.isTooltipOpen()) layer.openTooltip(); }
+            else { if (layer.isTooltipOpen()) layer.closeTooltip(); }
+          } catch (e) {}
+        };
+        if (peta.lapisTitik) proses(peta.lapisTitik);
+        if (peta.lapisKML) proses(peta.lapisKML);
+      };
+      peta.on('moveend zoomend', peta.perbaruiCullingLabel);
+
       petaTersimpan.set(wadah, peta);
     }
 
@@ -238,13 +268,15 @@ const PETA = (function () {
   if (berkoordinat.length && opsi.fit !== false) {
     const batas = L.latLngBounds(berkoordinat.map(t => [t.lat, t.lon]));
     peta.fitBounds(batas, { padding: [35, 35], maxZoom: 16 });
-  } else if (!berkoordinat.length && (!peta.getCenter() || !peta.getCenter().lat || (peta.getCenter().lat === 0 && peta.getCenter().lng === 0))) {
-    // Default khusus Pulau Jawa sesuai permintaan
+  } else if (!berkoordinat.length && !peta._loaded) {
+    // Peta belum punya view & tidak ada titik → default ke Pulau Jawa.
+    // Pakai _loaded (bukan getCenter yang akan melempar error pada peta baru).
     peta.setView(PUSAT_JAWA, ZOOM_JAWA);
   }
 
   if (peta.perbaruiVisibilitasLabel) peta.perbaruiVisibilitasLabel();
-  setTimeout(() => peta.invalidateSize(), 150);
+  if (peta.perbaruiCullingLabel) peta.perbaruiCullingLabel();
+  setTimeout(() => { try { peta.invalidateSize(); } catch (e) {} }, 150);
 
     return { peta, jumlah: berkoordinat.length };
   }
@@ -347,12 +379,18 @@ const PETA = (function () {
     }).filter(Boolean);
   }
 
-  function parseKML(kmlString, warnaDefault = '#2E7D32', labelCol = 'name', tampilkanLabel = true) {
+  function parseKML(kmlString, warnaDefault = '#2E7D32', labelCol = 'name', tampilkanLabel = true, opsi = {}) {
     if (!window.L) return null;
     const parser = new DOMParser();
     const xml = parser.parseFromString(kmlString, 'text/xml');
     const group = L.featureGroup();
     group.kmlProps = new Set(['name', 'description']);
+
+    // Pane khusus (urutan antar-lapisan) — tiap vektor digambar di canvas pane-nya sendiri.
+    // Renderer boleh dilewatkan (opsi.renderer) agar bisa di-cache & tidak menumpuk saat reload.
+    const pane = opsi.pane;
+    const renderer = opsi.renderer || ((pane && L.canvas) ? L.canvas({ pane: pane }) : undefined);
+    const opsiPath = pane ? { pane: pane, renderer: renderer } : {};
 
     const placemarks = xml.querySelectorAll('Placemark');
     placemarks.forEach(pm => {
@@ -402,10 +440,10 @@ const PETA = (function () {
         if (outer) {
           const latlngs = parseKoordinatKML(outer.textContent);
           if (latlngs.length >= 3) {
-            const layer = L.polygon(latlngs, {
+            const layer = L.polygon(latlngs, Object.assign({
               color: warnaDefault, weight: 2, fillColor: warnaDefault, fillOpacity: 0.25,
               smoothFactor: 2.5   // simplifikasi RENDER-ONLY (adaptif zoom); koordinat asli & ekspor tidak berubah
-            });
+            }, opsiPath));
             addTooltip(layer, 'polygon');
           }
         }
@@ -418,7 +456,7 @@ const PETA = (function () {
         if (coords) {
           const latlngs = parseKoordinatKML(coords.textContent);
           if (latlngs.length >= 2) {
-            const layer = L.polyline(latlngs, { color: warnaDefault, weight: 3, opacity: 0.85, smoothFactor: 2.5 });
+            const layer = L.polyline(latlngs, Object.assign({ color: warnaDefault, weight: 3, opacity: 0.85, smoothFactor: 2.5 }, opsiPath));
             addTooltip(layer, 'line');
           }
         }
@@ -431,9 +469,9 @@ const PETA = (function () {
         if (coords) {
           const latlngs = parseKoordinatKML(coords.textContent);
           if (latlngs.length >= 1) {
-            const layer = L.circleMarker(latlngs[0], {
+            const layer = L.circleMarker(latlngs[0], Object.assign({
               radius: 6, color: '#fff', weight: 2, fillColor: warnaDefault, fillOpacity: 0.9
-            });
+            }, opsiPath));
             addTooltip(layer, 'point');
           }
         }
@@ -443,15 +481,32 @@ const PETA = (function () {
     return group;
   }
 
+  /* ------------------- URUTAN LAPISAN (PANE PER-LAYER) -------------------
+     Tiap lapisan (KML / raster) punya pane sendiri dengan zIndex yang bisa
+     diatur, sehingga urutan atas-bawah antar-lapisan benar-benar terkendali.
+     Rentang 251-399 dijaga di antara tilePane (200) dan overlayPane (400) agar
+     titik foto & lokasi pengguna selalu di paling atas. */
+  function paneLapisan(peta, id, zIndex) {
+    if (!peta || !peta.createPane) return undefined;
+    const nama = 'lap-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+    let p = peta.getPane(nama);
+    if (!p) p = peta.createPane(nama);
+    const z = Math.max(251, Math.min(399, 250 + (Number(zIndex) || 1)));
+    p.style.zIndex = String(z);
+    return nama;
+  }
+
   /* ------------------- PETA RASTER GEOREFERENSI ------------------- */
-  function pasangRaster(peta, id, dataUrl, bounds, opasitas = 0.75) {
+  function pasangRaster(peta, id, dataUrl, bounds, opasitas = 0.75, zIndex = 1) {
     if (!peta || !window.L) return null;
     hapusRaster(peta, id);
 
     const b = L.latLngBounds(bounds);
+    const pane = paneLapisan(peta, id, zIndex);
     const overlay = L.imageOverlay(dataUrl, b, {
       opacity: opasitas,
-      interactive: true
+      interactive: true,
+      pane: pane
     }).addTo(peta);
 
     overlay.idRaster = id;
@@ -839,6 +894,7 @@ const PETA = (function () {
     dapatkanBasemap: dapatkanBasemap,
     fokusJawa: fokusJawa,
     parseKML: parseKML,
+    paneLapisan: paneLapisan,
     pasangRaster: pasangRaster,
     setOpasitasRaster: setOpasitasRaster,
     hapusRaster: hapusRaster,

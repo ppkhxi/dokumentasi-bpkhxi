@@ -1339,7 +1339,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.10</span>
+            dkpoint <span id="loginVersi">v3.9.11</span>
           </div>
         </div>
       </div>
@@ -1958,7 +1958,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.10';
+const VERSI = '3.9.11';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -5766,28 +5766,32 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
   };
 
   window.geserUrutanLapisan = async (idx, dir) => {
-    if (idx + dir < 0 || idx + dir >= layers.length) return;
-    const temp = layers[idx].zIndex;
-    layers[idx].zIndex = layers[idx + dir].zIndex;
-    layers[idx + dir].zIndex = temp;
+    try {
+      if (idx + dir < 0 || idx + dir >= layers.length) return;
+      // Pastikan nilai zIndex unik & berurutan dulu, supaya tukar posisi selalu terasa
+      const n = layers.length;
+      layers.forEach((l, i) => { l.zIndex = n - i; }); // teratas = terbesar
+      const temp = layers[idx].zIndex;
+      layers[idx].zIndex = layers[idx + dir].zIndex;
+      layers[idx + dir].zIndex = temp;
 
-    // Simpan ke DB
-    for (const item of [layers[idx], layers[idx + dir]]) {
-      if (item.tipe === 'KML' || item.tipe === 'Track') {
+      // Simpan SEMUA lapisan agar urutan konsisten saat dialog dibuka ulang
+      for (const item of layers) {
         item.raw.zIndex = item.zIndex;
-        await simpanKML(item.raw);
-      } else {
-        item.raw.zIndex = item.zIndex;
-        await simpanRaster(item.raw);
+        if (item.tipe === 'KML' || item.tipe === 'Track') await simpanKML(item.raw);
+        else await simpanRaster(item.raw);
       }
-    }
 
-    layers.sort((a, b) => b.zIndex - a.zIndex);
-    if (petaAktif) {
-      await muatSemuaKMLPadaPeta();
-      await muatSemuaRasterPadaPeta();
+      layers.sort((a, b) => b.zIndex - a.zIndex);
+      if (petaAktif) {
+        await muatSemuaKMLPadaPeta();
+        await muatSemuaRasterPadaPeta();
+      }
+      window.renderKontenLapisan('daftar');
+    } catch (e) {
+      console.warn('Gagal mengatur urutan lapisan:', e);
+      if (typeof pesan === 'function') pesan('Gagal mengatur urutan lapisan');
     }
-    window.renderKontenLapisan('daftar');
   };
 
   window.toggleLapisanAktif = async (id, tipe, aktif) => {
@@ -5849,13 +5853,16 @@ async function muatSemuaKMLPadaPeta(){
   petaAktif.lapisKML.clearLayers();
   const daftar = await ambilSemuaKML();
   daftar.filter(k => k.aktif).sort((a,b) => (a.zIndex||10) - (b.zIndex||10)).forEach(k => {
-    const tampilkanLabel = k.labelAktif !== false;
-    const layer = PETA.parseKML(k.kmlText, k.warna || '#2E7D32', k.labelCol || 'name', tampilkanLabel);
-    if (layer) {
-      if (layer.setZIndex) layer.setZIndex(k.zIndex || 10);
-      petaAktif.lapisKML.addLayer(layer);
-    }
+    try {
+      const tampilkanLabel = k.labelAktif !== false;
+      const pane = PETA.paneLapisan(petaAktif, k.id, k.zIndex || 10);
+      petaAktif._rendKML = petaAktif._rendKML || {};
+      const renderer = pane ? (petaAktif._rendKML[pane] || (petaAktif._rendKML[pane] = L.canvas({ pane }))) : undefined;
+      const layer = PETA.parseKML(k.kmlText, k.warna || '#2E7D32', k.labelCol || 'name', tampilkanLabel, { pane, renderer });
+      if (layer) petaAktif.lapisKML.addLayer(layer);
+    } catch (e) { console.warn('KML gagal dimuat:', k && k.nama, e); }
   });
+  if (petaAktif.perbaruiCullingLabel) petaAktif.perbaruiCullingLabel();
 }
 
 async function bukaDialogKML(){
@@ -5978,7 +5985,6 @@ window.zoomKeKML = async (id) => {
     await muatSemuaKMLPadaPeta();
   }
   const layer = PETA.parseKML(k.kmlText, k.warna || '#2E7D32', k.labelCol || 'name', k.labelAktif !== false);
-    if (layer) layer.setZIndex(k.zIndex || 10);
   if (layer && layer.getLayers && layer.getLayers().length > 0) {
     const bounds = layer.getBounds();
     if (bounds && bounds.isValid && bounds.isValid()) {
@@ -5998,12 +6004,13 @@ async function muatSemuaRasterPadaPeta(){
   if (!petaAktif) return;
   const daftar = await ambilSemuaRaster();
   daftar.sort((a,b) => (a.zIndex||1) - (b.zIndex||1)).forEach(r => {
+    try {
     if (r.aktif) {
-      const ov = PETA.pasangRaster(petaAktif, r.id, r.dataUrl, r.bounds, r.opasitas || 0.75);
-      if (ov) ov.setZIndex(r.zIndex || 1);
+      PETA.pasangRaster(petaAktif, r.id, r.dataUrl, r.bounds, r.opasitas || 0.75, r.zIndex || 1);
     } else {
       PETA.hapusRaster(petaAktif, r.id);
     }
+    } catch (e) { console.warn('Raster gagal dimuat:', r && r.nama, e); }
   });
 }
 
