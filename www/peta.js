@@ -222,8 +222,8 @@ const PETA = (function () {
 
     tanda.bindPopup(htmlPopup, { maxWidth: 240, minWidth: 190, className: 'popup-dkpoint-wadah' });
 
-    // Label Titik Foto Lapangan (digeser sedikit ke kanan atas agar tidak tumpang tindih dengan pin)
-    const labelTeks = t.catatan && t.catatan !== '-' ? t.catatan : (t.nama || 'Foto');
+    // Label Titik Foto Lapangan — tampilkan CATATAN (bukan nama petugas)
+    const labelTeks = t.catatan && t.catatan !== '-' ? t.catatan : 'Foto';
     tanda.bindTooltip(esc(labelTeks), {
       permanent: true,
       direction: 'right',
@@ -370,10 +370,15 @@ const PETA = (function () {
       const labelText = props[labelCol] || '';
 
       const addTooltip = (layer, jenis = 'polygon') => {
+        // Sajikan keterangan fitur sebagai TABEL (bukan deskripsi prosa)
+        const barisProp = Object.keys(props)
+          .filter(k => k !== 'name' && props[k] != null && String(props[k]).trim() !== '')
+          .map(k => `<tr><td class="popup-kml-k">${esc(k)}</td><td class="popup-kml-v">${esc(props[k])}</td></tr>`)
+          .join('');
         const kmlPopupHtml = `
           <div class="popup-kml-card">
             <div class="popup-kml-title"><b>${esc(nama)}</b></div>
-            ${desk ? `<div class="popup-kml-desc"><small>${esc(desk)}</small></div>` : ''}
+            ${barisProp ? `<table class="popup-kml-tabel">${barisProp}</table>` : ''}
           </div>`;
         layer.bindPopup(kmlPopupHtml, { maxWidth: 250, className: 'popup-kml-card' });
         if (tampilkanLabel !== false && labelText) {
@@ -398,7 +403,8 @@ const PETA = (function () {
           const latlngs = parseKoordinatKML(outer.textContent);
           if (latlngs.length >= 3) {
             const layer = L.polygon(latlngs, {
-              color: warnaDefault, weight: 2, fillColor: warnaDefault, fillOpacity: 0.25
+              color: warnaDefault, weight: 2, fillColor: warnaDefault, fillOpacity: 0.25,
+              smoothFactor: 2.5   // simplifikasi RENDER-ONLY (adaptif zoom); koordinat asli & ekspor tidak berubah
             });
             addTooltip(layer, 'polygon');
           }
@@ -412,7 +418,7 @@ const PETA = (function () {
         if (coords) {
           const latlngs = parseKoordinatKML(coords.textContent);
           if (latlngs.length >= 2) {
-            const layer = L.polyline(latlngs, { color: warnaDefault, weight: 3, opacity: 0.85 });
+            const layer = L.polyline(latlngs, { color: warnaDefault, weight: 3, opacity: 0.85, smoothFactor: 2.5 });
             addTooltip(layer, 'line');
           }
         }

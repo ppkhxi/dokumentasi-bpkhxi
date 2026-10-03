@@ -873,6 +873,11 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .popup-kml-desc{
   font-size:11px;color:#636366;max-height:120px;overflow-y:auto;word-break:break-word;
 }
+.popup-kml-tabel{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px;max-height:180px;display:block;overflow-y:auto}
+.popup-kml-tabel td{padding:4px 6px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-word}
+.popup-kml-tabel tr:last-child td{border-bottom:none}
+.popup-kml-k{color:#8a8a8e;font-weight:600;white-space:nowrap;width:34%}
+.popup-kml-v{color:#1c1c1e}
 
 /* Floating Panel Meteran (Jarak & Luas) & Tracking */
 .bar-meteran-peta{
@@ -990,9 +995,18 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   opacity:0;transform:translateY(14px);transition:.22s;pointer-events:none;z-index:60;
 }
 #snackbar.tampil{opacity:1;transform:none}
-#dialog{position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:22px;z-index:70;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#dialog{position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:10px;z-index:70;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #dialog.tampil{display:flex}
-.dialog-isi{background:#fff;border-radius:24px;padding:22px;width:100%;max-width:360px;max-height:82%;overflow-y:auto;box-shadow:0 12px 36px rgba(0,0,0,0.25)}
+.dialog-isi{background:#fff;border-radius:22px;padding:18px;width:100%;max-width:460px;max-height:94%;overflow-y:auto;box-shadow:0 12px 36px rgba(0,0,0,0.25)}
+/* Tombol aksi baris layer/KML — tap target besar & simpel, satu scroll di dialog */
+.aksi-layer{min-width:38px;height:38px;padding:0 11px;border:1.5px solid var(--garis);background:#fff;border-radius:11px;font-size:15px;font-weight:600;color:var(--teks);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:transform .12s,background .12s}
+.aksi-layer:active{transform:scale(.9);background:#F2F2F7}
+.aksi-layer:disabled{opacity:.4}
+.aksi-layer.bahaya{color:var(--merah);border-color:#FFCDD2}
+.aksi-layer.primer{background:#007AFF;color:#fff;border-color:#007AFF}
+.aksi-layer.ok{background:#34C759;color:#fff;border-color:#34C759}
+.aksi-layer.mati{background:#8E8E93;color:#fff;border-color:#8E8E93}
+.aksi-layer.ingat{background:#f59e0b;color:#fff;border-color:#f59e0b}
 .dialog-isi h3{margin:0 0 6px;font-size:17px;font-weight:700;letter-spacing:-0.3px}
 .dialog-isi p{margin:0 0 14px;font-size:13.5px;color:var(--teks-2);line-height:1.55}
 .opsi-room{display:flex;align-items:center;gap:10px;padding:13px;border:1.5px solid var(--garis);border-radius:14px;margin-bottom:8px;cursor:pointer;font-size:14px}
@@ -1325,7 +1339,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.9</span>
+            dkpoint <span id="loginVersi">v3.9.10</span>
           </div>
         </div>
       </div>
@@ -1944,7 +1958,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.9';
+const VERSI = '3.9.10';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -5530,16 +5544,16 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
               </label>
               <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#F2F2F7;color:var(--teks-2);flex:0 0 auto">${l.tipe} (Z:${l.zIndex})</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px dashed #f0f0f0;padding-top:6px">
-              <div style="display:flex;gap:4px">
-                <button class="tombol-mini" onclick="window.geserUrutanLapisan(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Naikkan urutan layer">↑</button>
-                <button class="tombol-mini" onclick="window.geserUrutanLapisan(${i}, 1)" ${i === layers.length - 1 ? 'disabled' : ''} title="Turunkan urutan layer">↓</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px dashed #f0f0f0;padding-top:7px">
+              <div style="display:flex;gap:5px">
+                <button class="aksi-layer" onclick="window.geserUrutanLapisan(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Naikkan urutan">↑</button>
+                <button class="aksi-layer" onclick="window.geserUrutanLapisan(${i}, 1)" ${i === layers.length - 1 ? 'disabled' : ''} title="Turunkan urutan">↓</button>
               </div>
-              <div style="display:flex;gap:4px">
-                ${isKml ? `<button class="tombol-mini" onclick="window.toggleLapisanLabel('${l.id}')" style="background:${l.labelAktif ? '#34C759' : '#8E8E93'};color:#fff;border:none" title="Label Objek">${l.labelAktif ? '🏷️ ON' : '🏷️ OFF'}</button>` : ''}
-                ${l.tipe === 'Raster' ? `<button class="tombol-mini" onclick="tutupDialog(); mulaiKalibrasiRaster('${l.id}')" style="background:#f59e0b;color:#fff;border:none">🎯 Sentuh</button>` : ''}
-                <button class="tombol-mini" onclick="window.zoomKeLapisan('${l.id}', '${l.tipe}')" style="background:#007AFF;color:#fff;border:none" title="Fokus / Zoom">🔍</button>
-                <button class="tombol-mini bahaya" onclick="window.hapusSatuLapisan('${l.id}', '${l.tipe}')" title="Hapus">🗑️</button>
+              <div style="display:flex;gap:5px">
+                ${isKml ? `<button class="aksi-layer ${l.labelAktif ? 'ok' : 'mati'}" onclick="window.toggleLapisanLabel('${l.id}')" title="Label objek on/off">🏷️</button>` : ''}
+                ${l.tipe === 'Raster' ? `<button class="aksi-layer ingat" onclick="tutupDialog(); mulaiKalibrasiRaster('${l.id}')" title="Kalibrasi sentuh">🎯</button>` : ''}
+                <button class="aksi-layer primer" onclick="window.zoomKeLapisan('${l.id}', '${l.tipe}')" title="Fokus / zoom">🔍</button>
+                <button class="aksi-layer bahaya" onclick="window.hapusSatuLapisan('${l.id}', '${l.tipe}')" title="Hapus">🗑️</button>
               </div>
             </div>
           </div>
@@ -5549,8 +5563,8 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
       dialog(`
         <h3 style="margin-bottom:8px">Kelola Lapisan Peta</h3>
         ${tabHtml}
-        <div style="max-height:270px;overflow-y:auto;padding-right:2px;margin-bottom:12px">${listItems}</div>
-        <div style="display:flex;gap:8px">
+        <div style="margin-bottom:12px">${listItems}</div>
+        <div style="display:flex;gap:8px;position:sticky;bottom:-18px;background:#fff;padding:10px 0 2px">
           <button class="tombol sekunder" onclick="window.renderKontenLapisan('tambah')" style="flex:1;margin:0">+ Tambah Lapisan Baru</button>
           <button class="tombol abu" onclick="tutupDialog()" style="flex:0 0 80px;margin:0">Tutup</button>
         </div>
@@ -5560,18 +5574,10 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
       dialog(`
         <h3 style="margin-bottom:8px">Tambah Lapisan Peta</h3>
         ${tabHtml}
-        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:9px 11px;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start">
-          <span style="font-size:18px;line-height:1">📁</span>
-          <div style="font-size:11.5px;line-height:1.4;color:#166534">
-            <b>1 Pintu Input Dokumen Perangkat</b><br>
-            Pilih berkas dari <u>File Manager / Dokumen</u> (bukan dari Galeri Foto). Mendukung berkas vektor <b>.kml, .kmz, .geojson</b> serta citra raster <b>.pdf (GeoPDF), .jpg, .png, .tif</b>.
-          </div>
-        </div>
-
-        <div id="boxUploadLayer" style="background:#fff;border:2px dashed #007AFF;border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer" onclick="$('inUploadLayerSatuPintu').click()">
-          <div style="font-size:32px;margin-bottom:4px">📂</div>
-          <b style="font-size:13.5px;color:#007AFF" id="labelPilihDokumen">Ketuk untuk Memilih Berkas Dokumen</b>
-          <div style="font-size:11px;color:var(--teks-2);margin-top:4px">KML, KMZ, GeoJSON, GeoPDF, PDF, JPG, PNG, TIFF</div>
+        <div id="boxUploadLayer" style="background:#fff;border:2px dashed #007AFF;border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer" onclick="$('inUploadLayerSatuPintu').click()">
+          <div style="font-size:34px;margin-bottom:4px">📂</div>
+          <b style="font-size:14px;color:#007AFF" id="labelPilihDokumen">Ketuk untuk Memilih Berkas</b>
+          <div style="font-size:11px;color:var(--teks-2);margin-top:5px;line-height:1.4">Dari <u>File Manager / Dokumen</u> (bukan Galeri Foto)<br>KML · KMZ · GeoJSON · GeoPDF · PDF · JPG · PNG · TIFF</div>
         </div>
         <input type="file" id="inUploadLayerSatuPintu" accept=".kml,.kmz,.geojson,.pdf,.jpg,.jpeg,.png,.tif,.tiff" style="display:none">
 
@@ -5863,10 +5869,10 @@ async function bukaDialogKML(){
         <span style="display:inline-block;width:12px;height:12px;border-radius:3px;flex:0 0 12px;background:${k.warna||'#2E7D32'}"></span>
         <b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k.nama)}</b>
       </label>
-      <div style="display:flex;gap:4px;flex:0 0 auto">
-        <button class="tombol-mini" onclick="toggleKmlLabel('${k.id}')" style="padding:4px 7px;margin:0;font-size:11px;background:${labelOn ? '#34C759' : '#8E8E93'};color:#fff;border:none" title="Aktifkan / Nonaktifkan label objek layer ini">${labelOn ? '🏷️ ON' : '🏷️ OFF'}</button>
-        <button class="tombol-mini" onclick="zoomKeKML('${k.id}')" style="padding:4px 8px;margin:0;font-size:11px;background:#007AFF;color:#fff;border:none" title="Fokus ke layer KML ini">🔍</button>
-        <button class="tombol-mini bahaya" onclick="hapusSatuKml('${k.id}')" style="padding:4px 7px;margin:0;font-size:11px">🗑️</button>
+      <div style="display:flex;gap:5px;flex:0 0 auto">
+        <button class="aksi-layer ${labelOn ? 'ok' : 'mati'}" onclick="toggleKmlLabel('${k.id}')" title="Label objek on/off">🏷️</button>
+        <button class="aksi-layer primer" onclick="zoomKeKML('${k.id}')" title="Fokus ke layer ini">🔍</button>
+        <button class="aksi-layer bahaya" onclick="hapusSatuKml('${k.id}')" title="Hapus">🗑️</button>
       </div>
     </div>
   `;
@@ -5897,7 +5903,7 @@ async function bukaDialogKML(){
       <button class="tombol" id="btnSimpanKmlBaru" style="margin-top:10px">+ Tambah ke Peta</button>
     </div>
     <div class="kartu-judul" style="margin-top:12px">Layer KML Tersimpan:</div>
-    <div id="wadahListKml" style="max-height:180px;overflow-y:auto">${listHtml}</div>
+    <div id="wadahListKml">${listHtml}</div>
     <button class="tombol abu" onclick="tutupDialog()" style="margin-top:10px">Tutup</button>
   `);
 
