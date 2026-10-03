@@ -105,7 +105,11 @@ const PETA = (function () {
       peta = L.map(wadah, {
         scrollWheelZoom: true,
         zoomControl: false,
-        maxZoom: 22
+        maxZoom: 22,
+        preferCanvas: true,          // vektor (titik/KML) digambar di canvas → pan mulus di HP
+        zoomAnimationThreshold: 2,
+        wheelDebounceTime: 60,
+        wheelPxPerZoomLevel: 120
       });
 
       // 1. Layer Google Satelit (peta google satelite.lyr)
@@ -170,6 +174,18 @@ const PETA = (function () {
       peta.lapisTitik = L.layerGroup().addTo(peta);
       peta.lapisUser = L.layerGroup().addTo(peta);
 
+      // Anti-lag: label permanen (tooltip HTML) disembunyikan saat zoom jauh.
+      // Di zoom jauh label toh saling tumpang-tindih tak terbaca, jadi ini
+      // sekaligus merapikan tampilan dan membuat pan jauh lebih ringan.
+      peta.ambangLabel = 15;
+      peta.perbaruiVisibilitasLabel = function () {
+        try {
+          const c = peta.getContainer();
+          if (c) c.classList.toggle('peta-labels-jauh', peta.getZoom() < peta.ambangLabel);
+        } catch (e) {}
+      };
+      peta.on('zoomend', peta.perbaruiVisibilitasLabel);
+
       petaTersimpan.set(wadah, peta);
     }
 
@@ -227,6 +243,7 @@ const PETA = (function () {
     peta.setView(PUSAT_JAWA, ZOOM_JAWA);
   }
 
+  if (peta.perbaruiVisibilitasLabel) peta.perbaruiVisibilitasLabel();
   setTimeout(() => peta.invalidateSize(), 150);
 
     return { peta, jumlah: berkoordinat.length };

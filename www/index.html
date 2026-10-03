@@ -851,6 +851,9 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   display: none !important;
 }
 .sembunyi-label-foto .label-titik-foto{display:none !important}
+/* Anti-lag: sembunyikan semua label permanen saat zoom jauh (pan jadi ringan) */
+.peta-labels-jauh .label-titik-foto,
+.peta-labels-jauh .kml-label{display:none !important}
 
 /* Popup KML Bersih & Rapi */
 .popup-kml-card .leaflet-popup-content-wrapper{
@@ -1322,7 +1325,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.8</span>
+            dkpoint <span id="loginVersi">v3.9.9</span>
           </div>
         </div>
       </div>
@@ -1941,7 +1944,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.8';
+const VERSI = '3.9.9';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
