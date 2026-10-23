@@ -826,6 +826,43 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .btn-alat-peta.btn-capture-peta{color:#000;font-weight:700;background:rgba(0,0,0,0.05)}
 .btn-alat-peta.btn-capture-peta svg{stroke:#000}
 
+/* Popover Menu Alat Peta Apple-style */
+.popover-alat-peta {
+  position: absolute; top: calc(12px + var(--safe-t)); right: 70px; z-index: 505;
+  background: rgba(28, 28, 30, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  padding: 6px; display: flex; flex-direction: column; gap: 4px;
+  width: 220px;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: right top;
+}
+.popover-alat-peta.sembunyi {
+  opacity: 0; pointer-events: none; transform: scale(0.92) translateX(8px);
+}
+.popover-alat-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 10px; cursor: pointer; transition: background 0.12s;
+  color: #fff;
+}
+.popover-alat-item:active {
+  background: rgba(255, 255, 255, 0.15); transform: scale(0.98);
+}
+.popover-alat-item .ic-alat {
+  font-size: 18px; width: 24px; text-align: center; flex: 0 0 24px;
+}
+.popover-alat-item .teks-alat {
+  display: flex; flex-direction: column; line-height: 1.25;
+}
+.popover-alat-item .teks-alat b {
+  font-size: 12.5px; font-weight: 600; color: #fff;
+}
+.popover-alat-item .teks-alat small {
+  font-size: 10.5px; color: rgba(235, 235, 245, 0.6); margin-top: 1px;
+}
+
 /* Styling Label Titik Foto Lapangan & KML */
 .label-titik-foto,
 .kml-label {
@@ -1339,7 +1376,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.11</span>
+            dkpoint <span id="loginVersi">v3.9.12</span>
           </div>
         </div>
       </div>
@@ -1571,12 +1608,17 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <button data-lingkup="semua">Semua room</button>
       </div>
       <button class="tombol" id="btnTarikTabel" style="display:none;margin:0 0 10px;background:#2E7D32">&#128260; Tarik Data Regu dari MEGA</button>
-      <div class="baris-tombol" style="margin-bottom:12px">
-        <button class="tombol sekunder" id="btnPdf" style="margin-top:0">&#128196; Unduh PDF</button>
-        <button class="tombol sekunder" id="btnDocx" style="margin-top:0">&#128209; Unduh DOCX</button>
+      <div style="margin-bottom:12px">
+        <button class="tombol" id="btnBukaMenuEkspor" style="margin:0;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:11px 16px;border-radius:14px">
+          <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
+          <span>📤 Ekspor Dokumen & Lembar Foto</span>
+        </button>
       </div>
-      <div class="baris-tombol" style="margin-bottom:12px">
-        <button class="tombol sekunder" id="btnLembar" style="margin-top:0">&#128444;&#65039; Lembar Foto (PDF / DOCX)</button>
+      <!-- Tombol lama disembunyikan untuk menjaga kompatibilitas fungsi -->
+      <div style="display:none">
+        <button id="btnPdf"></button>
+        <button id="btnDocx"></button>
+        <button id="btnLembar"></button>
       </div>
 
       <!-- Floating Action Bar saat ada baris dipilih -->
@@ -1637,9 +1679,9 @@ td img.thumb-tabel:active{transform:scale(0.92)}
           <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         </button>
 
-        <!-- Bilah Alat Mengambang Vertikal di Kanan Atas (Dock) -->
+        <!-- Bilah Alat Ramping Mengambang Vertikal di Kanan Atas (Dock) -->
         <div id="dockPetaAlat" class="dock-peta-alat">
-          <button id="btnPetaBasemap" class="btn-alat-peta" title="Peta Dasar: Satelit / Hybrid / Jalan / OSM">
+          <button id="btnPetaBasemap" class="btn-alat-peta" title="Peta Dasar: Satelit / Hybrid / Esri / Jalan / OSM">
             <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span id="labelBasemapPeta">Satelit</span>
           </button>
@@ -1647,38 +1689,64 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
             <span>Lokasi</span>
           </button>
-          <button id="btnPetaCapture" class="btn-alat-peta btn-capture-peta" title="Capture Foto Langsung di Peta">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
-            <span>Capture</span>
-          </button>
-          <button id="btnPetaMeteran" class="btn-alat-peta" title="Meteran (Ukur Jarak & Luas Area)">
+          <button id="btnPetaAlatMenu" class="btn-alat-peta" title="Menu Alat: Meteran, Tracking, Label & Capture">
             <svg viewBox="0 0 24 24"><path d="M2 17l4-4 4 4 12-12-4-4-12 12-4-4v8h8z"/><line x1="14" y1="5" x2="16" y2="7"/><line x1="10" y1="9" x2="12" y2="11"/><line x1="6" y1="13" x2="8" y2="15"/></svg>
-            <span>Meteran</span>
-          </button>
-          <button id="btnPetaTracking" class="btn-alat-peta" title="Digitasi Garis & GPS Tracking Live">
-            <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.5 8.5l7 7" stroke-dasharray="3 3"/><polyline points="6 11 6 18 13 18"/></svg>
-            <span>Tracking</span>
-          </button>
-          <button id="btnPetaLabelFoto" class="btn-alat-peta" title="Aktifkan / Nonaktifkan Label Titik Foto (ON/OFF)">
-            <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-            <span id="labelTogFoto">Label Foto</span>
+            <span>Alat</span>
           </button>
           <button id="btnPetaLayer" class="btn-alat-peta" title="Kelola Lapisan (KML, Raster, Urutan & 1 Pintu Input Dokumen)">
             <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Lapisan</span>
           </button>
-          <button id="btnPetaFilter" class="btn-alat-peta" title="Filter Room">
-            <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            <span id="labelFilterPeta">Room Ini</span>
-          </button>
-          <button id="btnPetaUnduh" class="btn-alat-peta" title="Unduh & Ekspor Peta">
-            <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
-            <span>Ekspor</span>
-          </button>
-          <!-- Tombol kompatibilitas tersembunyi jika ada fungsi eksternal yang memanggilnya -->
+
+          <!-- Tombol kompatibilitas tersembunyi (dipicu lewat menu popover alat) -->
+          <button id="btnPetaCapture" class="btn-alat-peta btn-capture-peta" style="display:none"><span>Capture</span></button>
+          <button id="btnPetaMeteran" class="btn-alat-peta" style="display:none"><span>Meteran</span></button>
+          <button id="btnPetaTracking" class="btn-alat-peta" style="display:none"><span>Tracking</span></button>
+          <button id="btnPetaLabelFoto" class="btn-alat-peta" style="display:none"><span id="labelTogFoto">Label Foto</span></button>
+          <button id="btnPetaFilter" class="btn-alat-peta" style="display:none"><span id="labelFilterPeta">Room Ini</span></button>
+          <button id="btnPetaUnduh" class="btn-alat-peta" style="display:none"><span>Ekspor</span></button>
           <button id="btnPetaKml" style="display:none"></button>
           <button id="btnPetaRaster" style="display:none"></button>
           <button id="btnPetaUrutan" style="display:none"></button>
+        </div>
+
+        <!-- Popover Menu Alat Peta Apple-style -->
+        <div id="popoverAlatPeta" class="popover-alat-peta sembunyi">
+          <div class="popover-alat-item" id="alatItemMeteran">
+            <span class="ic-alat">📏</span>
+            <div class="teks-alat">
+              <b>Ukur Jarak & Luas</b>
+              <small>Hitung panjang rute & luasan (Ha/m²)</small>
+            </div>
+          </div>
+          <div class="popover-alat-item" id="alatItemTracking">
+            <span class="ic-alat">🛰️</span>
+            <div class="teks-alat">
+              <b>Digit Line & GPS Tracking</b>
+              <small>Gambar garis bebas & rekam jejak GPS</small>
+            </div>
+          </div>
+          <div class="popover-alat-item" id="alatItemLabel">
+            <span class="ic-alat">🏷️</span>
+            <div class="teks-alat">
+              <b>Label Titik Foto</b>
+              <small id="subTeksLabelFoto">Aktif (Ketuk untuk ON/OFF)</small>
+            </div>
+          </div>
+          <div class="popover-alat-item" id="alatItemCapture">
+            <span class="ic-alat">📸</span>
+            <div class="teks-alat">
+              <b>Foto Langsung di Peta</b>
+              <small>Ambil foto di titik koordinat ini</small>
+            </div>
+          </div>
+          <div class="popover-alat-item" id="alatItemFilterRoom">
+            <span class="ic-alat">📁</span>
+            <div class="teks-alat">
+              <b id="teksFilterRoomAktif">Filter: Room Ini</b>
+              <small>Ganti tampilan foto per room</small>
+            </div>
+          </div>
         </div>
 
         <!-- Floating Panel Meteran (Pengukur Jarak & Luas Area) -->
@@ -1958,7 +2026,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.11';
+const VERSI = '3.9.12';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -3220,44 +3288,62 @@ async function muatBeranda(){
 document.querySelectorAll('.menu-kartu').forEach(b=> b.onclick=()=>ke(b.dataset.menu));
 $('heroRoom').onclick = bukaDialogRoom;
 
-/* ---------- Galeri ---------- */
+/* ---------- Galeri (Optimasi Anti-Lag: Pagination & Instant Toggle) ---------- */
+S._limitGaleri = 36;
+S._dataGaleriCache = [];
+
 document.querySelectorAll('#scGaleri .filter button').forEach(b=> b.onclick=()=>{
   S.lingkupGaleri=b.dataset.lingkup;
+  S._limitGaleri = 36;
   document.querySelectorAll('#scGaleri .filter button').forEach(x=>x.classList.toggle('pilih',x===b));
-  muatGaleri();
+  muatGaleri(true);
 });
-async function muatGaleri(){
+
+async function muatGaleri(resetLimit = false){
+  if(resetLimit) S._limitGaleri = 36;
   const rAktif = S.rooms.find(r => r.nama === S.room);
   const isHost = rAktif && (rAktif.tipe === 'host' || !rAktif.tipe);
   $('btnTarikGaleri').style.display = isHost && adaServer() ? 'block' : 'none';
 
-  const data=saring(await ambilSemua(), S.lingkupGaleri);
-  const box=$('isiGaleri');
+  const data = saring(await ambilSemua(), S.lingkupGaleri);
+  S._dataGaleriCache = data;
+  const box = $('isiGaleri');
   if(!data.length){
     box.innerHTML='<div class="kosong"><span class="ic">\u{1F5BC}️</span><p>Belum ada foto'+
       (S.lingkupGaleri==='room'?' di room <b>'+esc(S.room)+'</b>':'')+'.<br>Tekan tombol kamera untuk mulai dokumentasi.</p></div>';
+    gambarAksiGaleri(data);
     return;
   }
-  const belum=data.filter(f=>f.status==='pending' || f.status==='gagal').length;
-  const lokal=data.filter(f=>f.status==='lokal').length;
-  const ada=new Set(data.map(f=>f.id));
-  S.terpilih.forEach(id=>{ if(!ada.has(id)) S.terpilih.delete(id); });   // buang sisa saringan lama
+  const belum = data.filter(f=>f.status==='pending' || f.status==='gagal').length;
+  const lokal = data.filter(f=>f.status==='lokal').length;
+  const ada = new Set(data.map(f=>f.id));
+  S.terpilih.forEach(id=>{ if(!ada.has(id)) S.terpilih.delete(id); });
 
-  box.innerHTML='<p style="font-size:12.5px;color:var(--teks-2);margin:0 0 10px">'+data.length+' foto'+
+  const tampil = data.slice(0, S._limitGaleri);
+  const sisa = data.length - tampil.length;
+
+  box.innerHTML = '<p style="font-size:12.5px;color:var(--teks-2);margin:0 0 10px">'+data.length+' foto'+
     (belum?' · <b style="color:var(--oranye)">'+belum+' menunggu upload</b>':'')+
     (lokal?' · <b style="color:#1565C0">'+lokal+' di HP</b>':'')+'</p><div class="grid-galeri">'+
-    data.map(f=>'<button class="sel-galeri'+(S.terpilih.has(f.id)?' terpilih':'')+'" data-id="'+f.id+'">'+
-      '<img src="'+f.dataUrl+'" alt="">'+
+    tampil.map(f=>'<button class="sel-galeri'+(S.terpilih.has(f.id)?' terpilih':'')+'" data-id="'+f.id+'">'+
+      '<img src="'+f.dataUrl+'" alt="" loading="lazy" decoding="async">'+
       (S.modePilih?'<span class="centang"><svg viewBox="0 0 24 24"><path d="m5 12.5 5 5 9-10"/></svg></span>'
                   :'<span class="tanda '+kelasTanda(f)+'"></span>')+
-      '</button>').join('')+'</div>';
+      '</button>').join('')+'</div>' +
+    (sisa > 0 ? '<div style="text-align:center;padding:14px 0 24px"><button class="tombol sekunder" id="btnMuatLebihGaleri" style="border-radius:12px;font-weight:600;padding:9px 20px">Muat Lebih Banyak ('+sisa+' foto lagi)</button></div>' : '');
+
+  if($('btnMuatLebihGaleri')){
+    $('btnMuatLebihGaleri').onclick = () => {
+      S._limitGaleri += 36;
+      muatGaleri(false);
+    };
+  }
 
   box.querySelectorAll('.sel-galeri').forEach(b=>{
     const id=b.dataset.id;
     b.onclick=()=>{ if(S.modePilih) alihPilih(id); else bukaLightbox(id); };
-    // tekan-tahan: cara paling wajar masuk mode pilih di Android
     let jam;
-    const mulai=()=>{ jam=setTimeout(()=>{ if(!S.modePilih){ S.modePilih=true; alihPilih(id); } },500); };
+    const mulai=()=>{ jam=setTimeout(()=>{ if(!S.modePilih){ S.modePilih=true; alihPilih(id); } },450); };
     const batal=()=>clearTimeout(jam);
     b.addEventListener('pointerdown',mulai);
     ['pointerup','pointerleave','pointercancel','pointermove'].forEach(t=>b.addEventListener(t,batal));
@@ -3265,12 +3351,12 @@ async function muatGaleri(){
   gambarAksiGaleri(data);
 }
 
-/* Mode pilih hanya berakhir lewat tombol Batal atau tombol Back — tidak
-   otomatis saat pilihan kosong, supaya bilah tombolnya tidak hilang mendadak
-   di tengah petugas memilih. */
+/* Alih pilih foto instan tanpa lag: toggle DOM lokal tanpa rebuild IndexedDB */
 function alihPilih(id){
   if(S.terpilih.has(id)) S.terpilih.delete(id); else S.terpilih.add(id);
-  muatGaleri();
+  const btn = document.querySelector(`.sel-galeri[data-id="${id}"]`);
+  if(btn) btn.classList.toggle('terpilih', S.terpilih.has(id));
+  gambarAksiGaleri(S._dataGaleriCache || []);
 }
 
 function gambarAksiGaleri(data){
@@ -3279,7 +3365,7 @@ function gambarAksiGaleri(data){
   if(!S.modePilih){
     kotak.innerHTML='<span class="jml"></span>'+
       '<button class="tombol-mini" id="btnModePilih">Pilih foto</button>';
-    $('btnModePilih').onclick=()=>{ S.modePilih=true; muatGaleri(); };
+    $('btnModePilih').onclick=()=>{ S.modePilih=true; muatGaleri(false); };
     return;
   }
   const n=S.terpilih.size, semua=n===data.length;
@@ -3292,10 +3378,15 @@ function gambarAksiGaleri(data){
     '<button class="tombol-mini" id="btnBatalPilih">Batal</button>';
 
   $('btnSemua').onclick=()=>{
-    if(semua) S.terpilih.clear(); else data.forEach(f=>S.terpilih.add(f.id));
-    muatGaleri();
+    const pilihSemua = !semua;
+    if(pilihSemua) (S._dataGaleriCache || []).forEach(f=>S.terpilih.add(f.id));
+    else S.terpilih.clear();
+    document.querySelectorAll('.sel-galeri').forEach(b => {
+      b.classList.toggle('terpilih', pilihSemua);
+    });
+    gambarAksiGaleri(S._dataGaleriCache || []);
   };
-  $('btnBatalPilih').onclick=()=>{ S.modePilih=false; S.terpilih.clear(); muatGaleri(); };
+  $('btnBatalPilih').onclick=()=>{ S.modePilih=false; S.terpilih.clear(); muatGaleri(false); };
   $('btnUnduhPilihan').onclick=unduhPilihan;
   $('btnUploadPilih').onclick=()=>{
     const n = S.terpilih.size;
@@ -3879,7 +3970,10 @@ function perbaruiBarAksiTabel(totalBaris){
   }
 }
 
-async function muatTabel(){
+S_tabel._limitTabel = 30;
+
+async function muatTabel(resetLimit = false){
+  if(resetLimit) S_tabel._limitTabel = 30;
   const rAktif = S.rooms.find(r => r.nama === S.room);
   const isHost = rAktif && (rAktif.tipe === 'host' || !rAktif.tipe);
   $('btnTarikTabel').style.display = isHost && adaServer() ? 'block' : 'none';
@@ -3900,8 +3994,10 @@ async function muatTabel(){
   }
 
   const semuaDipilih = data.length > 0 && data.every(f => S_tabel.terpilih.has(f.id));
+  const tampil = data.slice(0, S_tabel._limitTabel);
+  const sisa = data.length - tampil.length;
 
-  // Tampilan kartu ringkas vertikal tanpa scroll horizontal (mobile-first)
+  // Tampilan kartu ringkas vertikal tanpa scroll horizontal (mobile-first & anti-lag)
   box.innerHTML = 
     '<div class="wadah-kartu-tabel">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-radius:12px;border:1px solid var(--garis);box-shadow:var(--shadow-xs);margin-bottom:2px">' +
@@ -3911,14 +4007,14 @@ async function muatTabel(){
         '</label>' +
         '<span style="font-size:12px;color:var(--teks-2);font-weight:500">' + (S_tabel.terpilih.size > 0 ? '<b>' + S_tabel.terpilih.size + '</b> terpilih' : 'Ketuk kartu untuk memilih') + '</span>' +
       '</div>' +
-      data.map((f, i) => {
+      tampil.map((f, i) => {
         const terpilih = S_tabel.terpilih.has(f.id);
         const teksCatatan = f.catatan && f.catatan.trim() ? esc(f.catatan) : '<i style="color:var(--teks-3);font-weight:400">— Belum ada catatan —</i>';
         const koordStr = f.lat != null ? (f.lat.toFixed(5) + ', ' + f.lon.toFixed(5)) : 'Tanpa koordinat';
         return '<div class="kartu-rekap-item ' + (terpilih ? 'terpilih' : '') + '" data-id="' + f.id + '" style="cursor:pointer">' +
           '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 68px">' +
             '<input type="checkbox" class="chk-baris-tabel" data-id="' + f.id + '" ' + (terpilih ? 'checked' : '') + ' style="width:17px;height:17px;cursor:pointer;margin-top:2px">' +
-            '<img src="' + f.dataUrl + '" class="kartu-rekap-thumb" alt="Foto" data-id="' + f.id + '" title="Ketuk untuk melihat detail foto">' +
+            '<img src="' + f.dataUrl + '" class="kartu-rekap-thumb" alt="Foto" data-id="' + f.id + '" loading="lazy" decoding="async" title="Ketuk untuk melihat detail foto">' +
           '</div>' +
           '<div class="kartu-rekap-body">' +
             '<div class="kartu-rekap-atas">' +
@@ -3940,22 +4036,36 @@ async function muatTabel(){
         '</div>';
       }).join('') +
     '</div>' +
+    (sisa > 0 ? '<div style="text-align:center;padding:12px 0 20px"><button class="tombol sekunder" id="btnMuatLebihTabel" style="border-radius:12px;font-weight:600;padding:9px 20px">Muat Lebih Banyak ('+sisa+' foto lagi)</button></div>' : '') +
     '<p class="catatan-kecil" style="padding:8px 4px 4px;display:flex;align-items:center;justify-content:space-between">' +
       '<span>💡 Ketuk kartu untuk pilih cetak/hapus &bull; Ketuk foto untuk detail &bull; Ikon ✏️ untuk ubah tanggal</span>' +
       '<span>' + data.length + ' foto</span>' +
     '</p>';
 
-  // Checkbox master
+  if($('btnMuatLebihTabel')){
+    $('btnMuatLebihTabel').onclick = () => {
+      S_tabel._limitTabel += 30;
+      muatTabel(false);
+    };
+  }
+
+  // Checkbox master tanpa full rebuild
   const chkSemua = $('chkSemuaTabel');
   if(chkSemua){
     chkSemua.onchange = e => {
       e.stopPropagation();
-      if(chkSemua.checked){
+      const pilihSemua = chkSemua.checked;
+      if(pilihSemua){
         data.forEach(f => S_tabel.terpilih.add(f.id));
       } else {
         S_tabel.terpilih.clear();
       }
-      muatTabel();
+      box.querySelectorAll('.kartu-rekap-item').forEach(k => {
+        k.classList.toggle('terpilih', pilihSemua);
+        const chk = k.querySelector('.chk-baris-tabel');
+        if(chk) chk.checked = pilihSemua;
+      });
+      perbaruiBarAksiTabel(data.length);
     };
   }
 
@@ -4986,6 +5096,83 @@ $('btnPetaBasemap').onclick = () => {
     $('labelBasemapPeta').textContent = 'OSM';
   }
 };
+
+// Popover Menu Alat Peta
+if ($('btnPetaAlatMenu')) {
+  $('btnPetaAlatMenu').onclick = (e) => {
+    e.stopPropagation();
+    const pop = $('popoverAlatPeta');
+    if (pop) {
+      pop.classList.toggle('sembunyi');
+      const sembunyiFoto = localStorage.getItem('dkpoint_sembunyi_label_foto') === 'true';
+      if ($('subTeksLabelFoto')) $('subTeksLabelFoto').textContent = sembunyiFoto ? 'Nonaktif (Ketuk untuk ON)' : 'Aktif (Ketuk untuk OFF)';
+      if ($('teksFilterRoomAktif')) $('teksFilterRoomAktif').textContent = 'Filter: ' + (S.lingkupPeta === 'room' ? S.room : 'Semua Room');
+    }
+  };
+}
+
+document.addEventListener('click', (e) => {
+  const pop = $('popoverAlatPeta');
+  if (pop && !pop.classList.contains('sembunyi') && !e.target.closest('#popoverAlatPeta') && !e.target.closest('#btnPetaAlatMenu')) {
+    pop.classList.add('sembunyi');
+  }
+});
+
+if ($('alatItemMeteran')) {
+  $('alatItemMeteran').onclick = () => {
+    if ($('popoverAlatPeta')) $('popoverAlatPeta').classList.add('sembunyi');
+    if ($('btnPetaMeteran')) $('btnPetaMeteran').click();
+  };
+}
+if ($('alatItemTracking')) {
+  $('alatItemTracking').onclick = () => {
+    if ($('popoverAlatPeta')) $('popoverAlatPeta').classList.add('sembunyi');
+    if ($('btnPetaTracking')) $('btnPetaTracking').click();
+  };
+}
+if ($('alatItemLabel')) {
+  $('alatItemLabel').onclick = () => {
+    if ($('popoverAlatPeta')) $('popoverAlatPeta').classList.add('sembunyi');
+    if ($('btnPetaLabelFoto')) $('btnPetaLabelFoto').click();
+  };
+}
+if ($('alatItemCapture')) {
+  $('alatItemCapture').onclick = () => {
+    if ($('popoverAlatPeta')) $('popoverAlatPeta').classList.add('sembunyi');
+    if ($('btnPetaCapture')) $('btnPetaCapture').click();
+  };
+}
+if ($('alatItemFilterRoom')) {
+  $('alatItemFilterRoom').onclick = () => {
+    if ($('popoverAlatPeta')) $('popoverAlatPeta').classList.add('sembunyi');
+    if ($('btnPetaFilter')) $('btnPetaFilter').click();
+  };
+}
+
+// Menu Ekspor Terpadu di Layar Tabel
+if ($('btnBukaMenuEkspor')) {
+  $('btnBukaMenuEkspor').onclick = () => {
+    dialog(
+      '<h3>Ekspor Data & Lembar Foto</h3>' +
+      '<p class="catatan-kecil" style="margin:0 0 14px">Pilih format berkas laporan (' + (S.lingkupTabel === 'room' ? 'Room: <b>' + esc(S.room) + '</b>' : '<b>Seluruh Room</b>') + '):</p>' +
+      '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<button class="tombol" onclick="tutupDialog(); $(\'btnLembar\').click();" style="display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:12px">' +
+          '<span style="font-size:22px">🖼️</span>' +
+          '<div><b style="font-size:14px">Lembar Foto Dokumentasi</b><br><small style="opacity:0.85;font-size:11.5px">Format A4 Resmi (Kop Kantor + Urutan Foto + PDF/DOCX)</small></div>' +
+        '</button>' +
+        '<button class="tombol sekunder" onclick="tutupDialog(); $(\'btnPdf\').click();" style="display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:12px">' +
+          '<span style="font-size:22px">📄</span>' +
+          '<div><b style="font-size:14px">Tabel Rekap PDF (Landscape)</b><br><small style="color:var(--teks-2);font-size:11.5px">Daftar tabel seluruh foto dengan koordinat GPS & waktu</small></div>' +
+        '</button>' +
+        '<button class="tombol sekunder" onclick="tutupDialog(); $(\'btnDocx\').click();" style="display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:12px">' +
+          '<span style="font-size:22px">📝</span>' +
+          '<div><b style="font-size:14px">Tabel Rekap Word (DOCX)</b><br><small style="color:var(--teks-2);font-size:11.5px">Dapat diedit bebas di Microsoft Word</small></div>' +
+        '</button>' +
+      '</div>' +
+      '<button class="tombol abu" onclick="tutupDialog()" style="margin-top:14px;border-radius:12px">Tutup</button>'
+    );
+  };
+}
 
 /* ---------- FITUR METERAN (JARAK & LUAS AREA PETA) ---------- */
 let meteranAktif = false;

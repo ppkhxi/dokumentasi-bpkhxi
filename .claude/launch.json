@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "portal-bpkh",
-      "runtimeExecutable": "C:\\Program Files\\ArcGIS\\Pro\\bin\\Python\\envs\\arcgispro-py3\\python.exe",
-      "runtimeArgs": ["-m", "http.server", "8778", "--bind", "127.0.0.1"],
-      "port": 8778
+      "name": "dkpoint-www",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "www", "-p", "4785", "-c-1"],
+      "port": 4785
     }
   ]
 }
