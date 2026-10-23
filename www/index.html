@@ -4647,10 +4647,10 @@ async function eksporWordLembar(dataFoto, judul) {
 }
 
 async function buatLembar(bentuk){
-  const judul = $('inJudulLembar').value.trim() || judulBawaan();
-  const perLembar = +$('inPerLembar').value || 6;
+  const judul = $('inJudulLembar') ? $('inJudulLembar').value.trim() : judulBawaan();
+  const perLembar = ($('inPerLembar') ? +$('inPerLembar').value : 6) || 6;
   const tombol = bentuk==='pdf' ? $('btnLembarPdf') : $('btnLembarDocx');
-  tombol.disabled = true; tombol.textContent = 'Menyusun…';
+  if (tombol) { tombol.disabled = true; tombol.textContent = 'Menyusun…'; }
   try{
     const r = await htmlLembar(judul, perLembar);
     if(!r.jumlah){ pesan('Belum ada foto untuk dijadikan lembar'); return; }
