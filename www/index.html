@@ -51,6 +51,31 @@
   --dur-fast:150ms; --dur-normal:220ms;
   /* Safe areas */
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+
+  /* =====================================================================
+     MAKIOR PRO CAMERA DESIGN TOKENS (SPARKLIN INNOVATIONS CONCEPT)
+     ===================================================================== */
+  --makior-bg: #090A0E;
+  --makior-surface: #12131A;
+  --makior-surface-elevated: #181A24;
+  --makior-surface-card: #14161F;
+  --makior-surface-trans: rgba(18, 19, 26, 0.82);
+  --makior-surface-hover: rgba(255, 255, 255, 0.06);
+  --makior-border: rgba(255, 255, 255, 0.09);
+  --makior-border-strong: rgba(255, 255, 255, 0.17);
+  --makior-border-orange: rgba(255, 107, 0, 0.45);
+
+  --makior-orange: #FF6B00;
+  --makior-orange-glow: rgba(255, 107, 0, 0.35);
+  --makior-orange-light: #FF8533;
+  --makior-amber: #FFAA00;
+
+  --makior-text: #FFFFFF;
+  --makior-text-muted: #8E92A4;
+  --makior-text-subtle: #565968;
+  --makior-text-dim: rgba(255, 255, 255, 0.45);
+
+  --font-mono-tabular: "SF Mono", "Roboto Mono", Consolas, "Courier New", monospace;
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -401,112 +426,171 @@ textarea.f{resize:none;min-height:84px}
 
 
 .hero{
-  background:linear-gradient(135deg, #1C1C1E 0%, #2A2A2E 100%);color:#fff;
-  border-radius:var(--rad-xl);padding:22px 20px;margin-bottom:14px;
-  box-shadow:0 10px 24px -6px rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.1);
+  background:linear-gradient(135deg, var(--makior-surface) 0%, #1A1C28 100%);color:#fff;
+  border-radius:var(--rad-xl);padding:20px 18px;margin-bottom:14px;
+  box-shadow:0 10px 28px rgba(0,0,0,0.4);border:1px solid var(--makior-border);
   position:relative;overflow:hidden;
 }
 .hero::before{
   content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;
-  background:radial-gradient(circle, rgba(0,122,255,0.2) 0%, transparent 70%);pointer-events:none;
+  background:radial-gradient(circle, var(--makior-orange-glow) 0%, transparent 70%);pointer-events:none;
 }
-.hero .halo{font-size:13px;color:rgba(255,255,255,0.7);font-weight:450;letter-spacing:-0.1px}
-.hero .nama{font-size:22px;font-weight:700;margin:4px 0 14px;letter-spacing:-0.5px}
+.hero .halo{font-size:12.5px;color:var(--makior-orange);font-weight:600;letter-spacing:0.2px}
+.hero .nama{font-size:21px;font-weight:800;margin:3px 0 12px;letter-spacing:-0.4px;color:#fff}
 .hero .room-chip{
-  display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.14);
-  padding:8px 15px;border-radius:var(--rad-pill);font-size:12.5px;font-weight:600;
-  border:1px solid rgba(255,255,255,0.18);color:#fff;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);
+  padding:7px 14px;border-radius:var(--rad-pill);font-size:12px;font-weight:600;
+  border:1px solid var(--makior-border);color:#fff;cursor:pointer;
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  transition:all .15s ease;
+  transition:all .15s ease;font-family:var(--font-mono-tabular);
 }
-.hero .room-chip:active{background:rgba(255,255,255,0.26);transform:scale(0.97)}
-.statistik{display:flex;gap:10px;margin-bottom:14px}
+.hero .room-chip:active{background:rgba(255,255,255,0.18);transform:scale(0.97);border-color:var(--makior-orange)}
+.statistik{display:flex;gap:8px;margin-bottom:14px}
 .stat{
-  flex:1;background:var(--surface);border-radius:var(--rad-lg);padding:14px 10px;text-align:center;
-  box-shadow:var(--shadow-sm);border:1px solid var(--garis);transition:transform .15s ease;
+  flex:1;background:var(--makior-surface);border-radius:var(--rad-lg);padding:14px 8px;text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25);border:1px solid var(--makior-border);transition:transform .15s ease, border-color .15s ease;
 }
-.stat:active{transform:scale(0.98)}
+.stat:active{transform:scale(0.98);border-color:var(--makior-border-strong)}
 .stat b{
-  display:block;font-size:24px;color:var(--teks);line-height:1.15;font-weight:700;
-  letter-spacing:-0.5px;font-variant-numeric:tabular-nums;
+  display:block;font-size:24px;color:#fff;line-height:1.15;font-weight:800;
+  letter-spacing:-0.5px;font-variant-numeric:tabular-nums;font-family:var(--font-mono-tabular);
 }
-.stat span{font-size:11px;color:var(--teks-2);font-weight:550;letter-spacing:-0.1px;margin-top:3px;display:block}
-.grid-menu{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat span{font-size:10.5px;color:var(--makior-text-muted);font-weight:550;letter-spacing:-0.1px;margin-top:4px;display:block}
+.grid-menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .menu-kartu{
-  background:var(--surface);border:1px solid var(--garis);border-radius:var(--rad-lg);padding:16px 14px;text-align:left;cursor:pointer;
-  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;
-  transition:transform .15s cubic-bezier(.2,.8,.2,1), box-shadow .15s ease, background .15s ease;
+  background:var(--makior-surface);border:1px solid var(--makior-border);border-radius:var(--rad-lg);padding:15px 13px;text-align:left;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2);display:flex;flex-direction:column;gap:8px;
+  transition:transform .15s cubic-bezier(.2,.8,.2,1), box-shadow .15s ease, background .15s ease, border-color .15s ease;
   position:relative;overflow:hidden;
 }
-.menu-kartu:active{transform:scale(.97);box-shadow:var(--shadow-xs);background:var(--surface-subtle)}
+.menu-kartu:active{transform:scale(.97);background:var(--makior-surface-elevated);border-color:var(--makior-orange)}
 .menu-kartu .ic{
-  width:44px;height:44px;border-radius:var(--rad-md);
+  width:42px;height:42px;border-radius:var(--rad-md);
   display:flex;align-items:center;justify-content:center;
-  transition:transform .18s ease;
+  transition:transform .18s ease;border:1px solid rgba(255,255,255,0.08);
 }
 .menu-kartu:hover .ic{transform:scale(1.05)}
-.menu-kartu[data-menu="kamera"] .ic{background:#E8F2FF;color:#007AFF}
-.menu-kartu[data-menu="ganda"] .ic{background:#F3E8FF;color:#AF52DE}
-.menu-kartu[data-menu="galeri"] .ic{background:#E6F9F0;color:#34C759}
-.menu-kartu[data-menu="tabel"] .ic{background:#FFF4E5;color:#FF9500}
-.menu-kartu[data-menu="room"] .ic{background:#E0F2FE;color:#0284C7}
-.menu-kartu[data-menu="peta"] .ic{background:#E0F7FA;color:#0097A7}
-.menu-kartu[data-menu="antrian"] .ic{background:#FEE2E2;color:#EF4444}
-.menu-kartu[data-menu="pengaturan"] .ic{background:#F1F5F9;color:#475569}
-.menu-kartu b{font-size:14.5px;color:var(--teks);font-weight:600;letter-spacing:-0.2px}
-.menu-kartu small{font-size:11.5px;color:var(--teks-2);line-height:1.4}
+.menu-kartu[data-menu="kamera"] .ic{background:rgba(255,107,0,0.14);color:var(--makior-orange);border-color:rgba(255,107,0,0.3)}
+.menu-kartu[data-menu="ganda"] .ic{background:rgba(191,90,242,0.14);color:#BF5AF2}
+.menu-kartu[data-menu="galeri"] .ic{background:rgba(48,209,88,0.14);color:#30D158}
+.menu-kartu[data-menu="tabel"] .ic{background:rgba(255,159,10,0.14);color:#FF9F0A}
+.menu-kartu[data-menu="room"] .ic{background:rgba(10,132,255,0.14);color:#0A84FF}
+.menu-kartu[data-menu="peta"] .ic{background:rgba(100,210,255,0.14);color:#64D2FF}
+.menu-kartu[data-menu="antrian"] .ic{background:rgba(255,69,58,0.14);color:#FF453A}
+.menu-kartu[data-menu="pengaturan"] .ic{background:rgba(255,255,255,0.08);color:var(--makior-text-muted)}
+.menu-kartu b{font-size:14px;color:#fff;font-weight:700;letter-spacing:-0.2px}
+.menu-kartu small{font-size:11px;color:var(--makior-text-muted);line-height:1.35}
 #spandukPasang{
-  background:var(--surface-subtle);border:1px solid var(--garis);border-radius:var(--rad-lg);padding:14px 16px;margin-bottom:14px;display:none;
+  background:var(--makior-surface);border:1px solid var(--makior-border);border-radius:var(--rad-lg);padding:14px 16px;margin-bottom:14px;display:none;color:#fff;
 }
 #spandukPasang.tampil{display:block}
-#spandukPasang b{font-size:13.5px;display:block;margin-bottom:3px;color:#000}
-#spandukPasang p{margin:0 0 10px;font-size:12px;color:var(--teks-2);line-height:1.5}
+#spandukPasang b{font-size:13.5px;display:block;margin-bottom:3px;color:#fff}
+#spandukPasang p{margin:0 0 10px;font-size:12px;color:var(--makior-text-muted);line-height:1.5}
+#spandukSimulasi{
+  background:var(--makior-surface);border:1px solid var(--makior-border);border-radius:var(--rad-lg);padding:12px 14px;margin-bottom:12px;display:none;color:#fff;
+}
+#spandukSimulasi b{font-size:13px;color:#fff}
+#spandukSimulasi p{margin:4px 0 0;font-size:11.5px;color:var(--makior-text-muted);line-height:1.45}
 
-#scKamera{background:#000;display:flex;flex-direction:column;position:relative;height:100%;overflow:hidden}
+/* =====================================================================
+   MAKIOR PRO CAMERA DARK THEME STYLING
+   ===================================================================== */
+#scKamera{background:var(--makior-bg);display:flex;flex-direction:column;position:relative;height:100%;overflow:hidden}
 #wadahVideo{
-  flex:1 1 0;position:relative;overflow:hidden;background:#000;display:flex;
+  flex:1 1 0;position:relative;overflow:hidden;background:var(--makior-bg);display:flex;
   flex-direction:column;align-items:center;justify-content:space-between;
-  padding:calc(10px + var(--safe-t)) 0 0;
+  padding:calc(8px + var(--safe-t)) 0 0;
   min-height:0;
 }
-.bar-atas-kamera{
-  width:100%;padding:0 16px 8px;display:flex;align-items:center;justify-content:space-between;
-  z-index:20;flex:0 0 auto;
+.makior-header{
+  width:100%;padding:0 14px 6px;display:flex;align-items:center;justify-content:space-between;
+  z-index:20;flex:0 0 auto;gap:8px;
 }
-.btn-lingkar-kamera-top{
-  width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.18);
-  background:rgba(0,0,0,0.45);color:#fff;
+.makior-brand{
+  display:flex;align-items:center;gap:7px;
+}
+.makior-logo{
+  width:24px;height:24px;object-fit:contain;border-radius:4px;
+}
+.makior-title-wrap{
+  display:flex;align-items:center;gap:6px;
+}
+.makior-title{
+  font-size:15px;font-weight:800;letter-spacing:-0.3px;color:#fff;
+}
+.makior-badge{
+  font-size:8.5px;font-weight:750;background:var(--makior-orange);color:#fff;
+  padding:1.5px 5px;border-radius:4px;letter-spacing:0.8px;text-transform:uppercase;
+  box-shadow:0 1px 4px var(--makior-orange-glow);
+}
+.makior-top-right{
+  display:flex;align-items:center;gap:6px;
+}
+.btn-makior-top{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--makior-border);
+  background:rgba(255,255,255,0.08);color:#fff;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  transition:transform .12s, background .15s;
+  transition:transform .12s, background .15s, border-color .15s;
 }
-.btn-lingkar-kamera-top:active{transform:scale(.92);background:rgba(255,255,255,0.25)}
-.btn-lingkar-kamera-top svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn-makior-top:active{transform:scale(.92);background:rgba(255,255,255,0.2)}
+.btn-makior-top svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn-makior-top.aktif{border-color:var(--makior-orange);color:var(--makior-orange);background:rgba(255,107,0,0.15)}
+
+.makior-chip-gps{
+  background:var(--makior-surface);color:#fff;font-size:11px;font-weight:600;
+  font-family:var(--font-mono-tabular);
+  padding:5px 10px;border-radius:16px;white-space:nowrap;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid var(--makior-border);
+  display:flex;align-items:center;gap:4px;max-width:150px;overflow:hidden;text-overflow:ellipsis;
+}
+.makior-chip-gps.kunci{border-color:rgba(48,209,88,0.5);color:#30D158}
+
+/* Panel Status Grid Makior (Atas Viewfinder) */
+.makior-status-grid{
+  width:100%;padding:0 12px 6px;display:grid;grid-template-columns:repeat(6, 1fr);gap:4px;
+  flex:0 0 auto;
+}
+.makior-stat-item{
+  background:var(--makior-surface);border:1px solid var(--makior-border);
+  border-radius:6px;padding:3px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:0;
+}
+.makior-stat-lbl{
+  font-size:7.5px;font-weight:700;color:var(--makior-text-muted);letter-spacing:0.5px;text-transform:uppercase;
+  line-height:1;margin-bottom:2px;
+}
+.makior-stat-val{
+  font-size:9.5px;font-weight:700;color:#fff;font-family:var(--font-mono-tabular);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
 
 #bingkai34{
   position:relative;width:100%;aspect-ratio:3/4;
-  max-height:calc(100vh - 200px - var(--safe-t) - var(--safe-b));
+  max-height:calc(100vh - 230px - var(--safe-t) - var(--safe-b));
   overflow:hidden;background:#000;touch-action:none;border-radius:18px;
-  flex:0 1 auto;
+  border:1px solid var(--makior-border-strong);
+  flex:0 1 auto;box-shadow:0 8px 30px rgba(0,0,0,0.7);
 }
 #video{width:100%;height:100%;object-fit:cover}
 
-/* Bilah Zoom iOS (0.5, 1x, 2) */
+/* Bilah Zoom */
 .bar-zoom{
   position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:15;
-  display:flex;align-items:center;gap:6px;
-  background:rgba(0,0,0,0.55);padding:3px 6px;border-radius:24px;
+  display:flex;align-items:center;gap:4px;
+  background:rgba(9,10,14,0.75);padding:2px 5px;border-radius:24px;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,0.15);
+  border:1px solid var(--makior-border);
 }
 .btn-zoom{
-  background:none;border:0;color:rgba(255,255,255,0.85);
-  font-size:12px;font-weight:700;width:32px;height:32px;border-radius:50%;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
+  background:none;border:0;color:rgba(255,255,255,0.8);
+  font-size:11.5px;font-weight:700;width:30px;height:30px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-mono-tabular);
   transition:all var(--dur-fast) var(--ease-spring);
 }
 .btn-zoom.aktif{
-  background:#fff;color:#000;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  background:var(--makior-orange);color:#fff;box-shadow:0 2px 8px var(--makior-orange-glow);
 }
 
 #tumpukBawah{
@@ -525,117 +609,161 @@ textarea.f{resize:none;min-height:84px}
 }
 #overlayWm{
   color:#fff;font-size:10px;line-height:1.4;
-  background:rgba(0,0,0,.68);padding:7px 11px;border-radius:10px;pointer-events:none;
+  background:rgba(9,10,14,0.78);padding:7px 11px;border-radius:10px;pointer-events:none;
   display:inline-flex;align-items:center;gap:9px;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  box-shadow:0 2px 8px rgba(0,0,0,.35);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid var(--makior-border);
+  box-shadow:0 3px 12px rgba(0,0,0,0.5);
 }
-#ruangCatatan{flex:0 0 auto;width:100%;padding:4px 16px 6px}
+#overlayLogo{width:34px;height:34px;flex:0 0 34px;border:1px solid var(--makior-border-strong);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;overflow:hidden;background:#000}
+#overlayLogo img{width:100%;height:100%;object-fit:contain}
+#overlayWm .kantor{font-weight:700;font-size:12px;letter-spacing:.4px;color:#fff}
+#pesanKamera{position:absolute;color:#fff;text-align:center;padding:26px;font-size:14px;line-height:1.6}
+
+/* Ruang Catatan Makior */
+.makior-ruang-catatan{
+  flex:0 0 auto;width:100%;padding:4px 12px 6px;display:flex;flex-direction:column;gap:5px;
+}
+.makior-strip-container{
+  width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.makior-strip-container::-webkit-scrollbar{display:none}
+.makior-chips-strip{
+  display:flex;gap:6px;padding:2px 2px;width:max-content;
+}
+.chip-tag-catatan{
+  flex:0 0 auto;background:var(--makior-surface);border:1px solid var(--makior-border);
+  color:rgba(255,255,255,0.85);font-size:11px;padding:4px 11px;border-radius:14px;cursor:pointer;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:all 0.15s;font-weight:550;white-space:nowrap;
+}
+.chip-tag-catatan:active{transform:scale(0.95);background:rgba(255,255,255,0.18)}
+.chip-tag-catatan.aktif{
+  background:var(--makior-orange);color:#fff;border-color:var(--makior-orange);
+  box-shadow:0 2px 8px var(--makior-orange-glow);font-weight:650;
+}
+
+.makior-input-catatan-bar{
+  display:flex;align-items:center;gap:6px;width:100%;
+}
+.makior-input-wrap{
+  flex:1 1 auto;position:relative;display:flex;align-items:center;min-width:0;
+}
+.makior-input-ic{
+  position:absolute;left:10px;font-size:12px;pointer-events:none;opacity:0.7;
+}
 #inCatatanKamera{
-  width:100%;padding:10px 16px;border:1px solid rgba(255,255,255,0.2);border-radius:20px;
-  background:rgba(255,255,255,0.14);color:#fff;font-size:13.5px;font-family:inherit;outline:none;
+  width:100%;padding:8px 12px 8px 30px;border:1px solid var(--makior-border);border-radius:16px;
+  background:var(--makior-surface);color:#fff;font-size:12.5px;font-family:inherit;outline:none;
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   -webkit-user-select:text;user-select:text;transition:border-color .15s, background .15s;
 }
-#inCatatanKamera:focus{background:rgba(255,255,255,0.22);border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,0.3)}
-#inCatatanKamera::placeholder{color:rgba(255,255,255,0.6)}
+#inCatatanKamera:focus{background:var(--makior-surface-elevated);border-color:var(--makior-orange);box-shadow:0 0 0 2px var(--makior-orange-glow)}
+#inCatatanKamera::placeholder{color:var(--makior-text-subtle)}
 
-#overlayLogo{width:34px;height:34px;flex:0 0 34px;border:1px solid rgba(255,255,255,.7);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;overflow:hidden}
-#overlayLogo img{width:100%;height:100%;object-fit:contain}
-#overlayWm .kantor{font-weight:700;font-size:12.5px;letter-spacing:.4px}
-#pesanKamera{position:absolute;color:#fff;text-align:center;padding:26px;font-size:14px;line-height:1.6}
-
-#barKamera{
-  flex:0 0 auto;background:#000;
-  padding:12px 28px calc(16px + var(--safe-b));
-  display:flex;align-items:center;justify-content:space-between;
+.makior-bar-opsi-wm{
+  display:flex;align-items:center;gap:4px;flex:0 0 auto;
+}
+.btn-opsi-wm{
+  background:var(--makior-surface);border:1px solid var(--makior-border);
+  color:rgba(255,255,255,0.7);padding:6px 9px;border-radius:14px;
+  font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px;
+  cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:all 0.15s;white-space:nowrap;
+}
+.btn-opsi-wm:active{transform:scale(0.96)}
+.btn-opsi-wm.aktif{
+  background:rgba(255,107,0,0.18);border-color:var(--makior-orange);color:#fff;
+}
+.btn-opsi-wm .indikator-titik{
+  width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;
+}
+.btn-opsi-wm.aktif .indikator-titik{
+  background:var(--makior-orange);box-shadow:0 0 6px var(--makior-orange);
 }
 
+/* Bilah Kontrol Bawah Makior */
+.makior-bar-kamera{
+  flex:0 0 auto;background:var(--makior-bg);
+  padding:10px 24px calc(14px + var(--safe-b));
+  display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--makior-border);
+}
+.btn-makior-kontrol{
+  width:48px;height:48px;border-radius:50%;border:1px solid var(--makior-border);
+  background:var(--makior-surface);color:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:transform .12s cubic-bezier(.2,.8,.2,1), background .15s, border-color .15s;
+}
+.btn-makior-kontrol:active{transform:scale(.92);background:var(--makior-surface-elevated)}
+.btn-makior-kontrol svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
 #shutter{
-  width:76px;height:76px;border-radius:50%;
-  border:4px solid #fff;background:transparent;
+  width:74px;height:74px;border-radius:50%;
+  border:3px solid rgba(255,255,255,0.85);background:transparent;
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(0,0,0,0.5);
+  box-shadow:0 0 0 3px var(--makior-bg), 0 0 0 4px var(--makior-border-strong), 0 6px 20px rgba(0,0,0,0.6);
   transition:transform .12s cubic-bezier(.2,.8,.2,1);
   padding:0;
 }
 #shutter .shutter-dalam{
-  width:62px;height:62px;border-radius:50%;background:#fff;
+  width:58px;height:58px;border-radius:50%;background:#fff;
   display:block;transition:transform .12s ease;
 }
 #shutter:active .shutter-dalam{transform:scale(.88)}
 #shutter:active{transform:scale(.95)}
 
-.btn-lingkar-ios{
-  width:50px;height:50px;border-radius:50%;border:1px solid rgba(255,255,255,0.22);
-  background:rgba(255,255,255,0.14);color:#fff;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  transition:transform .12s cubic-bezier(.2,.8,.2,1), background .15s;
-}
-.btn-lingkar-ios:active{transform:scale(.92);background:rgba(255,255,255,0.28)}
-.btn-lingkar-ios svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-
-#chipGps{
-  background:rgba(0,0,0,0.55);color:#fff;font-size:11.5px;font-weight:550;
-  padding:6px 14px;border-radius:20px;white-space:nowrap;
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,0.14);
-}
 #tirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
 #tirai.kilat{opacity:.85;transition:none}
-/* ---------- Kamera Ganda: dua bingkai, dua berkas sekaligus ---------- */
-#scGanda{background:#000;display:flex;flex-direction:column;overflow:hidden}
-#gandaWadah{flex:1;position:relative;background:#000;display:flex;flex-direction:column;gap:6px;padding:6px;overflow:hidden;min-height:0}
-.ganda-sel{position:relative;background:#0B0B0B;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:0}
-/* Bingkai 16:9 dikunci ke rasionya di lebar penuh; sisa ruang jadi milik
-   bingkai potret, jadi keduanya sebesar mungkin tanpa saling menggencet. */
+
+/* ---------- Kamera Ganda Makior Pro Theme ---------- */
+#scGanda{background:var(--makior-bg);display:flex;flex-direction:column;overflow:hidden}
+#gandaWadah{flex:1;position:relative;background:var(--makior-bg);display:flex;flex-direction:column;gap:6px;padding:8px 8px 4px;overflow:hidden;min-height:0}
+.ganda-sel{position:relative;background:#000;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:0;border:1px solid var(--makior-border-strong)}
 #selLan{flex:0 0 auto;width:100%;aspect-ratio:16/9;max-height:38%;min-height:0}
 #selPot{flex:1 1 auto;min-height:90px}
-/* Potret dipatok 3:4, bukan 9:16 — 9:16 membuat foto jadi jangkung sempit,
-   dan begitu ditaruh di Lembar Dokumentasi ia menyusut sampai baris
-   watermark di kakinya tidak lagi terbaca. */
 .ganda-sel canvas{max-width:100%;max-height:100%;display:block}
-.ganda-tag{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.62);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.4px}
-#gandaChipGps{position:absolute;top:12px;left:12px;z-index:5;background:rgba(0,0,0,.62);color:#fff;font-size:10.5px;padding:5px 10px;border-radius:20px;white-space:nowrap;max-width:72%;overflow:hidden;text-overflow:ellipsis}
-#gandaRec{position:absolute;top:12px;left:12px;z-index:6;display:none;align-items:center;gap:6px;background:rgba(0,0,0,.75);color:#fff;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;letter-spacing:.5px}
+.ganda-tag{position:absolute;top:8px;right:8px;background:var(--makior-surface);color:var(--makior-orange);border:1px solid var(--makior-border);font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;letter-spacing:.6px;font-family:var(--font-mono-tabular)}
+#gandaChipGps{position:absolute;top:10px;left:10px;z-index:5;background:var(--makior-surface);color:#fff;font-size:10.5px;padding:4px 10px;border-radius:16px;white-space:nowrap;max-width:72%;overflow:hidden;text-overflow:ellipsis;border:1px solid var(--makior-border);font-family:var(--font-mono-tabular)}
+#gandaRec{position:absolute;top:10px;left:10px;z-index:6;display:none;align-items:center;gap:6px;background:rgba(9,10,14,.88);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:16px;letter-spacing:.5px;border:1px solid rgba(255,59,48,0.5);font-family:var(--font-mono-tabular)}
 #gandaRec.tampil{display:flex}
 #gandaRec i{width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:kedipRec 1s steps(1,end) infinite}
 @keyframes kedipRec{50%{opacity:.15}}
-#gandaPesan{position:absolute;inset:0;z-index:8;display:none;color:#fff;text-align:center;padding:26px;font-size:14px;line-height:1.6;align-items:center;justify-content:center;background:#000}
+#gandaPesan{position:absolute;inset:0;z-index:8;display:none;color:#fff;text-align:center;padding:26px;font-size:14px;line-height:1.6;align-items:center;justify-content:center;background:var(--makior-bg)}
 #gandaTirai{position:absolute;inset:0;z-index:9;background:#fff;opacity:0;pointer-events:none;transition:opacity .12s}
 #gandaTirai.kilat{opacity:.85;transition:none}
 
-#barGanda{flex:0 0 auto;background:#000;padding:8px 16px calc(10px + var(--safe-b));display:flex;flex-direction:column;gap:8px}
-#gandaModeRow{display:flex;align-self:center;background:rgba(255,255,255,.12);border-radius:20px;padding:3px;gap:2px}
-.ganda-mode{border:0;background:none;color:rgba(255,255,255,.72);font-size:11px;font-weight:700;letter-spacing:.8px;padding:5px 16px;border-radius:18px;cursor:pointer}
-.ganda-mode.aktif{background:#fff;color:#111}
+#barGanda{flex:0 0 auto;background:var(--makior-bg);padding:8px 16px calc(12px + var(--safe-b));display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--makior-border)}
+#gandaModeRow{display:flex;align-self:center;background:var(--makior-surface);border-radius:20px;padding:3px;gap:2px;border:1px solid var(--makior-border)}
+.ganda-mode{border:0;background:none;color:var(--makior-text-muted);font-size:10.5px;font-weight:700;letter-spacing:.8px;padding:5px 16px;border-radius:18px;cursor:pointer;transition:all .15s}
+.ganda-mode.aktif{background:var(--makior-orange);color:#fff;box-shadow:0 1px 6px var(--makior-orange-glow)}
 #gandaKontrol{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.ganda-bulat{width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ganda-bulat{width:42px;height:42px;flex:0 0 42px;border-radius:50%;border:1px solid var(--makior-border);background:var(--makior-surface);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
 .ganda-bulat svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.ganda-bulat:active{background:rgba(255,255,255,.32)}
-.ganda-bulat.nyala{background:#FFD400;color:#111}
-.ganda-bulat.mati{background:rgba(255,255,255,.16);color:rgba(255,255,255,.4)}
-#gandaRana{width:64px;height:64px;flex:0 0 64px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.35);background-clip:padding-box;cursor:pointer;transition:border-radius .18s,background .18s}
+.ganda-bulat:active{background:var(--makior-surface-elevated)}
+.ganda-bulat.nyala{background:var(--makior-orange);color:#fff;border-color:var(--makior-orange)}
+.ganda-bulat.mati{background:var(--makior-surface);color:var(--makior-text-dim)}
+#gandaRana{width:64px;height:64px;flex:0 0 64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.35);cursor:pointer;transition:border-radius .18s,background .18s;box-shadow:0 0 0 3px var(--makior-bg), 0 0 0 4px var(--makior-border-strong)}
 #gandaRana:active{transform:scale(.93)}
-#gandaRana.video{background:#E53935}
-#gandaRana.rekam{background:#E53935;border-radius:24%}
+#gandaRana.video{background:#FF3B30}
+#gandaRana.rekam{background:#FF3B30;border-radius:22%}
 
-#gandaHasil{position:absolute;inset:0;z-index:20;background:var(--bg);display:none;flex-direction:column}
+#gandaHasil{position:absolute;inset:0;z-index:20;background:var(--makior-bg);display:none;flex-direction:column}
 #gandaHasil.tampil{display:flex}
-#gandaHasilKepala{flex:0 0 auto;padding:14px 16px 10px;border-bottom:1px solid var(--garis);background:var(--surface)}
-#gandaHasilKepala b{font-size:15px}
-#gandaHasilRingkas{display:block;font-size:11.5px;color:var(--teks-2);margin-top:3px}
+#gandaHasilKepala{flex:0 0 auto;padding:14px 16px 10px;border-bottom:1px solid var(--makior-border);background:var(--makior-surface)}
+#gandaHasilKepala b{font-size:15px;color:#fff}
+#gandaHasilRingkas{display:block;font-size:11.5px;color:var(--makior-text-muted);margin-top:3px}
 #gandaHasilIsi{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
-.hasil-item{background:var(--surface);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.hasil-item img,.hasil-item video{width:100%;display:block;max-height:38vh;object-fit:contain;background:#111}
-.hasil-ket{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-size:12px}
-.hasil-ket b{font-size:12.5px}
-.hasil-ket span{color:var(--teks-2)}
-#gandaHasilKaki{flex:0 0 auto;padding:11px 14px calc(14px + var(--safe-b));background:var(--surface);border-top:1px solid var(--garis);display:flex;flex-direction:column;gap:8px}
+.hasil-item{background:var(--makior-surface);border-radius:14px;overflow:hidden;border:1px solid var(--makior-border)}
+.hasil-item img,.hasil-item video{width:100%;display:block;max-height:38vh;object-fit:contain;background:#000}
+.hasil-ket{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-size:12px;color:#fff}
+.hasil-ket b{font-size:12.5px;color:#fff}
+.hasil-ket span{color:var(--makior-text-muted)}
+#gandaHasilKaki{flex:0 0 auto;padding:11px 14px calc(14px + var(--safe-b));background:var(--makior-surface);border-top:1px solid var(--makior-border);display:flex;flex-direction:column;gap:8px}
 #gandaHasilKaki .baris{display:flex;gap:8px}
 #gandaHasilKaki .baris .tombol{flex:1;margin:0}
-#gandaHasilNota{font-size:10.5px;color:var(--teks-2);line-height:1.45;text-align:center}
+#gandaHasilNota{font-size:10.5px;color:var(--makior-text-muted);line-height:1.45;text-align:center}
 
 
 #pratinjau{width:100%;border-radius:14px;display:block;background:#000}
@@ -764,13 +892,13 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 
 .btn-lingkar-peta{
   position:absolute;z-index:500;width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.06);color:#000;
-  box-shadow:0 4px 16px rgba(0,0,0,.15);cursor:pointer;
+  background:rgba(18,19,26,.92);border:1px solid var(--makior-border);color:#fff;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  transition:transform .12s, background .15s;
+  transition:transform .12s, background .15s, border-color .15s;
 }
-.btn-lingkar-peta:active{transform:scale(.92);background:#fff}
+.btn-lingkar-peta:active{transform:scale(.92);background:var(--makior-surface-elevated);border-color:var(--makior-orange)}
 .btn-lingkar-peta svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
 .pos-kiri-atas{top:calc(12px + var(--safe-t));left:12px}
@@ -779,30 +907,31 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 
 .menu-peta-unduh{
   position:absolute;top:calc(12px + var(--safe-t));right:72px;z-index:510;
-  background:rgba(255,255,255,.96);border-radius:18px;padding:6px;
-  box-shadow:0 8px 24px rgba(0,0,0,.18);border:1px solid rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:4px;
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  background:rgba(18,19,26,.96);border-radius:18px;padding:6px;
+  box-shadow:0 10px 32px rgba(0,0,0,.45);border:1px solid var(--makior-border);display:flex;flex-direction:column;gap:4px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   transition:opacity .18s, transform .18s;
 }
 .menu-peta-unduh.sembunyi{opacity:0;pointer-events:none;transform:translateY(-8px)}
 .item-unduh{
   background:none;border:0;padding:10px 14px;border-radius:12px;text-align:left;
-  font-size:13px;font-weight:600;color:var(--teks);cursor:pointer;display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;
   transition:background .15s;
 }
-.item-unduh:active{background:#F2F2F7;color:#000}
+.item-unduh:active{background:rgba(255,255,255,0.12);color:var(--makior-orange)}
 
 .chip-peta-status{
   position:absolute;top:calc(12px + var(--safe-t));left:60px;right:72px;z-index:490;
-  background:rgba(0,0,0,.76);color:#fff;border-radius:20px;padding:6px 12px;
+  background:rgba(18,19,26,.90);color:#fff;border-radius:20px;padding:6px 12px;
   font-size:11px;display:flex;align-items:center;justify-content:space-between;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none;
+  border:1px solid var(--makior-border);font-family:var(--font-mono-tabular);
 }
 
 .dock-peta-alat{
   position:absolute;top:calc(12px + var(--safe-t));right:12px;z-index:500;
-  background:rgba(255,255,255,.94);border-radius:20px;
-  box-shadow:0 8px 30px rgba(0,0,0,.16);border:1px solid rgba(0,0,0,0.08);
+  background:rgba(18,19,26,.94);border-radius:20px;
+  box-shadow:0 10px 32px rgba(0,0,0,.4);border:1px solid var(--makior-border);
   display:flex;flex-direction:column;align-items:center;
   padding:6px 4px;gap:3px;width:52px;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -814,17 +943,17 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .dock-peta-alat::-webkit-scrollbar{display:none}
 .dock-peta-alat.sembunyi{transform:translateX(130%);opacity:0;pointer-events:none}
 .btn-alat-peta{
-  width:44px;height:44px;background:none;border:0;color:var(--teks-2);
+  width:44px;height:44px;background:none;border:0;color:var(--makior-text-muted);
   padding:3px 2px;border-radius:12px;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:2px;font-size:8.5px;font-weight:600;flex:0 0 auto;transition:all .15s;
 }
 .btn-alat-peta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;font-size:8.5px;line-height:1}
 .btn-alat-peta svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.btn-alat-peta:active{background:#F2F2F7;color:#000;transform:scale(.92)}
-.btn-alat-peta.aktif{color:#007AFF;font-weight:700;background:rgba(0,122,255,0.08)}
-.btn-alat-peta.btn-capture-peta{color:#000;font-weight:700;background:rgba(0,0,0,0.05)}
-.btn-alat-peta.btn-capture-peta svg{stroke:#000}
+.btn-alat-peta:active{background:var(--makior-surface-elevated);color:#fff;transform:scale(.92)}
+.btn-alat-peta.aktif{color:var(--makior-orange);font-weight:700;background:rgba(255,107,0,0.18)}
+.btn-alat-peta.btn-capture-peta{color:#fff;font-weight:700;background:rgba(255,255,255,0.08)}
+.btn-alat-peta.btn-capture-peta svg{stroke:#fff}
 
 /* Popover Menu Alat Peta Apple-style */
 .popover-alat-peta {
@@ -1376,7 +1505,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.12</span>
+            dkpoint <span id="loginVersi">v3.9.13</span>
           </div>
         </div>
       </div>
@@ -1413,36 +1542,73 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <button class="menu-kartu" data-menu="tabel"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M3.5 9.2h17M9.5 9.2V20M3.5 14.6h17"/></svg></span><b>Tabel Rekap</b><small>Unduh PDF / DOCX</small></button>
         <button class="menu-kartu" data-menu="room"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Room</b><small>Pindah room kerja</small></button>
         <button class="menu-kartu" data-menu="peta"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8Z"/><path d="M9 4.5v12.7M15 6.8v12.7"/></svg></span><b>Peta Sebaran</b><small>Lokasi foto + unduh KML</small></button>
-        <button class="menu-kartu" data-menu="antrian"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span><b>Antrian Upload</b><small>Status kirim ke Drive</small></button>
+        <button class="menu-kartu" data-menu="antrian"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span><b>Antrian Upload</b><small>Status kirim ke MEGA</small></button>
         <button class="menu-kartu" data-menu="pengaturan"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.9 1.9 0 1 1-2.69 2.69l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47v.17a1.9 1.9 0 1 1-3.8 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a1.9 1.9 0 1 1-2.69-2.69l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97h-.17a1.9 1.9 0 1 1 0-3.8h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.9 1.9 0 1 1 2.69-2.69l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10.05 3.13V3a1.9 1.9 0 1 1 3.8 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a1.9 1.9 0 1 1 2.69 2.69l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.97h.17a1.9 1.9 0 1 1 0 3.8h-.09a1.6 1.6 0 0 0-1.47.97Z"/></svg></span><b>Pengaturan</b><small>Logo, kompresi, akun</small></button>
       </div>
     </section>
 
-    <!-- KAMERA -->
+    <!-- KAMERA (MAKIOR PRO FIELD CAMERA) -->
     <section class="screen nopad" id="scKamera">
       <div id="wadahVideo">
-        <!-- Top bar kamera ala iOS: Lensa | GPS Pill | Segarkan -->
-        <div id="barAtasKamera" class="bar-atas-kamera">
-          <button id="btnPilihSensor" class="btn-lingkar-kamera-top" title="Pilih Lensa Kamera (Wide / Ultra Wide)" aria-label="Lensa Kamera" style="display:none">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-          </button>
-          <button id="btnToggleGrid" class="btn-lingkar-kamera-top" title="Tampilkan Grid 3x3" aria-label="Grid 3x3">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-          </button>
-          <div id="chipGps">&#128205; Mencari sinyal GPS…</div>
-          <button id="btnRefreshKamera" class="btn-lingkar-kamera-top" title="Segarkan Kamera" aria-label="Segarkan Kamera">
-            <svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
-          </button>
+        <!-- Top bar kamera Makior: Brand (Kiri) | Tools & Chip GPS (Kanan) -->
+        <div id="barAtasKamera" class="bar-atas-kamera makior-header">
+          <div class="makior-brand">
+            <img src="icons/logo-kemenhut.png" alt="Logo" class="makior-logo" onerror="this.style.display='none'">
+            <div class="makior-title-wrap">
+              <span class="makior-title">dkpoint</span>
+              <span class="makior-badge">PRO FIELD</span>
+            </div>
+          </div>
+          <div class="makior-top-right">
+            <button id="btnToggleGrid" class="btn-makior-top" title="Tampilkan Grid 3x3" aria-label="Grid 3x3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+            </button>
+            <button id="btnRefreshKamera" class="btn-makior-top" title="Segarkan Kamera" aria-label="Segarkan Kamera">
+              <svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+            </button>
+            <button id="btnPilihSensor" class="btn-makior-top" title="Pilih Lensa Kamera (Wide / Ultra Wide)" aria-label="Lensa Kamera" style="display:none">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            </button>
+            <div id="chipGps" class="makior-chip-gps" title="Status GPS Lapangan">&#128205; Mencari GPS…</div>
+          </div>
+        </div>
+
+        <!-- Panel Status Grid Makior (Grid Label Kecil + Nilai) -->
+        <div id="makiorStatusGrid" class="makior-status-grid">
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">GPS</span>
+            <span class="makior-stat-val" id="mStatGps">Mencari</span>
+          </div>
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">AKURASI</span>
+            <span class="makior-stat-val" id="mStatAkurasi">±-- m</span>
+          </div>
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">WAKTU</span>
+            <span class="makior-stat-val" id="mStatWaktu">--:-- WIB</span>
+          </div>
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">ROOM</span>
+            <span class="makior-stat-val" id="mStatRoom">LOKAL</span>
+          </div>
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">GRID</span>
+            <span class="makior-stat-val" id="mStatGrid">OFF</span>
+          </div>
+          <div class="makior-stat-item">
+            <span class="makior-stat-lbl">KOMPRESI</span>
+            <span class="makior-stat-val" id="mStatKompresi">500KB</span>
+          </div>
         </div>
 
         <div id="bingkai34">
           <video id="video" playsinline autoplay muted></video>
           <!-- TAMBAHAN GRID 3x3 -->
           <div id="gridKamera" style="display:none; position:absolute; inset:0; pointer-events:none; z-index:10;">
-            <div style="position:absolute; left:33.33%; top:0; bottom:0; border-left:1px solid rgba(255,255,255,0.3);"></div>
-            <div style="position:absolute; left:66.66%; top:0; bottom:0; border-left:1px solid rgba(255,255,255,0.3);"></div>
-            <div style="position:absolute; top:33.33%; left:0; right:0; border-top:1px solid rgba(255,255,255,0.3);"></div>
-            <div style="position:absolute; top:66.66%; left:0; right:0; border-top:1px solid rgba(255,255,255,0.3);"></div>
+            <div style="position:absolute; left:33.33%; top:0; bottom:0; border-left:1px solid rgba(255,255,255,0.25);"></div>
+            <div style="position:absolute; left:66.66%; top:0; bottom:0; border-left:1px solid rgba(255,255,255,0.25);"></div>
+            <div style="position:absolute; top:33.33%; left:0; right:0; border-top:1px solid rgba(255,255,255,0.25);"></div>
+            <div style="position:absolute; top:66.66%; left:0; right:0; border-top:1px solid rgba(255,255,255,0.25);"></div>
           </div>
           <div id="barZoom" class="bar-zoom" style="display:none">
             <button class="btn-zoom" data-zoom="0.5" id="btnZoom05">0.5</button>
@@ -1462,44 +1628,44 @@ td img.thumb-tabel:active{transform:scale(0.92)}
           <div id="tirai"></div>
         </div>
 
-        <div id="ruangCatatan" style="position:relative;margin-top:2px;">
-          <!-- Header microcopy yang menarik perhatian -->
-          <div class="header-catatan-kamera">
-            <span>📝 Catatan Lapangan</span>
-            <span style="font-size:10.5px;color:rgba(255,255,255,0.6);font-weight:400">Pilih tag cepat / ketik bebas:</span>
+        <div id="ruangCatatan" class="makior-ruang-catatan">
+          <!-- Tag Cepat Makior Horizontal Scrollable Strip -->
+          <div class="makior-strip-container">
+            <div class="chips-cepat-catatan makior-chips-strip" id="chipsCepatCatatan">
+              <span class="chip-tag-catatan" data-tag="Batas Kawasan Hutan">📍 Batas Kawasan</span>
+              <span class="chip-tag-catatan" data-tag="Patok Batas BPKH">🚩 Patok BPKH</span>
+              <span class="chip-tag-catatan" data-tag="Titik Pengukuran">📐 Pengukuran</span>
+              <span class="chip-tag-catatan" data-tag="Reboisasi Tanaman">🌲 Reboisasi</span>
+              <span class="chip-tag-catatan" data-tag="Verifikasi Lapangan">📑 Verifikasi</span>
+              <span class="chip-tag-catatan" data-tag="Tutupan Lahan">🌿 Tutupan Lahan</span>
+            </div>
           </div>
 
-          <!-- Quick Tags Chips Catatan Cepat Lapangan -->
-          <div class="chips-cepat-catatan" id="chipsCepatCatatan">
-            <span class="chip-tag-catatan" data-tag="Batas Kawasan Hutan">📍 Batas Kawasan</span>
-            <span class="chip-tag-catatan" data-tag="Patok Batas BPKH">🚩 Patok BPKH</span>
-            <span class="chip-tag-catatan" data-tag="Titik Pengukuran">📐 Pengukuran</span>
-            <span class="chip-tag-catatan" data-tag="Reboisasi Tanaman">🌲 Reboisasi</span>
-            <span class="chip-tag-catatan" data-tag="Verifikasi Lapangan">📑 Verifikasi</span>
-            <span class="chip-tag-catatan" data-tag="Tutupan Lahan">🌿 Tutupan Lahan</span>
-          </div>
+          <!-- Baris Input Catatan Lapangan + Toggle Watermark -->
+          <div class="makior-input-catatan-bar">
+            <div class="makior-input-wrap">
+              <span class="makior-input-ic">✏️</span>
+              <input id="inCatatanKamera" placeholder="Tulis nomor patok / catatan kegiatan..." maxlength="250" autocomplete="off">
+              <div id="sugestiCatatan" style="display:none; position:absolute; bottom:100%; left:0; right:0; background:rgba(18,19,26,0.96); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); color:#fff; border-radius:12px; margin-bottom:8px; z-index:50; overflow:hidden; border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
+            </div>
 
-          <div style="position:relative;padding:0 12px;margin-top:4px;">
-            <input id="inCatatanKamera" placeholder="Tulis nomor patok, lokasi, atau kegiatan..." maxlength="250" autocomplete="off" style="padding-left:14px;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.25);">
-            <div id="sugestiCatatan" style="display:none; position:absolute; bottom:100%; left:16px; right:16px; background:rgba(0,0,0,0.88); backdrop-filter:blur(10px); color:#fff; border-radius:12px; margin-bottom:8px; z-index:50; overflow:hidden;"></div>
-          </div>
-
-          <!-- Opsi cepat Watermark langsung di kamera -->
-          <div class="bar-opsi-wm-kamera">
-            <button type="button" id="btnTogTanggalWm" class="btn-opsi-wm aktif" title="Tampilkan tanggal dan jam di foto">
-              <span class="indikator-titik"></span> 📅 Tanggal di Foto
-            </button>
-            <button type="button" id="btnTogCatatanWm" class="btn-opsi-wm" title="Bubuhkan catatan ke watermark foto">
-              <span class="indikator-titik"></span> 📝 Catatan di Foto
-            </button>
+            <!-- Opsi Cepat Watermark Langsung di Kamera -->
+            <div class="makior-bar-opsi-wm">
+              <button type="button" id="btnTogTanggalWm" class="btn-opsi-wm aktif" title="Tampilkan tanggal dan jam di foto">
+                <span class="indikator-titik"></span> 📅 Tanggal
+              </button>
+              <button type="button" id="btnTogCatatanWm" class="btn-opsi-wm" title="Bubuhkan catatan ke watermark foto">
+                <span class="indikator-titik"></span> 📝 Catatan
+              </button>
+            </div>
           </div>
         </div>
         <div id="pesanKamera" style="display:none"></div>
       </div>
 
-      <!-- Bottom bar rana iOS: Menu (kiri) | Shutter (tengah) | Balik Kamera (kanan) -->
-      <div id="barKamera">
-        <button class="btn-lingkar-ios" id="btnMenu" aria-label="Menu" title="Menu Beranda">
+      <!-- Bottom Bar Rana Makior: Menu/Dashboard | Shutter | Balik Kamera -->
+      <div id="barKamera" class="makior-bar-kamera">
+        <button class="btn-makior-kontrol" id="btnMenu" aria-label="Menu" title="Menu Dashboard">
           <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
         </button>
 
@@ -1507,7 +1673,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
           <span class="shutter-dalam"></span>
         </button>
 
-        <button class="btn-lingkar-ios" id="btnGantiKamera" aria-label="Balik Kamera" title="Balik Kamera Depan/Belakang">
+        <button class="btn-makior-kontrol" id="btnGantiKamera" aria-label="Balik Kamera" title="Balik Kamera Depan/Belakang">
           <svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><path d="M9.6 13.4h4.8l-1.6-1.7"/><path d="M14.4 15.1H9.6l1.6 1.7"/></svg>
         </button>
       </div>
@@ -1584,7 +1750,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         </div>
         <div class="meta-baris"><span>Ukuran</span><b id="dtUkuran">—</b></div>
         <div class="meta-baris"><span>Status</span><b id="dtStatus">—</b></div>
-        <div class="meta-baris" style="border-bottom:0" id="barisDrive"><span>Berkas Drive</span><b id="dtDrive">—</b></div>
+        <div class="meta-baris" style="border-bottom:0" id="barisDrive"><span>Berkas Cloud</span><b id="dtDrive">—</b></div>
       </div>
       <div class="kartu" id="kartuGagal" style="display:none;border-left:4px solid var(--merah)">
         <div class="kartu-judul" style="color:var(--merah)">Gagal Dikirim</div>
@@ -1948,10 +2114,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <p class="catatan-kecil" id="stKetAwet"></p>
         <label class="saklar" for="inHapusKirim">
           <input type="checkbox" id="inHapusKirim">
-          <span>Hapus foto dari HP setelah berhasil terkirim ke Drive</span>
+          <span>Hapus foto dari HP setelah berhasil terkirim ke MEGA</span>
         </label>
         <p class="catatan-kecil">Menghemat ruang HP, tetapi foto yang sudah terkirim tidak lagi
-          muncul di Galeri dan Tabel Rekap di HP ini — hanya bisa dilihat lewat Drive atau panel admin.</p>
+          muncul di Galeri dan Tabel Rekap di HP ini — hanya bisa dilihat lewat cloud MEGA atau panel admin.</p>
         <button class="tombol abu" id="btnEkspor">Ekspor Metadata (JSON)</button>
       </div>
       <div class="kartu">
@@ -2026,7 +2192,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.12';
+const VERSI = '3.9.13';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2182,7 +2348,13 @@ const saring = (arr, lingkup) => {
 function ke(nama, dorong=true){
   if(nama==='room'){ ke('beranda', dorong); bukaDialogRoom(); return; }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('aktif'));
-  const el=$(SCREEN[nama]); el.classList.add('aktif'); el.scrollTop=0;
+  const el=$(SCREEN[nama]);
+  if(el){
+    el.classList.add('aktif');
+    el.scrollTop = 0;
+  }
+  if($('layar')) $('layar').scrollTop = 0;
+  window.scrollTo(0, 0);
   $('judulBar').textContent = JUDUL[nama];
 
   const login = nama==='login';
@@ -2272,30 +2444,62 @@ function mulaiGPS(){
       }
 
       const txtGps = '\u{1F4CD} ' + fmtKoord(S.posisi) + ' · ±' + S.posisi.akurasi + ' m' + (S.posisi.tersimpan ? ' (stabil)' : '');
-      $('chipGps').textContent = txtGps;
+      const chipEl = $('chipGps');
+      if(chipEl){
+        chipEl.textContent = txtGps;
+        chipEl.classList.add('kunci');
+      }
       $('wmKoord').textContent = 'Koordinat: ' + fmtKoord(S.posisi);
       if($('petaCapInfo')) $('petaCapInfo').textContent = 'GPS: ' + fmtKoord(S.posisi) + ' (±' + S.posisi.akurasi + 'm)';
       if(typeof petaAktif !== 'undefined' && petaAktif){
         PETA.perbaruiLokasiUser(petaAktif, S.posisi);
         if($('ketPetaGps')) $('ketPetaGps').textContent = '\u{1F4CD} ±' + S.posisi.akurasi + ' m' + (S.posisi.tersimpan ? ' (stabil)' : '');
       }
+      perbaruiMakiorStatus();
     },
     ()=>{
       if (terakhirGpsBagus) {
         S.posisi = { lat: terakhirGpsBagus.lat, lon: terakhirGpsBagus.lon, akurasi: terakhirGpsBagus.akurasi, tersimpan: true };
-        $('chipGps').textContent = '\u{1F4CD} ' + fmtKoord(S.posisi) + ' · ±' + S.posisi.akurasi + ' m (tersimpan)';
+        const chipEl = $('chipGps');
+        if(chipEl){
+          chipEl.textContent = '\u{1F4CD} ' + fmtKoord(S.posisi) + ' · ±' + S.posisi.akurasi + ' m (tersimpan)';
+          chipEl.classList.add('kunci');
+        }
         if($('petaCapInfo')) $('petaCapInfo').textContent = 'GPS: ' + fmtKoord(S.posisi) + ' (±' + S.posisi.akurasi + 'm)';
       } else {
-        $('chipGps').textContent='⚠️ GPS tidak aktif / izin ditolak';
+        const chipEl = $('chipGps');
+        if(chipEl){
+          chipEl.classList.remove('kunci');
+          chipEl.innerHTML = '⚠️ GPS Ditolak <button id="btnRetryGps" style="margin-left:4px;background:var(--makior-orange);color:#fff;border:0;border-radius:10px;padding:1px 6px;font-size:9.5px;font-weight:700;cursor:pointer">Ulangi</button>';
+          const bRetry = $('btnRetryGps');
+          if(bRetry) bRetry.onclick = (e) => { e.stopPropagation(); pesan('Mencoba meminta izin GPS kembali…'); mulaiGPS(); };
+        }
         if($('ketPetaGps')) $('ketPetaGps').textContent = 'GPS tidak aktif';
       }
+      perbaruiMakiorStatus();
     },
     {enableHighAccuracy:true, timeout:15000, maximumAge:5000}
   );
 }
+
+function perbaruiMakiorStatus(){
+  if($('mStatGps')) $('mStatGps').textContent = S.posisi ? S.posisi.lat.toFixed(4) + ', ' + S.posisi.lon.toFixed(4) : 'Mencari';
+  if($('mStatAkurasi')) $('mStatAkurasi').textContent = S.posisi ? '±' + S.posisi.akurasi + 'm' : '±-- m';
+  if($('mStatRoom')) $('mStatRoom').textContent = (S.room || 'LOKAL').toUpperCase().substring(0, 10);
+  if($('mStatKompresi')) $('mStatKompresi').textContent = (S.targetKB || 500) + 'KB';
+  if($('mStatGrid')){
+    const gk = $('gridKamera');
+    $('mStatGrid').textContent = (gk && gk.style.display !== 'none') ? '3×3' : 'OFF';
+  }
+}
+
 const fmtKoord = p => p ? p.lat.toFixed(6)+', '+p.lon.toFixed(6) : 'Tidak tersedia';
 const fmtWaktu = ts => new Date(ts).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-setInterval(()=>{ $('wmWaktu').textContent = fmtWaktu(Date.now())+' WIB'; },1000);
+setInterval(()=>{
+  const now = Date.now();
+  $('wmWaktu').textContent = fmtWaktu(now)+' WIB';
+  if($('mStatWaktu')) $('mStatWaktu').textContent = new Date(now).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB';
+},1000);
 
 /* ---------- Orientasi HP (Auto-Rotate Watermark) ---------- */
 let curOrientasi = 0;
@@ -2460,6 +2664,7 @@ async function nyalakanKamera(){
       S.zoomCaps = track.getCapabilities();
     }
     await terapkanZoom(S.zoomLevel || 1);
+    if(typeof perbaruiMakiorStatus === 'function') perbaruiMakiorStatus();
   }catch(e){
     gagalKamera(e.name==='NotAllowedError'
       ? 'Izin kamera ditolak. Buka pengaturan situs/aplikasi lalu izinkan Kamera.'
@@ -3406,7 +3611,7 @@ function gambarAksiGaleri(data){
   $('btnHapusPilihan').onclick=()=>{
     const n=S.terpilih.size;
     dialog('<h3>Hapus '+n+' foto?</h3><p>Foto dan catatannya hilang dari HP ini dan tidak bisa dikembalikan.'+
-      '<br><br>Yang sudah terkirim tetap aman di Google Drive.</p>'+
+      '<br><br>Yang sudah terkirim tetap aman di Cloud MEGA.</p>'+
       '<div class="baris-tombol"><button class="tombol abu" onclick="tutupDialog()" style="margin-top:0">Batal</button>'+
       '<button class="tombol" style="background:var(--merah);margin-top:0" onclick="hapusPilihan()">Hapus</button></div>');
   };
@@ -8081,15 +8286,15 @@ document.addEventListener('visibilitychange', ()=>{
   const gridKamera = $('gridKamera');
   if(btnToggleGrid && gridKamera){
     btnToggleGrid.onclick = () => {
-      if(gridKamera.style.display === 'none') {
+      const isHidden = (gridKamera.style.display === 'none' || !gridKamera.style.display);
+      if(isHidden) {
         gridKamera.style.display = 'block';
-        btnToggleGrid.style.background = 'rgba(255,255,255,0.8)';
-        btnToggleGrid.style.color = '#000';
+        btnToggleGrid.classList.add('aktif');
       } else {
         gridKamera.style.display = 'none';
-        btnToggleGrid.style.background = 'rgba(0,0,0,0.45)';
-        btnToggleGrid.style.color = '#fff';
+        btnToggleGrid.classList.remove('aktif');
       }
+      if(typeof perbaruiMakiorStatus === 'function') perbaruiMakiorStatus();
     };
   }
 
@@ -8172,8 +8377,13 @@ document.addEventListener('visibilitychange', ()=>{
       const valLama = inCat.value.trim();
       if (!valLama) {
         inCat.value = tag;
+        chip.classList.add('aktif');
       } else if (!valLama.includes(tag)) {
         inCat.value = valLama + ' - ' + tag;
+        chip.classList.add('aktif');
+      } else {
+        inCat.value = valLama.replace(' - ' + tag, '').replace(tag, '').trim();
+        chip.classList.remove('aktif');
       }
       localStorage.setItem('dkpoint_catatan_wm', 'true');
       segarkanOpsiWmKamera();
