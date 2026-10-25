@@ -51,10 +51,21 @@ jobs:
           mkdir -p www/dl
           cp android/app/build/outputs/apk/release/app-release.apk www/dl/dkpoint.apk
 
+      - name: Unggah APK sebagai artifact (bisa diunduh dari halaman run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dkpoint-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
       - name: Commit APK ke main (Pages akan deploy otomatis)
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add www/dl/dkpoint.apk
-          git diff --cached --quiet || git commit -m "apk: dkpoint ${{ steps.versi.outputs.nama }} (build ${{ github.run_number }})"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "apk: dkpoint ${{ steps.versi.outputs.nama }} (build ${{ github.run_number }})"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "Gagal push APK setelah 3 kali coba"; exit 1
