@@ -2,7 +2,7 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v3.9.15';
+const VERSI = 'dkpoint-v3.9.16';
 const CACHE_TILES = 'dkpoint-tiles-v1';
 const BERKAS = [
   './',
@@ -13,6 +13,9 @@ const BERKAS = [
   './js/exif-gps.js',
   './js/leaflet.js',
   './js/leaflet.css',
+  './js/maplibre-gl.css',
+  './js/maplibre-gl.js',
+  './js/leaflet-maplibre-gl.js',
   './js/megajs.umd.js',
   './js/mega-engine.js',
   './manifest.webmanifest',

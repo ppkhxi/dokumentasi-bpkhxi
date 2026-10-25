@@ -155,9 +155,9 @@ const PETA = (function () {
   const ATRIBUSI_OSM = '&copy; OpenStreetMap contributors';
 
   // 6. MapLibre GL JS 4.7.1 (vektor WebGL) — dimuat hanya saat basemap ini dipilih
-  const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
-  const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
-  const MAPLIBRE_BRIDGE_JS = 'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+  const MAPLIBRE_CSS = './js/maplibre-gl.css';
+  const MAPLIBRE_JS = './js/maplibre-gl.js';
+  const MAPLIBRE_BRIDGE_JS = './js/leaflet-maplibre-gl.js';
   const MAPLIBRE_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
   const ATRIBUSI_MAPLIBRE = '&copy; OpenFreeMap &copy; OpenMapTiles &copy; OpenStreetMap contributors';
 
