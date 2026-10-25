@@ -1826,6 +1826,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             <svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></svg>
             <span id="labelPeta3D">3D</span>
           </button>
+          <button id="btnPetaGyro" class="btn-alat-peta" title="Gyro: peta mengikuti arah HP">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><path d="m12 8 2.5 4-2.5 4-2.5-4Z"/></svg>
+            <span id="labelPetaGyro">Gyro</span>
+          </button>
           <button id="btnPetaLokasi" class="btn-alat-peta" title="Lokasi Berdiri Saya">
             <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
             <span>Lokasi</span>
@@ -2507,7 +2511,17 @@ function perbaruiOrientasi(deg){
     else if(deg === -90) tb.classList.add('rotasi-min90');
   }
 }
+/* Satu sumber orientasi: screen.orientation bila tersedia. Sensor (deviceorientation)
+   hanya dipakai sebagai cadangan, karena keduanya bisa memberi arah yang berlawanan
+   dan membuat watermark serta tombol kamera bolak-balik. */
+const adaScreenOrientation = !!(window.screen && screen.orientation);
+function sudutDariLayar(){
+  const tipe = screen.orientation.type || '';
+  if(!tipe.startsWith('landscape')) return 0;
+  return screen.orientation.angle === 270 ? -90 : 90;
+}
 window.addEventListener('deviceorientation', (e)=>{
+  if(adaScreenOrientation) return;
   if(e.gamma === null || e.beta === null) return;
   const g = e.gamma, b = e.beta;
   if(Math.abs(g) > 38 && Math.abs(b) < 65){
@@ -2517,14 +2531,9 @@ window.addEventListener('deviceorientation', (e)=>{
     perbaruiOrientasi(0);
   }
 }, {passive:true});
-if(window.screen && screen.orientation){
-  screen.orientation.addEventListener('change', ()=>{
-    if(screen.orientation.type.startsWith('landscape')){
-      perbaruiOrientasi(screen.orientation.angle === 270 ? -90 : 90);
-    } else {
-      perbaruiOrientasi(0);
-    }
-  });
+if(adaScreenOrientation){
+  perbaruiOrientasi(sudutDariLayar());
+  screen.orientation.addEventListener('change', ()=> perbaruiOrientasi(sudutDariLayar()));
 }
 
 /* ---------- Deteksi Sensor & Zoom Kamera ---------- */
@@ -5305,7 +5314,16 @@ $('btnPeta3D').onclick = () => {
     return;
   }
   $('labelPeta3D').textContent = aktif ? '2D' : '3D';
+  if (!aktif && $('labelPetaGyro')) $('labelPetaGyro').textContent = 'Gyro';
   pesan(aktif ? 'Mode 3D aktif. Geser dua jari untuk memutar.' : 'Kembali ke mode 2D');
+};
+
+$('btnPetaGyro').onclick = async () => {
+  if (!petaAktif || !petaAktif.mode3D) { pesan('Aktifkan mode 3D dulu.'); return; }
+  const aktif = await PETA.gyro3D(petaAktif);
+  if (aktif === null) { pesan('Izin sensor orientasi ditolak atau tidak tersedia.'); return; }
+  $('labelPetaGyro').textContent = aktif ? 'Gyro ✓' : 'Gyro';
+  pesan(aktif ? 'Gyro aktif: peta mengikuti arah HP' : 'Gyro dimatikan');
 };
 
 // Popover Menu Alat Peta

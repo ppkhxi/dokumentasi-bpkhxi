@@ -458,10 +458,43 @@ const PETA = (function () {
     if (ml.isStyleLoaded()) pasang(); else ml.once('load', pasang);
   }
 
+  // Gestur dua jari di mode 3D: putar (dua jari berputar) dan miring (dua jari naik-turun).
+  // Leaflet tetap menangani geser dan cubit-zoom dengan satu atau dua jari.
+  function pasangGestur3D(peta) {
+    if (peta._gestur3D) return;
+    peta._gestur3D = true;
+    const el = peta.getContainer();
+    let awal = null;
+    const sudut = (a, b) => Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+    el.addEventListener('touchstart', e => {
+      if (!peta.mode3D || e.touches.length !== 2) return;
+      const ml = mapMapLibre(peta); if (!ml) return;
+      awal = {
+        s: sudut(e.touches[0], e.touches[1]),
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        bearing: ml.getBearing(), pitch: ml.getPitch()
+      };
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (!peta.mode3D || !awal || e.touches.length !== 2) return;
+      const ml = mapMapLibre(peta); if (!ml) return;
+      e.preventDefault();
+      let d = sudut(e.touches[0], e.touches[1]) - awal.s;
+      if (d > 180) d -= 360; if (d < -180) d += 360;
+      const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const pitch = Math.max(0, Math.min(60, awal.pitch - (y - awal.y) * 0.25));
+      ml.jumpTo({ bearing: awal.bearing + d, pitch: pitch });
+    }, { passive: false });
+    const akhir = () => { awal = null; };
+    el.addEventListener('touchend', akhir, { passive: true });
+    el.addEventListener('touchcancel', akhir, { passive: true });
+  }
+
   function aktifkan3D(peta) {
     const ml = mapMapLibre(peta);
     if (!ml) return false;
     peta.mode3D = true;
+    pasangGestur3D(peta);
     try { peta.removeLayer(peta.lapisTitik); } catch (e) {}
     try { peta.removeLayer(peta.lapisUser); } catch (e) {}
     try { peta.removeLayer(peta.lapisKML); } catch (e) {}
@@ -473,6 +506,7 @@ const PETA = (function () {
   function matikan3D(peta) {
     if (!peta) return;
     peta.mode3D = false;
+    matikanGyro3D(peta);
     try { if (!peta.hasLayer(peta.lapisTitik)) peta.addLayer(peta.lapisTitik); } catch (e) {}
     try { if (!peta.hasLayer(peta.lapisUser)) peta.addLayer(peta.lapisUser); } catch (e) {}
     try { if (!peta.hasLayer(peta.lapisKML)) peta.addLayer(peta.lapisKML); } catch (e) {}
@@ -481,6 +515,43 @@ const PETA = (function () {
       try { if (ml.getLayer(LAPIS_TITIK3D)) ml.setLayoutProperty(LAPIS_TITIK3D, 'visibility', 'none'); } catch (e) {}
       try { ml.easeTo({ pitch: 0, bearing: 0, duration: 600 }); } catch (e) {}
     }
+  }
+
+  // Gyro: arah kompas HP menjadi arah peta (heading di atas). Di iOS perlu izin sensor.
+  function matikanGyro3D(peta) {
+    if (peta && peta.gyroHandler) {
+      window.removeEventListener('deviceorientation', peta.gyroHandler);
+      window.removeEventListener('deviceorientationabsolute', peta.gyroHandler);
+    }
+    if (peta) peta.gyroAktif = false;
+  }
+
+  // true = gyro aktif, false = mati, null = izin ditolak / tidak tersedia / belum 3D
+  async function gyro3D(peta) {
+    if (!peta || !peta.mode3D) return null;
+    if (peta.gyroAktif) { matikanGyro3D(peta); return false; }
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const izin = await DeviceOrientationEvent.requestPermission();
+        if (izin !== 'granted') return null;
+      }
+    } catch (e) { return null; }
+    peta.gyroHandler = e => {
+      const ml = mapMapLibre(peta);
+      if (!ml || !peta.mode3D) return;
+      let heading = null;
+      if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
+        heading = e.webkitCompassHeading;
+      } else if (e.absolute === true && e.alpha != null) {
+        heading = (360 - e.alpha) % 360;
+      }
+      if (heading != null) ml.setBearing(heading);
+    };
+    window.addEventListener('deviceorientation', peta.gyroHandler, { passive: true });
+    window.addEventListener('deviceorientationabsolute', peta.gyroHandler, { passive: true });
+    peta.gyroAktif = true;
+    return true;
   }
 
   // true = 3D aktif, false = kembali 2D, null = basemap belum vektor (tidak berubah)
@@ -1072,6 +1143,7 @@ const PETA = (function () {
     pusatkanKeUser: pusatkanKeUser,
     gantiBasemap: gantiBasemap,
     toggle3D: toggle3D,
+    gyro3D: gyro3D,
     matikan3D: matikan3D,
     dapatkanBasemap: dapatkanBasemap,
     fokusJawa: fokusJawa,
