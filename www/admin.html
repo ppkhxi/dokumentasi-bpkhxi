@@ -7,6 +7,7 @@
 <link rel="icon" href="icons/favicon-96.png" sizes="96x96">
 <title>Panel Admin — Portal Dokumentasi dkpoint</title>
 <script src="js/security.js"></script>
+<script src="js/qrcode.js"></script>
 <script src="peta.js"></script>
 <style>
 :root{
@@ -484,6 +485,34 @@ function linkLengkap(r){
   return r.linkUndangan + '&api=' + encodeURIComponent(A.endpoint);
 }
 
+/* QR dibuat di browser (pustaka js/qrcode.js, qrcode-generator). Tidak mengirim
+   link undangan ke layanan pihak ketiga. */
+function buatQrSvg(teks){
+  if(typeof qrcode !== 'function') throw new Error('Pustaka QR (js/qrcode.js) belum terpasang');
+  const qr = qrcode(0, 'M');
+  qr.addData(teks);
+  qr.make();
+  return qr.createSvgTag({ cellSize: 8, margin: 4 });
+}
+
+function svgKePng(svgEl){
+  return new Promise((resolve, reject)=>{
+    if(!svgEl) return reject(new Error('QR belum dibuat'));
+    const xml = new XMLSerializer().serializeToString(svgEl);
+    const img = new Image();
+    img.onload = ()=>{
+      const c = document.createElement('canvas');
+      c.width = 1024; c.height = 1024;
+      const g = c.getContext('2d');
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('Gagal membuat gambar')), 'image/png');
+    };
+    img.onerror = ()=> reject(new Error('Gagal membaca QR'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+  });
+}
+
 function gambarRoom(){
   if(!A.rooms.length){
     $('isiRoom').innerHTML = '<div class="kosong">Belum ada room. Buat room pertama di atas.</div>';
@@ -506,6 +535,14 @@ function gambarRoom(){
       </div>
       <p class="catatan" style="margin-top:6px">Link ini sudah membawa alamat server — petugas
         cukup membukanya sekali di HP, tidak perlu mengisi apa pun di menu Setelan.</p>
+      <div style="margin-top:8px"><button class="kecil abu" data-qr="${i}">Tampilkan QR</button></div>
+      <div id="qr${i}" class="sembunyi" style="margin-top:10px;text-align:center">
+        <div id="qrKotak${i}" style="background:#fff;display:inline-block;padding:10px;border-radius:12px"></div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+          <button class="kecil" data-qrbagi="${i}">Bagikan QR</button>
+          <button class="kecil abu" data-qrunduh="${i}">Unduh PNG</button>
+        </div>
+      </div>
     </div>`).join('');
 
   $('isiRoom').querySelectorAll('[data-salin]').forEach(b=> b.onclick=()=>{
@@ -513,6 +550,42 @@ function gambarRoom(){
     navigator.clipboard.writeText(el.value)
       .then(()=>kabar('Link undangan disalin — kirim ke petugas lewat WhatsApp'))
       .catch(()=>{ document.execCommand('copy'); kabar('Link undangan disalin'); });
+  });
+  $('isiRoom').querySelectorAll('[data-qr]').forEach(b=> b.onclick=()=>{
+    const i=b.dataset.qr, r=A.rooms[i], panel=$('qr'+i);
+    if(!panel.classList.contains('sembunyi')){ panel.classList.add('sembunyi'); return; }
+    try{
+      $('qrKotak'+i).innerHTML = buatQrSvg(linkLengkap(r));
+      panel.classList.remove('sembunyi');
+    }catch(e){ kabar(e.message, true); }
+  });
+  $('isiRoom').querySelectorAll('[data-qrunduh]').forEach(b=> b.onclick=async ()=>{
+    const i=b.dataset.qrunduh, r=A.rooms[i];
+    try{
+      const blob = await svgKePng($('qrKotak'+i).querySelector('svg'));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'QR-undangan-' + r.nama.replace(/[^\w-]+/g,'_') + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    }catch(e){ kabar(e.message, true); }
+  });
+  $('isiRoom').querySelectorAll('[data-qrbagi]').forEach(b=> b.onclick=async ()=>{
+    const i=b.dataset.qrbagi, r=A.rooms[i], teks = linkLengkap(r);
+    try{
+      const blob = await svgKePng($('qrKotak'+i).querySelector('svg'));
+      const file = new File([blob], 'QR-undangan-' + r.nama.replace(/[^\w-]+/g,'_') + '.png', { type: 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        await navigator.share({ title: 'Undangan room ' + r.nama, text: 'Scan QR untuk bergabung ke room ' + r.nama, files: [file] });
+        return;
+      }
+      if(navigator.share){
+        await navigator.share({ title: 'Undangan room ' + r.nama, url: teks });
+        return;
+      }
+      await navigator.clipboard.writeText(teks);
+      kabar('Perangkat ini tidak bisa membagikan gambar. Link disalin.');
+    }catch(e){ if(e && e.name !== 'AbortError') kabar('Gagal membagikan: ' + e.message, true); }
   });
   $('isiRoom').querySelectorAll('[data-aksi]').forEach(b=> b.onclick=async ()=>{
     const perintah=b.dataset.aksi, nama=b.dataset.room;
