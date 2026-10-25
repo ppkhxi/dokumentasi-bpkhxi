@@ -7611,15 +7611,8 @@ async function bukaDialogSemuaPengguna(){
       }
     });
     const daftarUnik = Array.from(mapUser.values());
-    // Jumlah pengguna dari server: akun MEGA + perangkat unik (bukan kunjungan atau foto)
-    let totalServer = null;
-    try {
-      const endpoint = localStorage.getItem('bpkh_endpoint') || localStorage.getItem('dkpoint_endpoint');
-      const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ aksi: 'hitungPengguna' }) });
-      const j = await r.json();
-      if (j && j.ok) totalServer = j.totalPengguna;
-    } catch(e) {}
-    res.totalPengguna = totalServer != null ? totalServer : '—';
+    // Jumlah pengguna belum dihitung di aplikasi (tanpa panggilan ke backend)
+    res.totalPengguna = '—';
 
     let barisHtml = daftarUnik.length ? daftarUnik.map((u, idx) => `
       <div style="padding:10px 12px;background:#fff;border:1px solid var(--garis);border-radius:12px;margin-bottom:8px">
