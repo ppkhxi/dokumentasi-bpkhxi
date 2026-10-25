@@ -23,7 +23,7 @@ class MainActivity : Activity() {
 
     private lateinit var web: WebView
     private var fileCallback: ValueCallback<Array<Uri>>? = null
-    private lateinit var prefs: SharedPreferences
+    private val prefs: SharedPreferences by lazy { getSharedPreferences("dokumentasi", MODE_PRIVATE) }
 
     companion object {
         const val URL_APP = "https://dkpoint.pages.dev/"
@@ -63,7 +63,6 @@ class MainActivity : Activity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun mulai() {
-        prefs = getSharedPreferences("dokumentasi", MODE_PRIVATE)
 
         web = WebView(this)
         setContentView(web)
