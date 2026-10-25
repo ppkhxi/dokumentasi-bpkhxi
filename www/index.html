@@ -8178,43 +8178,10 @@ function identitasKunci(){
   return email ? 'akun:' + email.trim().toLowerCase() : 'perangkat:' + dapatkanDeviceId();
 }
 
-async function kirimTelemetriPengguna(){
-  try{
-    const deviceId = dapatkanDeviceId();
-    const jmlSesi = catatSesiPengguna();
-    const dataTelemetri = {
-      aksi: 'telemetri',
-      deviceId,
-      nama: (typeof S !== 'undefined' && S.nama) || localStorage.getItem('bpkh_nama') || 'Anonim',
-      userId: (typeof S !== 'undefined' && S.userId) || localStorage.getItem('bpkh_userId') || '',
-      room: (typeof S !== 'undefined' && S.room) || localStorage.getItem('bpkh_room') || 'LOKAL',
-      platform: deteksiPlatform(),
-      modeTampilan: deteksiModeTampilan(),
-      versi: typeof VERSI !== 'undefined' ? VERSI : '3.8.5',
-      jmlSesi,
-      kunci: identitasKunci(),
-      pertamaKali: localStorage.getItem('dkpoint_pertama_kali') || new Date().toISOString(),
-      terakhirAktif: new Date().toISOString(),
-      layar: (window.screen ? `${window.screen.width}x${window.screen.height}` : '')
-    };
-
-    const endpoint = localStorage.getItem('bpkh_endpoint') || localStorage.getItem('dkpoint_endpoint');
-    if(endpoint && navigator.onLine){
-      fetch(endpoint, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataTelemetri)
-      }).catch(()=>{});
-    }
-  }catch(e){}
-}
-
 /* Kirim sisa antrian begitu aplikasi dibuka kembali dari latar belakang. */
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible' && navigator.onLine){
     if(S.nama) sinkron(true);
-    kirimTelemetriPengguna();
   }
 });
 
@@ -8223,7 +8190,6 @@ document.addEventListener('visibilitychange', ()=>{
   perbaruiKoneksi();
   kunciPenyimpanan();
   if($('loginVersi')) $('loginVersi').textContent = 'v' + VERSI;
-  setTimeout(kirimTelemetriPengguna, 1800);
 
   // Muat room yang tersimpan
   if(typeof MegaEngine !== 'undefined'){
