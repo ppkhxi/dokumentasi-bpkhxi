@@ -31,7 +31,9 @@ jobs:
       - name: Siapkan keystore dari secret
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        run: echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "Secret ANDROID_KEYSTORE_B64 belum diisi"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
       - name: Ambil versi dari index.html
         id: versi
