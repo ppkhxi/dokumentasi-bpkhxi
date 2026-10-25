@@ -1510,7 +1510,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.36</span>
+            Dokumentasi <span id="loginVersi">v3.9.37</span>
           </div>
         </div>
       </div>
@@ -2255,7 +2255,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.36';
+const VERSI = '3.9.37';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -8297,7 +8297,7 @@ $('btnSimpanSetting').onclick = ()=>{
   }
   if ($('cbBubbleAktif')) {
     try{ localStorage.setItem('dkpoint_bubble_aktif', $('cbBubbleAktif').checked ? 'true' : 'false'); }catch(_){}
-    perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
+    kabarkanBubbleNative($('cbBubbleAktif').checked); perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
   }
 
   $('inKantor').value = S.kantor;
@@ -8338,6 +8338,9 @@ function tutupFlyCapture(){
   const f = $('flyCapture'); if(f) f.classList.remove('tampil');
   if(flyStream){ flyStream.getTracks().forEach(t => t.stop()); flyStream = null; }
   const v = $('flyVideo'); if(v) v.srcObject = null;
+}
+function kabarkanBubbleNative(aktif){
+  try{ if(window.DokumentasiNative && DokumentasiNative.setBubble) DokumentasiNative.setBubble(!!aktif); }catch(e){}
 }
 function bubbleAktif(){
   try{ return localStorage.getItem('dkpoint_bubble_aktif') !== 'false'; }catch(_){ return true; }
@@ -8463,7 +8466,7 @@ async function jepretFlyCapture(){
   $('flyMenuPeta').onclick = () => pilihMenuFly('peta');
   if($('cbBubbleAktif')) $('cbBubbleAktif').onchange = () => {
     try{ localStorage.setItem('dkpoint_bubble_aktif', $('cbBubbleAktif').checked ? 'true' : 'false'); }catch(_){}
-    perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
+    kabarkanBubbleNative($('cbBubbleAktif').checked); perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
   };
   document.addEventListener('visibilitychange', () => { if(document.hidden) tutupFlyCapture(); });
 })();

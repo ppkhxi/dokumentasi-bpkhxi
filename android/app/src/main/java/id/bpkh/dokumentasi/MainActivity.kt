@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -64,6 +65,7 @@ class MainActivity : Activity() {
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
         web.webViewClient = WebViewClient()
+        web.addJavascriptInterface(JembatanApp(), "DokumentasiNative")
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 val butuhKamera = request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
@@ -116,7 +118,7 @@ class MainActivity : Activity() {
             if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("sudah_tanya_overlay", false)) {
                 prefs.edit().putBoolean("sudah_tanya_overlay", true).apply()
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            } else if (Settings.canDrawOverlays(this) && !OverlayService.jalan) {
+            } else if (Settings.canDrawOverlays(this) && bubbleAktif() && !OverlayService.jalan) {
                 ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
             }
         }
@@ -132,6 +134,31 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         if (web.canGoBack()) web.goBack() else super.onBackPressed()
+    }
+
+    private fun bubbleAktif(): Boolean = prefs.getBoolean("bubble_aktif", true)
+
+    private fun atur(aktif: Boolean) {
+        prefs.edit().putBoolean("bubble_aktif", aktif).apply()
+        if (aktif) {
+            if (Settings.canDrawOverlays(this)) {
+                ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
+            } else {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            }
+        } else {
+            stopService(Intent(this, OverlayService::class.java))
+        }
+    }
+
+    inner class JembatanApp {
+        @JavascriptInterface
+        fun setBubble(aktif: Boolean) {
+            runOnUiThread { atur(aktif) }
+        }
+
+        @JavascriptInterface
+        fun tutup() {}
     }
 
     private fun punyaIzin(izin: String): Boolean =
