@@ -8178,10 +8178,36 @@ function identitasKunci(){
   return email ? 'akun:' + email.trim().toLowerCase() : 'perangkat:' + dapatkanDeviceId();
 }
 
+/* Telemetri pengguna dikirim ke endpoint Cloudflare (/api/telemetri). */
+async function kirimTelemetriPengguna(){
+  try{
+    if(!navigator.onLine) return;
+    const jmlSesi = catatSesiPengguna();
+    await fetch('/api/telemetri', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: dapatkanDeviceId(),
+        nama: (typeof S !== 'undefined' && S.nama) || localStorage.getItem('bpkh_nama') || 'Anonim',
+        userId: (typeof S !== 'undefined' && S.userId) || localStorage.getItem('bpkh_userId') || '',
+        room: (typeof S !== 'undefined' && S.room) || localStorage.getItem('bpkh_room') || 'LOKAL',
+        platform: deteksiPlatform(),
+        modeTampilan: deteksiModeTampilan(),
+        versi: typeof VERSI !== 'undefined' ? VERSI : '',
+        jmlSesi,
+        kunci: identitasKunci(),
+        pertamaKali: localStorage.getItem('dkpoint_pertama_kali') || new Date().toISOString(),
+        layar: window.screen ? `${window.screen.width}x${window.screen.height}` : ''
+      })
+    });
+  }catch(e){}
+}
+
 /* Kirim sisa antrian begitu aplikasi dibuka kembali dari latar belakang. */
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='visible' && navigator.onLine){
     if(S.nama) sinkron(true);
+    kirimTelemetriPengguna();
   }
 });
 
@@ -8190,6 +8216,7 @@ document.addEventListener('visibilitychange', ()=>{
   perbaruiKoneksi();
   kunciPenyimpanan();
   if($('loginVersi')) $('loginVersi').textContent = 'v' + VERSI;
+  setTimeout(kirimTelemetriPengguna, 1800);
 
   // Muat room yang tersimpan
   if(typeof MegaEngine !== 'undefined'){

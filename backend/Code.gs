@@ -1,3 +1,7 @@
+/* DEPRECATED — tidak lagi dipakai. Backend dipindah ke Cloudflare Pages Function
+ * (functions/api/admin.js dan functions/api/telemetri.js, basis data D1 di db/schema.sql).
+ * Berkas ini dibiarkan hanya sebagai arsip. TOKEN_ADMIN di sini sudah tidak aman
+ * (repo publik) dan harus dirotasi/dicabut. */
 /**
  * ============================================================================
  * BACKEND PORTAL DOKUMENTASI BPKH WILAYAH XI
