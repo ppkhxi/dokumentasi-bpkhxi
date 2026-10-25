@@ -1506,7 +1506,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.32</span>
+            Dokumentasi <span id="loginVersi">v3.9.33</span>
           </div>
         </div>
       </div>
@@ -2085,6 +2085,11 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             <p class="catatan-kecil">PNG latar transparan, minimal 512&times;512 px.</p>
           </div>
         </div>
+        <label class="f" for="selLogoPilih">Logo untuk watermark</label>
+        <select class="f" id="selLogoPilih">
+          <option value="baru">Logo baru (kamera)</option>
+          <option value="lama">Logo sebelumnya (unggahan)</option>
+        </select>
         <label class="f" for="inKantor">Nama Instansi / Kantor</label>
         <input class="f" id="inKantor" value="dkpoint" placeholder="BPKH Wilayah XI">
         
@@ -2243,7 +2248,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.32';
+const VERSI = '3.9.33';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2284,6 +2289,7 @@ const S = {
     return k;
   })(),
   logo: localStorage.getItem('bpkh_logo') || '',
+  logoPilih: localStorage.getItem('bpkh_logo_pilih') === 'lama' ? 'lama' : 'baru',
   logoImg: null,
   targetKB: +(localStorage.getItem('bpkh_target') || 500),
   lebarMax: +(localStorage.getItem('bpkh_lebar') || 1600),
@@ -8232,11 +8238,25 @@ $('inLogo').onchange = e=>{
   const f=e.target.files[0]; if(!f) return;
   if(f.size>2*1024*1024){ pesan('Berkas logo terlalu besar (maks 2 MB)'); return; }
   const fr=new FileReader();
-  fr.onload=()=>{ S.logo=fr.result; localStorage.setItem('bpkh_logo',S.logo); terapkanLogo(); pesan('Logo diperbarui'); };
+  fr.onload=()=>{ S.logo=fr.result; localStorage.setItem('bpkh_logo',S.logo); S.logoPilih='lama'; localStorage.setItem('bpkh_logo_pilih','lama'); terapkanLogo(); pesan('Logo diperbarui'); };
   fr.readAsDataURL(f);
 };
+function sumberLogo(){
+  return (S.logoPilih === 'lama' && S.logo) ? S.logo : LOGO_BAWAAN;
+}
+$('selLogoPilih').onchange = e=>{
+  S.logoPilih = e.target.value === 'lama' ? 'lama' : 'baru';
+  try{ localStorage.setItem('bpkh_logo_pilih', S.logoPilih); }catch(_){}
+  terapkanLogo();
+  pesan(S.logoPilih === 'lama' ? 'Watermark memakai logo sebelumnya' : 'Watermark memakai logo baru');
+};
 function terapkanLogo(){
-  const sumber = S.logo || LOGO_BAWAAN;
+  const sumber = sumberLogo();
+  const sel = $('selLogoPilih');
+  if(sel){
+    sel.value = S.logoPilih;
+    sel.options[1].disabled = !S.logo;
+  }
   ['logoPreview','logoLogin','overlayLogo'].forEach(id=>{
     const el=$(id); if(!el) return;
     el.innerHTML = '<img src="'+esc(sumber)+'" alt="Logo">';
