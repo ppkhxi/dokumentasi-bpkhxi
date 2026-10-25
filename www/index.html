@@ -1476,7 +1476,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.20</span>
+            dkpoint <span id="loginVersi">v3.9.21</span>
           </div>
         </div>
       </div>
@@ -2171,7 +2171,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.20';
+const VERSI = '3.9.21';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -7481,11 +7481,61 @@ function dialogBuatRoom(){
   };
 }
 
+/* Pindai QR undangan langsung di aplikasi (BarcodeDetector: Chrome/Android).
+   Hasil scan (tautan atau kode) diisi ke kolom lalu diproses lewat tombol Gabung Room. */
+let streamScanQr = null, timerScanQr = null;
+function tutupScanQr(){
+  if(timerScanQr){ clearInterval(timerScanQr); timerScanQr = null; }
+  if(streamScanQr){ streamScanQr.getTracks().forEach(t => t.stop()); streamScanQr = null; }
+  const w = document.getElementById('wadahScanQr'); if(w) w.remove();
+}
+async function bukaScanQr(){
+  if(!('BarcodeDetector' in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    pesan('Pemindai QR tidak didukung di browser ini. Tempel tautan undangan ke kolom, atau pindai dengan aplikasi kamera HP lalu salin tautannya.');
+    return;
+  }
+  let detektor;
+  try{ detektor = new BarcodeDetector({ formats: ['qr_code'] }); }
+  catch(e){ pesan('Pemindai QR tidak tersedia di perangkat ini'); return; }
+  try{
+    streamScanQr = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  }catch(e){
+    pesan('Kamera tidak bisa dibuka. Izinkan akses kamera untuk aplikasi.');
+    return;
+  }
+  const w = document.createElement('div');
+  w.id = 'wadahScanQr';
+  w.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center';
+  w.innerHTML = '<video id="videoScanQr" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>' +
+    '<div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:#fff;font-weight:700;text-shadow:0 1px 3px #000">Arahkan kamera ke QR undangan</div>' +
+    '<button id="btnBatalScanQr" class="tombol sekunder" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%)">Batal</button>';
+  document.body.appendChild(w);
+  const v = document.getElementById('videoScanQr');
+  v.srcObject = streamScanQr;
+  await v.play().catch(()=>{});
+  document.getElementById('btnBatalScanQr').onclick = tutupScanQr;
+  timerScanQr = setInterval(async ()=>{
+    if(!v.videoWidth) return;
+    try{
+      const hasil = await detektor.detect(v);
+      if(hasil && hasil.length && hasil[0].rawValue){
+        const teks = hasil[0].rawValue;
+        tutupScanQr();
+        const inp = document.getElementById('inTokenGabung');
+        if(inp){ inp.value = teks; }
+        const tbl = document.getElementById('btnProsesGabungRoom');
+        if(tbl){ tbl.click(); }
+      }
+    }catch(e){}
+  }, 300);
+}
+
 function dialogGabungRoom(){
   dialog('<h3>Gabung Room Tim</h3>'+
     '<p style="font-size:13px;color:var(--teks-2);margin:0 0 10px">Masukkan <b>Kode Room</b> (contoh: <code>DKP-...</code>) atau tempel tautan undangan yang Anda terima dari ketua regu.</p>'+
     '<label class="f" for="inTokenGabung" style="margin-top:0">Kode Room atau Tautan Undangan</label>'+
     '<input class="f" id="inTokenGabung" placeholder="DKP-... atau https://…" autocomplete="off">'+
+    '<button class="tombol sekunder" id="btnScanQr" style="width:100%;margin-top:10px">Scan QR Undangan</button>'+
     '<div class="baris-tombol" style="margin-top:12px">'+
       '<button class="tombol sekunder" onclick="tutupDialog()">Batal</button>'+
       '<button class="tombol" id="btnProsesGabungRoom">Gabung Room</button>'+
@@ -7495,6 +7545,8 @@ function dialogGabungRoom(){
     const inp = $('inTokenGabung');
     if(inp){ inp.focus(); }
   }, 100);
+
+  $('btnScanQr').onclick = ()=> bukaScanQr();
 
   $('btnProsesGabungRoom').onclick = async ()=>{
     const token = ($('inTokenGabung').value || '').trim();
