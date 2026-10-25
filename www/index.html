@@ -8,12 +8,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="dkpoint">
+<meta name="apple-mobile-web-app-title" content="Dokumentasi">
 <meta name="description" content="dkpoint - Aplikasi dokumentasi foto lapangan berwatermark">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-96.png" sizes="96x96">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<title>dkpoint</title>
+<title>Dokumentasi</title>
 <script src="js/security.js"></script>
 <script src="js/exif-gps.js"></script>
 <script src="js/megajs.umd.js"></script>
@@ -1398,10 +1398,13 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .fly-brand b{display:block;font-size:16px;font-weight:700;letter-spacing:.2px}
 .fly-brand small{display:block;font-size:11px;color:#9aa59d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fly-head button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#ffffff;font-size:14px;flex:0 0 auto}
-.fly-menu{display:flex;gap:8px}
+#flyWadah{position:relative;height:440px;display:flex;flex-direction:column}
+.fly-switch{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:flex;gap:4px;background:rgba(0,0,0,.5);border-radius:999px;padding:3px}
+.fly-ikon{width:40px;height:32px;border-radius:999px;border:0;background:transparent;color:#9aa59d;display:flex;align-items:center;justify-content:center;padding:0}
+.fly-ikon.aktif{background:rgba(255,255,255,.22);color:#ffffff}
 .fly-tab{flex:1;height:32px;border-radius:999px;border:0;background:transparent;color:#9aa59d;font-size:13px;font-weight:600}
 .fly-tab.aktif{background:rgba(255,255,255,.14);color:#ffffff}
-#flyPanelKamera,#flyPanelPeta{height:440px;display:flex;flex-direction:column;min-height:0}
+#flyPanelKamera,#flyPanelPeta{flex:1;display:flex;flex-direction:column;min-height:0}
 .fly-pratinjau{position:relative;flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#161a17}
 .fly-pratinjau video{width:100%;height:100%;object-fit:cover;display:block}
 .fly-catatan input{width:100%;box-sizing:border-box;height:40px;border-radius:12px;border:1px solid #26302a;padding:0 14px;font-size:14px;background:#161a17;color:#ffffff}
@@ -1468,7 +1471,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
     <section class="screen nopad aktif" id="scLogin">
       <div class="login-isi">
         <div class="login-logo" id="logoLogin">dkpoint</div>
-        <h1>dkpoint</h1>
+        <h1>Dokumentasi</h1>
         <p class="sub">Dokumentasi Foto Lapangan</p>
         <div class="kotak-login">
           <label class="f" for="inNama" style="margin-top:0">Nama Petugas Lapangan</label>
@@ -1503,7 +1506,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.29</span>
+            dkpoint <span id="loginVersi">v3.9.31</span>
           </div>
         </div>
       </div>
@@ -1553,7 +1556,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
           <div class="makior-brand">
             <img src="icons/logo-kemenhut.png" alt="Logo" class="makior-logo" onerror="this.style.display='none'">
             <div class="makior-title-wrap">
-              <span class="makior-title">dkpoint</span>
+              <span class="makior-title">Dokumentasi</span>
               <span class="makior-badge">PRO FIELD</span>
             </div>
           </div>
@@ -2153,13 +2156,18 @@ td img.thumb-tabel:active{transform:scale(0.92)}
     <div class="fly-head">
       <div class="fly-brand">
         <svg width="22" height="16" viewBox="0 0 24 18" aria-hidden="true"><path d="M0 18 L8 4 L13 12 L16 8 L24 18Z" fill="#2e7d32"/></svg>
-        <div style="min-width:0"><b>dkpoint</b><small id="flyInfo">—</small></div>
+        <div style="min-width:0"><b>Dokumentasi</b><small id="flyInfo">—</small></div>
       </div>
       <button id="flyTutup" aria-label="Tutup capture cepat">&#10005;</button>
     </div>
-    <div class="fly-menu">
-      <button id="flyMenuKamera" class="fly-tab aktif" type="button">&#128247; Kamera</button>
-      <button id="flyMenuPeta" class="fly-tab" type="button">&#128506; Peta</button>
+    <div id="flyWadah">
+    <div class="fly-switch" role="group" aria-label="Pilih tampilan">
+      <button id="flyMenuKamera" class="fly-ikon aktif" type="button" aria-label="Kamera" title="Kamera">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><circle cx="12" cy="13.5" r="3.6"/></svg>
+      </button>
+      <button id="flyMenuPeta" class="fly-ikon" type="button" aria-label="Peta" title="Peta">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5L9 17.5l6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>
+      </button>
     </div>
     <div id="flyPanelKamera">
       <div class="fly-pratinjau">
@@ -2171,6 +2179,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
     </div>
     <div id="flyPanelPeta" style="display:none">
       <div id="flyPeta" class="fly-peta"></div>
+    </div>
     </div>
   </div>
   <div id="navbar" class="sembunyi">
@@ -2231,10 +2240,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 
 <script>
 /* =======================================================================
-   PORTAL DOKUMENTASI DKPOINT
+   PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.29';
+const VERSI = '3.9.31';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2288,7 +2297,7 @@ const S = {
 };
 
 const $ = id => document.getElementById(id);
-const JUDUL = {login:'dkpoint',beranda:'dkpoint',kamera:'Ambil Foto',
+const JUDUL = {login:'Dokumentasi',beranda:'Dokumentasi',kamera:'Ambil Foto',
   ganda:'Kamera Ganda',
   galeri:'Galeri',detail:'Detail Foto',tabel:'Tabel Rekap',peta:'Peta Sebaran',
   antrian:'Antrian Upload',pengaturan:'Pengaturan'};
