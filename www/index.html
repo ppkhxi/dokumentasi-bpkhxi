@@ -1391,23 +1391,28 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 #bubbleCapture{position:fixed;right:14px;bottom:112px;width:58px;height:58px;border-radius:50%;border:0;background:#2e7d32;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:900;display:none;align-items:center;justify-content:center;touch-action:none;padding:0}
 #bubbleCapture.tampil{display:flex}
 #bubbleCapture:active{transform:scale(.94)}
-.flyout-capture{position:fixed;right:14px;bottom:182px;width:min(340px,calc(100vw - 28px));box-sizing:border-box;background:#fff;color:#1b2a1d;border-radius:20px;box-shadow:0 12px 36px rgba(0,0,0,.35);padding:12px;z-index:950;display:none;flex-direction:column;gap:10px}
+.flyout-capture{position:fixed;left:50%;transform:translateX(-50%);bottom:108px;width:min(360px,calc(100vw - 24px));box-sizing:border-box;background:#0b0d0c;color:#ffffff;border-radius:28px;box-shadow:0 18px 44px rgba(0,0,0,.5);padding:16px;z-index:950;display:none;flex-direction:column;gap:12px}
 .flyout-capture.tampil{display:flex}
 .fly-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.fly-head b{display:block;font-size:14px}
-.fly-head small{display:block;font-size:11px;color:#5b6b5d;margin-top:2px}
-.fly-head button{width:34px;height:34px;border-radius:50%;border:0;background:#eef2ee;color:#1b2a1d;font-size:14px;flex:0 0 auto}
-.fly-pratinjau{position:relative;aspect-ratio:3/4;max-height:340px;border-radius:14px;overflow:hidden;background:#141c16}
+.fly-brand{display:flex;align-items:center;gap:8px;min-width:0}
+.fly-brand b{display:block;font-size:16px;font-weight:700;letter-spacing:.2px}
+.fly-brand small{display:block;font-size:11px;color:#9aa59d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fly-head button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#ffffff;font-size:14px;flex:0 0 auto}
+.fly-menu{display:flex;gap:8px}
+.fly-tab{flex:1;height:32px;border-radius:999px;border:0;background:transparent;color:#9aa59d;font-size:13px;font-weight:600}
+.fly-tab.aktif{background:rgba(255,255,255,.14);color:#ffffff}
+#flyPanelKamera,#flyPanelPeta{height:440px;display:flex;flex-direction:column;min-height:0}
+.fly-pratinjau{position:relative;flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#161a17}
 .fly-pratinjau video{width:100%;height:100%;object-fit:cover;display:block}
-.fly-catatan input{width:100%;box-sizing:border-box;height:38px;border-radius:10px;border:1px solid #dfe5df;padding:0 12px;font-size:14px;background:#f7f9f7}
-.fly-rana{display:flex;justify-content:center}
-.fly-menu{display:flex;gap:6px}
-.fly-tab{flex:1;height:34px;border-radius:10px;border:0;background:#eef2ee;color:#1b2a1d;font-size:13px;font-weight:600}
-.fly-tab.aktif{background:#2e7d32;color:#fff}
-.fly-peta{width:100%;height:320px;border-radius:14px;overflow:hidden;background:#e9efe9}
-#flyRana{width:66px;height:66px;border-radius:50%;border:4px solid #1b5e20;background:#2e7d32;box-sizing:border-box;padding:0}
+.fly-catatan input{width:100%;box-sizing:border-box;height:40px;border-radius:12px;border:1px solid #26302a;padding:0 14px;font-size:14px;background:#161a17;color:#ffffff}
+.fly-catatan input::placeholder{color:#6f7a72}
+.fly-rana{display:flex;justify-content:center;align-items:center}
+#flyRana{width:68px;height:68px;border-radius:50%;border:4px solid #d9dedb;background:#ffffff;box-sizing:border-box;padding:0}
 #flyRana:active{transform:scale(.92)}
+.fly-peta{flex:1;min-height:0;width:100%;border-radius:22px;overflow:hidden;background:#161a17}
 #flyTirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flyTirai.kilat{animation:kilatFly .18s ease-out}
+@keyframes kilatFly{0%{opacity:.8}100%{opacity:0}}
 #flyTirai.kilat{animation:kilatFly .18s ease-out}
 @keyframes kilatFly{0%{opacity:.8}100%{opacity:0}}
 </style>
@@ -1498,7 +1503,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.27</span>
+            dkpoint <span id="loginVersi">v3.9.29</span>
           </div>
         </div>
       </div>
@@ -2146,7 +2151,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   </button>
   <div id="flyCapture" class="flyout-capture" role="dialog" aria-label="Capture cepat">
     <div class="fly-head">
-      <div><b>Capture cepat</b><small id="flyInfo">—</small></div>
+      <div class="fly-brand">
+        <svg width="22" height="16" viewBox="0 0 24 18" aria-hidden="true"><path d="M0 18 L8 4 L13 12 L16 8 L24 18Z" fill="#2e7d32"/></svg>
+        <div style="min-width:0"><b>dkpoint</b><small id="flyInfo">—</small></div>
+      </div>
       <button id="flyTutup" aria-label="Tutup capture cepat">&#10005;</button>
     </div>
     <div class="fly-menu">
@@ -2158,8 +2166,8 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <video id="flyVideo" playsinline muted autoplay></video>
         <div id="flyTirai"></div>
       </div>
-      <div class="fly-catatan" style="margin-top:10px"><input id="flyCatatan" placeholder="Tulis nomor patok atau catatan..." maxlength="250" autocomplete="off"></div>
-      <div class="fly-rana" style="margin-top:10px"><button id="flyRana" aria-label="Ambil foto"></button></div>
+      <div class="fly-catatan" style="margin-top:10px;flex:0 0 auto"><input id="flyCatatan" placeholder="Tulis nomor patok atau catatan..." maxlength="250" autocomplete="off"></div>
+      <div class="fly-rana" style="margin-top:10px;flex:0 0 auto"><button id="flyRana" aria-label="Ambil foto"></button></div>
     </div>
     <div id="flyPanelPeta" style="display:none">
       <div id="flyPeta" class="fly-peta"></div>
@@ -2226,7 +2234,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.27';
+const VERSI = '3.9.29';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -6365,21 +6373,21 @@ $('btnPetaFilter').onclick = () => {
 };
 
 /* ---------- PENGELOLAAN DATA SPASIAL (KML LOKAL) ---------- */
-async function muatSemuaKMLPadaPeta(){
-  if (!petaAktif || !petaAktif.lapisKML) return;
-  petaAktif.lapisKML.clearLayers();
+async function muatSemuaKMLPadaPeta(peta = petaAktif){
+  if (!peta || !peta.lapisKML) return;
+  peta.lapisKML.clearLayers();
   const daftar = await ambilSemuaKML();
   daftar.filter(k => k.aktif).sort((a,b) => (a.zIndex||10) - (b.zIndex||10)).forEach(k => {
     try {
       const tampilkanLabel = k.labelAktif !== false;
-      const pane = PETA.paneLapisan(petaAktif, k.id, k.zIndex || 10);
-      petaAktif._rendKML = petaAktif._rendKML || {};
-      const renderer = pane ? (petaAktif._rendKML[pane] || (petaAktif._rendKML[pane] = L.canvas({ pane }))) : undefined;
+      const pane = PETA.paneLapisan(peta, k.id, k.zIndex || 10);
+      peta._rendKML = peta._rendKML || {};
+      const renderer = pane ? (peta._rendKML[pane] || (peta._rendKML[pane] = L.canvas({ pane }))) : undefined;
       const layer = PETA.parseKML(k.kmlText, k.warna || '#2E7D32', k.labelCol || 'name', tampilkanLabel, { pane, renderer });
-      if (layer) petaAktif.lapisKML.addLayer(layer);
+      if (layer) peta.lapisKML.addLayer(layer);
     } catch (e) { console.warn('KML gagal dimuat:', k && k.nama, e); }
   });
-  if (petaAktif.perbaruiCullingLabel) petaAktif.perbaruiCullingLabel();
+  if (peta.perbaruiCullingLabel) peta.perbaruiCullingLabel();
 }
 
 async function bukaDialogKML(){
@@ -6517,15 +6525,15 @@ window.zoomKeKML = async (id) => {
 };
 
 /* ---------- PENGELOLAAN PETA RASTER (PDF/JPG) ---------- */
-async function muatSemuaRasterPadaPeta(){
-  if (!petaAktif) return;
+async function muatSemuaRasterPadaPeta(peta = petaAktif){
+  if (!peta) return;
   const daftar = await ambilSemuaRaster();
   daftar.sort((a,b) => (a.zIndex||1) - (b.zIndex||1)).forEach(r => {
     try {
     if (r.aktif) {
-      PETA.pasangRaster(petaAktif, r.id, r.dataUrl, r.bounds, r.opasitas || 0.75, r.zIndex || 1);
+      PETA.pasangRaster(peta, r.id, r.dataUrl, r.bounds, r.opasitas || 0.75, r.zIndex || 1);
     } else {
-      PETA.hapusRaster(petaAktif, r.id);
+      PETA.hapusRaster(peta, r.id);
     }
     } catch (e) { console.warn('Raster gagal dimuat:', r && r.nama, e); }
   });
@@ -8300,7 +8308,13 @@ async function pilihMenuFly(m){
     $('flyCapture').classList.add('tampil');
     try{
       const titik = await titikPeta();
-      await PETA.gambar($('flyPeta'), titik, { fit: true });
+      const hasil = await PETA.gambar($('flyPeta'), titik, { fit: true });
+      const petaFly = hasil && hasil.peta;
+      if(petaFly){
+        await muatSemuaKMLPadaPeta(petaFly);
+        await muatSemuaRasterPadaPeta(petaFly);
+        if(S.posisi) PETA.perbaruiLokasiUser(petaFly, S.posisi);
+      }
     }catch(e){
       pesan('Peta belum bisa dimuat: ' + e.message);
     }
