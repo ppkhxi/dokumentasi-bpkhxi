@@ -1476,7 +1476,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.22</span>
+            dkpoint <span id="loginVersi">v3.9.24</span>
           </div>
         </div>
       </div>
@@ -1600,18 +1600,6 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         </div>
 
         <div id="ruangCatatan" class="makior-ruang-catatan">
-          <!-- Tag Cepat Makior Horizontal Scrollable Strip -->
-          <div class="makior-strip-container">
-            <div class="chips-cepat-catatan makior-chips-strip" id="chipsCepatCatatan">
-              <span class="chip-tag-catatan" data-tag="Batas Kawasan Hutan">📍 Batas Kawasan</span>
-              <span class="chip-tag-catatan" data-tag="Patok Batas BPKH">🚩 Patok BPKH</span>
-              <span class="chip-tag-catatan" data-tag="Titik Pengukuran">📐 Pengukuran</span>
-              <span class="chip-tag-catatan" data-tag="Reboisasi Tanaman">🌲 Reboisasi</span>
-              <span class="chip-tag-catatan" data-tag="Verifikasi Lapangan">📑 Verifikasi</span>
-              <span class="chip-tag-catatan" data-tag="Tutupan Lahan">🌿 Tutupan Lahan</span>
-            </div>
-          </div>
-
           <!-- Baris Input Catatan Lapangan + Toggle Watermark -->
           <div class="makior-input-catatan-bar">
             <div class="makior-input-wrap">
@@ -2192,7 +2180,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.22';
+const VERSI = '3.9.24';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -4487,12 +4475,13 @@ let thumbCloudBerjalan = false;
 async function lengkapiThumbCloud(maks = 80){
   if(thumbCloudBerjalan || !adaServer() || !navigator.onLine) return 0;
   thumbCloudBerjalan = true;
-  let selesai = 0;
+  let selesai = 0, jumlahKandidat = 0;
   try{
     const kandidat = (await ambilSemua()).filter(f =>
       f.isCloudOnly && f.namaBerkas && f.room &&
       (!f.dataUrl || f.dataUrl.includes('data:image/svg'))
     ).slice(0, maks);
+    jumlahKandidat = kandidat.length;
     if(!kandidat.length) return 0;
     await MegaEngine.pastikanTerhubung();
     const master = await MegaEngine.dapatkanFolderMaster();
@@ -4513,6 +4502,7 @@ async function lengkapiThumbCloud(maks = 80){
   finally{
     thumbCloudBerjalan = false;
     if(selesai) muatGaleri();
+    if(jumlahKandidat) pesan('Thumbnail foto asli diperbarui: '+selesai+' dari '+jumlahKandidat);
   }
   return selesai;
 }
@@ -4565,7 +4555,7 @@ async function tarikDataReguMega(){
           userId: fc.nama,
           noUrut: fc.noUrut,
           room: fc.room,
-          catatan: fc.catatan || 'Foto Regu di Cloud MEGA',
+          catatan: fc.catatan || '',
           lat: fc.lat,
           lon: fc.lon,
           akurasi: null,
@@ -4581,6 +4571,11 @@ async function tarikDataReguMega(){
         // Jika data sebelumnya masih berstatus placeholder icon-192.png atau belum punya koordinat, perbarui di tempat
         const isPlaceholder = !existing.dataUrl || existing.dataUrl.includes('icon-192');
         const kurangGps = (existing.lat == null && fc.lat != null);
+        // Catatan bawaan dari versi lama dikosongkan: yang tampil hanya catatan yang diisi pengguna
+        const catatanBawaanLama = existing.catatan === 'Foto Regu di Cloud MEGA';
+        if(catatanBawaanLama){
+          await simpanFoto({ ...existing, catatan: '' });
+        }
         if(isPlaceholder || kurangGps){
           const thumbCloud = (existing.dataUrl && !isPlaceholder) ? existing.dataUrl : buatThumbCloud(fc.nama, fc.noUrut, fc.lat || existing.lat, fc.lon || existing.lon);
           await simpanFoto({

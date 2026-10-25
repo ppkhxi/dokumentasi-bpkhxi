@@ -36,6 +36,28 @@
 
   // Kumpulkan berkas foto dari folder room: berkas langsung di room (format lama)
   // dan berkas di subfolder per petugas (format baru).
+  /* Identitas petugas dari nama berkas. Kunci hitungan anggota = ID pengguna
+     (bagian [USER] pada nama berkas), bukan nama tampilan dan bukan per foto.
+     Koordinat di ujung nama dilewati supaya tidak ikut terbaca sebagai nama. */
+  function uraiPetugasDariBerkas(name) {
+    const dasar = name.replace(/\.jpg$/i, '');
+    if (dasar.includes('__')) {
+      const b = dasar.split('__');
+      const nama = (b.length >= 5 ? b[4] : (b[b.length - 1] || '')).replace(/_/g, ' ').trim() || 'Petugas';
+      return { id: nama.toUpperCase().replace(/\s+/g, '_'), nama };
+    }
+    const b = dasar.split('_');
+    let bagian = b.length >= 3 ? b.slice(1, b.length - 1) : [b[1] || 'Petugas'];
+    if (b.length >= 5) {
+      const lat = parseFloat(b[b.length - 2]), lon = parseFloat(b[b.length - 1]);
+      if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        bagian = b.slice(1, b.length - 3);
+      }
+    }
+    const nama = bagian.join(' ').trim() || 'Petugas';
+    return { id: (bagian.join('_') || 'PETUGAS').toUpperCase(), nama };
+  }
+
   function kumpulkanBerkasRoom(folderRoom) {
     const hasil = [];
     (folderRoom.children || []).forEach(item => {
@@ -583,21 +605,13 @@
       const stats = {};
       kumpulkanBerkasRoom(folderRoom).forEach(file => {
         if (!file.name || !file.name.endsWith('.jpg')) return;
-        let namaPetugas = 'Petugas';
-        if (file.name.includes('__')) {
-          const bagian = file.name.replace(/\.jpg$/i, '').split('__');
-          namaPetugas = bagian.length >= 5 ? bagian[4].replace(/_/g, ' ') : (bagian[bagian.length - 1] || 'Petugas');
-        } else {
-          // Format baru: [ROOM]_[USER]_[NOURUT].jpg
-          const bagian = file.name.replace(/\.jpg$/i, '').split('_');
-          namaPetugas = bagian.length >= 3 ? bagian.slice(1, bagian.length - 1).join(' ') : (bagian[1] || 'Petugas');
+        const { id, nama } = uraiPetugasDariBerkas(file.name);
+        if (!stats[id]) {
+          stats[id] = { id, nama, jumlahFoto: 0, terakhirTs: 0 };
         }
-        if (!stats[namaPetugas]) {
-          stats[namaPetugas] = { nama: namaPetugas, jumlahFoto: 0, terakhirTs: 0 };
-        }
-        stats[namaPetugas].jumlahFoto++;
+        stats[id].jumlahFoto++;
         const ts = file.timestamp ? file.timestamp * 1000 : Date.now();
-        if (ts > stats[namaPetugas].terakhirTs) stats[namaPetugas].terakhirTs = ts;
+        if (ts > stats[id].terakhirTs) stats[id].terakhirTs = ts;
       });
 
       return Object.values(stats).sort((a, b) => b.jumlahFoto - a.jumlahFoto);
@@ -619,30 +633,21 @@
         kumpulkanBerkasRoom(item).forEach(file => {
           if (!file.name || !file.name.endsWith('.jpg')) return;
           totalFoto++;
-          let namaPetugas = 'Petugas';
+          const { id, nama } = uraiPetugasDariBerkas(file.name);
 
-          if (file.name.includes('__')) {
-            const bagian = file.name.replace(/\.jpg$/i, '').split('__');
-            namaPetugas = bagian.length >= 5 ? bagian[4].replace(/_/g, ' ') : (bagian[bagian.length - 1] || 'Petugas');
-          } else {
-            const bagian = file.name.replace(/\.jpg$/i, '').split('_');
-            namaPetugas = bagian.length >= 3 ? bagian.slice(1, bagian.length - 1).join(' ') : (bagian[1] || 'Petugas');
-          }
-
-          const kunci = namaPetugas.trim().toLowerCase();
-          if (!stats[kunci]) {
-            stats[kunci] = {
-              nama: namaPetugas.trim(),
+          if (!stats[id]) {
+            stats[id] = {
+              nama,
               rooms: new Set(),
               jumlahFoto: 0,
               terakhirTs: 0
             };
           }
 
-          stats[kunci].rooms.add(namaRoom);
-          stats[kunci].jumlahFoto++;
+          stats[id].rooms.add(namaRoom);
+          stats[id].jumlahFoto++;
           const ts = file.timestamp ? file.timestamp * 1000 : (file.mtime ? new Date(file.mtime).getTime() : Date.now());
-          if (ts > stats[kunci].terakhirTs) stats[kunci].terakhirTs = ts;
+          if (ts > stats[id].terakhirTs) stats[id].terakhirTs = ts;
         });
       });
 
