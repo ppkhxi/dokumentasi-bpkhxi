@@ -129,8 +129,6 @@ code{background:#F0F2F0;padding:2px 6px;border-radius:5px;font-size:12px;word-br
   <!-- ===== MASUK ===== -->
   <section class="kartu" id="kartuMasuk">
     <h2>Masuk sebagai Admin</h2>
-    <label for="inEndpoint">Alamat Backend (URL Apps Script /exec)</label>
-    <input id="inEndpoint" placeholder="https://script.google.com/macros/s/AKfy…/exec">
     <label for="inToken">Token Admin</label>
     <input id="inToken" type="password" placeholder="Token yang Anda tulis di Code.gs">
     <div style="margin-top:16px"><button id="btnMasuk">Masuk</button></div>
@@ -295,7 +293,7 @@ code{background:#F0F2F0;padding:2px 6px;border-radius:5px;font-size:12px;word-br
 <script>
 const $ = id => document.getElementById(id);
 const A = {
-  endpoint: localStorage.getItem('bpkh_admin_endpoint') || '',
+  endpoint: '/api/admin',
   token: sessionStorage.getItem('bpkh_admin_token') || '',
   // Sesi admin ditulis oleh aplikasi petugas saat pemegang akun admin menekan
   // "Panel Admin" di menu Setelan. Keduanya sehalaman-asal, jadi berbagi
@@ -314,8 +312,7 @@ function kabar(teks, salah){
 }
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* Content-Type text/plain supaya tidak memicu preflight CORS —
-   Apps Script tidak menjawab permintaan OPTIONS. */
+/* Satu asal dengan halaman ini (Cloudflare Pages Function), jadi tidak ada CORS. */
 async function panggil(muatan){
   if(!A.endpoint) throw new Error('Alamat backend belum diisi');
   // Sesi admin dipakai kalau ada; token hanya untuk jalan masuk manual.
@@ -330,7 +327,7 @@ async function panggil(muatan){
   const teks = await res.text();
   let j;
   try{ j = JSON.parse(teks); }
-  catch(e){ throw new Error('Jawaban server bukan JSON. Pastikan Apps Script di-deploy dengan akses "Siapa saja".'); }
+  catch(e){ throw new Error('Jawaban server bukan JSON. Pastikan fungsi /api/admin sudah terpasang di Cloudflare Pages.'); }
   if(!j.ok) throw new Error(j.pesan || 'Permintaan ditolak server');
   return j;
 }
@@ -339,7 +336,6 @@ async function panggil(muatan){
 async function masukAdmin(){
   const j = await panggil({aksi:'adminMasuk', tokenAdmin:A.token});
   A.folderMaster = j.folderMaster || '';
-  localStorage.setItem('bpkh_admin_endpoint', A.endpoint);
   if(!A.sesiAdmin) sessionStorage.setItem('bpkh_admin_token', A.token);
   $('infoAkun').textContent = 'Backend v'+j.versi+
     (j.sebagai && j.sebagai.indexOf('@')>0 ? ' · '+j.sebagai : '');
@@ -347,15 +343,15 @@ async function masukAdmin(){
 }
 
 $('btnMasuk').onclick = async ()=>{
-  A.endpoint = $('inEndpoint').value.trim().replace(/\/+$/,'');
+  A.endpoint = '/api/admin';
   A.token = $('inToken').value.trim();
   A.sesiAdmin = '';                       // masuk manual: jangan pakai sesi
-  if(!A.endpoint || !A.token){ kabar('Alamat backend dan token admin wajib diisi', true); return; }
+  if(!A.token){ kabar('Token admin wajib diisi', true); return; }
   $('btnMasuk').disabled = true;
   try{
     const j = await masukAdmin();
-    if(j.alamatAplikasi && j.alamatAplikasi.indexOf('GANTI')>=0)
-      kabar('Terhubung, tetapi ALAMAT_APLIKASI di Code.gs belum diisi — link undangan akan salah. Perbaiki dulu di Apps Script.', true);
+    if(!j.alamatAplikasi)
+      kabar('Terhubung, tetapi variabel ALAMAT_APLIKASI di Cloudflare Pages belum diisi — link undangan akan kosong.', true);
     else kabar('Berhasil masuk sebagai admin');
     tampilPanel();
     await muatTelemetri();
@@ -642,7 +638,7 @@ $('btnSheet').onclick = ()=>{
    Gambarnya diambil langsung dari Google Drive lewat alamat thumbnail, bukan
    lewat backend. Konsekuensinya: peramban harus sedang masuk ke akun Google
    yang berhak melihat folder DOKUMENTASI. Ditukar dengan itu, foto tidak perlu
-   dibuka ke publik dan Apps Script tidak perlu mengangkut berkas gambar. */
+   dibuka ke publik dan backend tidak perlu mengangkut berkas gambar. */
 const GALERI_SEKALI = 60;
 const idDrive = link => { const m = String(link||'').match(/[-\w]{25,}/); return m ? m[0] : ''; };
 const thumbDrive = (link, lebar) => {
@@ -796,7 +792,6 @@ async function ubahAdmin(perintah, email){
 }
 
 /* ---------- Mulai ---------- */
-$('inEndpoint').value = A.endpoint;
 
 (async function mulai(){
   // Datang dari tombol Panel Admin di aplikasi: sesi sudah tersedia,

@@ -34,6 +34,17 @@
   const _guestStorageMap = new Map();
   const _targetFolderCache = new Map();
 
+  // Kumpulkan berkas foto dari folder room: berkas langsung di room (format lama)
+  // dan berkas di subfolder per petugas (format baru).
+  function kumpulkanBerkasRoom(folderRoom) {
+    const hasil = [];
+    (folderRoom.children || []).forEach(item => {
+      if (item.children) item.children.forEach(f => hasil.push(f));
+      else hasil.push(item);
+    });
+    return hasil;
+  }
+
   function withTimeout(promise, ms, pesanTimeout) {
     let timer;
     const timeoutPromise = new Promise((_, reject) => {
@@ -500,10 +511,25 @@
         throw new Error('Gagal menyiapkan folder room di akun MEGA');
       }
 
+      // Subfolder per petugas di dalam folder room
+      const namaFolderUser = (foto.userId || foto.nama || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USER';
+      const kunciFolderUser = 'user:' + namaRoom + '/' + namaFolderUser;
+      let userFolder = storageCache.get(kunciFolderUser);
+      if (!userFolder) {
+        userFolder = targetFolder.find(namaFolderUser);
+        if (!userFolder) {
+          userFolder = await storageUntukUpload.mkdir({ name: namaFolderUser, target: targetFolder });
+        }
+        if (userFolder) storageCache.set(kunciFolderUser, userFolder);
+      }
+      if (!userFolder) {
+        throw new Error('Gagal menyiapkan folder petugas di akun MEGA');
+      }
+
       // Upload file ke folder target dengan penanganan error stream langsung
       let uploadAction;
       try {
-        uploadAction = targetFolder.upload({
+        uploadAction = userFolder.upload({
           name: namaBerkas,
           size: bytes.byteLength
         }, bytes);
@@ -555,7 +581,7 @@
       if (!folderRoom || !folderRoom.children) return [];
 
       const stats = {};
-      folderRoom.children.forEach(file => {
+      kumpulkanBerkasRoom(folderRoom).forEach(file => {
         if (!file.name || !file.name.endsWith('.jpg')) return;
         let namaPetugas = 'Petugas';
         if (file.name.includes('__')) {
@@ -590,7 +616,7 @@
         if (!item.children) return;
         const namaRoom = item.name;
 
-        item.children.forEach(file => {
+        kumpulkanBerkasRoom(item).forEach(file => {
           if (!file.name || !file.name.endsWith('.jpg')) return;
           totalFoto++;
           let namaPetugas = 'Petugas';
@@ -643,7 +669,7 @@
       if (!folderRoom || !folderRoom.children) return [];
 
       const hasil = [];
-      folderRoom.children.forEach(file => {
+      kumpulkanBerkasRoom(folderRoom).forEach(file => {
         if (!file.name || !file.name.endsWith('.jpg')) return;
         let lat = null, lon = null;
         let namaPetugas = 'Petugas';
