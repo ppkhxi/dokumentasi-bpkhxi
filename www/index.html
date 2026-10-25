@@ -1399,7 +1399,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .fly-brand small{display:block;font-size:11px;color:#9aa59d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fly-head button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#ffffff;font-size:14px;flex:0 0 auto}
 #flyWadah{position:relative;height:440px;display:flex;flex-direction:column}
-.fly-switch{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;display:flex;gap:4px;background:rgba(0,0,0,.5);border-radius:999px;padding:3px}
+.fly-switch{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;gap:4px;background:rgba(0,0,0,.5);border-radius:999px;padding:3px}
 .fly-ikon{width:40px;height:32px;border-radius:999px;border:0;background:transparent;color:#9aa59d;display:flex;align-items:center;justify-content:center;padding:0}
 .fly-ikon.aktif{background:rgba(255,255,255,.22);color:#ffffff}
 .fly-tab{flex:1;height:32px;border-radius:999px;border:0;background:transparent;color:#9aa59d;font-size:13px;font-weight:600}
@@ -1412,7 +1412,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .fly-rana{display:flex;justify-content:center;align-items:center}
 #flyRana{width:68px;height:68px;border-radius:50%;border:4px solid #d9dedb;background:#ffffff;box-sizing:border-box;padding:0}
 #flyRana:active{transform:scale(.92)}
-.fly-peta{flex:1;min-height:0;width:100%;border-radius:22px;overflow:hidden;background:#161a17}
+.fly-peta{flex:1;min-height:0;width:100%;border-radius:22px;overflow:hidden;background:#161a17;position:relative;isolation:isolate}
 #flyTirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 #flyTirai.kilat{animation:kilatFly .18s ease-out}
 @keyframes kilatFly{0%{opacity:.8}100%{opacity:0}}
@@ -1506,7 +1506,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.34</span>
+            Dokumentasi <span id="loginVersi">v3.9.35</span>
           </div>
         </div>
       </div>
@@ -2251,7 +2251,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.34';
+const VERSI = '3.9.35';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -8447,6 +8447,10 @@ async function jepretFlyCapture(){
   $('flyRana').onclick = jepretFlyCapture;
   $('flyMenuKamera').onclick = () => pilihMenuFly('kamera');
   $('flyMenuPeta').onclick = () => pilihMenuFly('peta');
+  if($('cbBubbleAktif')) $('cbBubbleAktif').onchange = () => {
+    try{ localStorage.setItem('dkpoint_bubble_aktif', $('cbBubbleAktif').checked ? 'true' : 'false'); }catch(_){}
+    perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
+  };
   document.addEventListener('visibilitychange', () => { if(document.hidden) tutupFlyCapture(); });
 })();
 
