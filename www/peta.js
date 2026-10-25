@@ -119,10 +119,10 @@ const PETA = (function () {
     } catch (e) {
       console.warn('Basemap vektor tidak tersedia:', e && e.message);
       if (peta && peta.tipeBasemap === 'maplibre_vector') {
-        try { peta.lapisGoogleSat.addTo(peta); } catch (err) {}
-        peta.tipeBasemap = 'google_satelit';
+        try { peta.lapisGoogleHyb.addTo(peta); } catch (err) {}
+        peta.tipeBasemap = 'google_hybrid';
         if (typeof window.pesan === 'function') {
-          window.pesan('Basemap vektor tidak tersedia (offline/WebGL). Kembali ke Google Satelit.');
+          window.pesan('Basemap vektor tidak tersedia (offline/WebGL). Kembali ke Google Hybrid.');
         }
       }
       return false;
@@ -237,8 +237,10 @@ const PETA = (function () {
       });
 
       // Baca preferensi tersimpan, default ke Google Satelit
-      let prefBasemap = 'google_satelit';
-      try { prefBasemap = localStorage.getItem('dkpoint_basemap') || 'google_satelit'; } catch (e) {}
+      // Hanya dua basemap: Vektor (MapLibre) dan Google Satelit Hybrid
+      let prefBasemap = 'maplibre_vector';
+      try { prefBasemap = localStorage.getItem('dkpoint_basemap') || 'maplibre_vector'; } catch (e) {}
+      if (prefBasemap !== 'google_hybrid') prefBasemap = 'maplibre_vector';
       peta.tipeBasemap = prefBasemap;
 
       if (prefBasemap === 'google_map') {
@@ -250,8 +252,8 @@ const PETA = (function () {
       } else if (prefBasemap === 'osm') {
         peta.lapisOSM.addTo(peta);
       } else if (prefBasemap === 'maplibre_vector') {
-        // Google Satelit sementara tampil sampai MapLibre siap
-        peta.lapisGoogleSat.addTo(peta);
+        // Google Hybrid sementara tampil sampai MapLibre siap
+        peta.lapisGoogleHyb.addTo(peta);
         aktifkanMapLibre(peta);
       } else {
         peta.lapisGoogleSat.addTo(peta);
@@ -409,7 +411,7 @@ const PETA = (function () {
   /* ------------------- BASEMAP (GOOGLE SATELIT, HYBRID, ESRI SATELIT, GOOGLE MAP, OSM) ------------------- */
   function gantiBasemap(peta, tipe) {
     if (!peta) return 'google_satelit';
-    const targets = ['google_satelit', 'google_hybrid', 'esri_satelit', 'google_map', 'osm', 'maplibre_vector'];
+    const targets = ['maplibre_vector', 'google_hybrid'];
     const idx = targets.indexOf(peta.tipeBasemap);
     const target = tipe || targets[(idx + 1) % targets.length] || 'google_satelit';
     
@@ -435,7 +437,7 @@ const PETA = (function () {
       try { peta.lapisOSM.addTo(peta); } catch (e) {}
       label = 'Peta Jalan (OpenStreetMap)';
     } else if (target === 'maplibre_vector') {
-      try { peta.lapisGoogleSat.addTo(peta); } catch (e) {}
+      try { peta.lapisGoogleHyb.addTo(peta); } catch (e) {}
       peta.tipeBasemap = target;
       label = 'MapLibre Vektor';
       aktifkanMapLibre(peta);
