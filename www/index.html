@@ -18,6 +18,7 @@
 <script src="js/exif-gps.js"></script>
 <script src="js/megajs.umd.js"></script>
 <script src="js/mega-engine.js"></script>
+<script src="js/qrcode.js"></script>
 <script src="peta.js"></script>
 <style>
 :root{
@@ -7528,6 +7529,14 @@ function bagikanUndanganRoom(namaRoom){
           '<button class="tombol sekunder" id="btnSalinLink" style="padding:8px 12px;font-size:12px;white-space:nowrap">Salin Link</button>'+
         '</div>'+
         '<small style="color:var(--teks-2);font-size:11px;display:block;margin-top:4px">Bisa diklik langsung oleh anggota di WhatsApp tanpa perlu salin kode.</small>'+
+        '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="tombol sekunder" id="btnTampilQr" style="padding:8px 12px;font-size:12px">&#9638; Tampilkan QR</button></div>'+
+        '<div id="kotakQrRoom" style="display:none;background:#fff;padding:10px;border-radius:10px;text-align:center;margin-top:10px">'+
+          '<div id="isiQrRoom"></div>'+
+          '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px">'+
+            '<button class="tombol" id="btnBagiQr" style="padding:8px 12px;font-size:12px">Bagikan QR</button>'+
+            '<button class="tombol sekunder" id="btnUnduhQr" style="padding:8px 12px;font-size:12px">Unduh PNG</button>'+
+          '</div>'+
+        '</div>'+
       '</div>'+
 
       '<button class="tombol" id="btnShareWA" style="background:#25D366;color:#fff;width:100%;margin-bottom:8px;font-weight:700">&#128172; Kirim Undangan via WhatsApp</button>'+
@@ -7541,6 +7550,54 @@ function bagikanUndanganRoom(namaRoom){
         document.execCommand('copy');
         pesan('Kode Room disalin');
       }
+    };
+
+    /* QR untuk tautan langsung (1-klik gabung). Dibuat di perangkat, tidak ke layanan lain. */
+    $('btnTampilQr').onclick = ()=>{
+      const kotak = $('kotakQrRoom');
+      if(kotak.style.display !== 'none'){ kotak.style.display = 'none'; return; }
+      try{
+        if(typeof qrcode !== 'function') throw new Error('Pustaka QR belum terpasang');
+        const qr = qrcode(0, 'M'); qr.addData(link); qr.make();
+        $('isiQrRoom').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4 });
+        kotak.style.display = 'block';
+      }catch(e){ pesan('QR gagal: ' + e.message); }
+    };
+    const pngQr = ()=> new Promise((resolve, reject)=>{
+      const svg = $('isiQrRoom').querySelector('svg');
+      if(!svg) return reject(new Error('QR belum dibuat'));
+      const xml = new XMLSerializer().serializeToString(svg);
+      const img = new Image();
+      img.onload = ()=>{
+        const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,c.width,c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => b ? resolve(b) : reject(new Error('Gagal membuat gambar')), 'image/png');
+      };
+      img.onerror = ()=> reject(new Error('Gagal membaca QR'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+    });
+    $('btnUnduhQr').onclick = async ()=>{
+      try{
+        const blob = await pngQr();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'QR-undangan-' + namaRoom.replace(/[^\w-]+/g,'_') + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+      }catch(e){ pesan('Gagal unduh QR: ' + e.message); }
+    };
+    $('btnBagiQr').onclick = async ()=>{
+      try{
+        const blob = await pngQr();
+        const file = new File([blob], 'QR-undangan-' + namaRoom.replace(/[^\w-]+/g,'_') + '.png', { type: 'image/png' });
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          await navigator.share({ title: 'Undangan Room ' + namaRoom, text: 'Scan QR untuk gabung ke room ' + namaRoom, files: [file] });
+        } else if(navigator.share){
+          await navigator.share({ title: 'Undangan Room ' + namaRoom, url: link });
+        } else {
+          await navigator.clipboard.writeText(link); pesan('Perangkat tidak bisa membagikan gambar. Tautan disalin.');
+        }
+      }catch(e){ if(e && e.name !== 'AbortError') pesan('Gagal membagikan: ' + e.message); }
     };
 
     $('btnSalinLink').onclick = ()=>{
