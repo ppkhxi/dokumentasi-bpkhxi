@@ -1470,7 +1470,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
     <!-- LOGIN -->
     <section class="screen nopad aktif" id="scLogin">
       <div class="login-isi">
-        <div class="login-logo" id="logoLogin">dkpoint</div>
+        <div class="login-logo" id="logoLogin">Dokumentasi</div>
         <h1>Dokumentasi</h1>
         <p class="sub">Dokumentasi Foto Lapangan</p>
         <div class="kotak-login">
@@ -1506,7 +1506,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.31</span>
+            Dokumentasi <span id="loginVersi">v3.9.32</span>
           </div>
         </div>
       </div>
@@ -1554,7 +1554,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <!-- Top bar kamera Makior: Brand (Kiri) | Tools & Chip GPS (Kanan) -->
         <div id="barAtasKamera" class="bar-atas-kamera makior-header">
           <div class="makior-brand">
-            <img src="icons/logo-kemenhut.png" alt="Logo" class="makior-logo" onerror="this.style.display='none'">
+            <img src="icons/logo-dokumentasi.png" alt="Logo" class="makior-logo" onerror="this.style.display='none'">
             <div class="makior-title-wrap">
               <span class="makior-title">Dokumentasi</span>
               <span class="makior-badge">PRO FIELD</span>
@@ -2078,7 +2078,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
       <div class="kartu">
         <div class="kartu-judul">Pengaturan Watermark & Kompresi</div>
         <div style="display:flex;align-items:center;gap:14px">
-          <div class="login-logo" id="logoPreview" style="margin:0;width:64px;height:64px;border-radius:16px;background:var(--hijau-terang);border-color:var(--hijau-2);color:var(--hijau)">dkpoint</div>
+          <div class="login-logo" id="logoPreview" style="margin:0;width:64px;height:64px;border-radius:16px;background:var(--hijau-terang);border-color:var(--hijau-2);color:var(--hijau)">Dokumentasi</div>
           <div style="flex:1">
             <input type="file" id="inLogo" accept="image/png,image/jpeg,image/webp" style="display:none">
             <button class="tombol sekunder" id="btnPilihLogo" style="margin-top:0">Pilih File Logo</button>
@@ -2243,7 +2243,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.31';
+const VERSI = '3.9.32';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2270,7 +2270,7 @@ function tokenRoom(nama){
 /* Logo bawaan watermark: lambang Kemenhut, latar sudah transparan.
    Ikut tersimpan service worker, jadi tetap terpasang saat tanpa sinyal.
    Petugas boleh menggantinya lewat Setelan; kosongkan untuk kembali ke ini. */
-const LOGO_BAWAAN = 'icons/logo-kemenhut.png';
+const LOGO_BAWAAN = 'icons/logo-dokumentasi.png';
 
 const S = {
   nama: localStorage.getItem('bpkh_nama') || '',
