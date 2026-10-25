@@ -2113,6 +2113,13 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <textarea class="f" id="inMasukanFeedback" rows="4" maxlength="1000" placeholder="Tulis saran, kendala, atau fitur yang Anda harapkan"></textarea>
         <button class="tombol" id="btnKirimFeedback">Kirim Masukan</button>
       </div>
+      <div class="kartu" id="kartuDaftarMasukan" style="display:none">
+        <div class="kartu-judul">Daftar Masukan Pengguna</div>
+        <div class="meta-baris"><span>Jumlah masukan</span><b id="stJumlahMasukan">0</b></div>
+        <div class="meta-baris" style="border-bottom:0"><span>Rata-rata bintang</span><b id="stRataMasukan">—</b></div>
+        <div id="listMasukan" style="margin-top:10px;display:grid;gap:8px"></div>
+        <button class="tombol abu" id="btnMuatMasukan" style="margin-top:10px">Muat Ulang Masukan</button>
+      </div>
       <div class="kartu">
         <div class="kartu-judul">Akun</div>
         <div id="kartuAkun"></div>
@@ -7908,8 +7915,42 @@ function pasangLipatSetelan(){
   });
 }
 
+/* Daftar masukan hanya tampil untuk akun yang diizinkan (dicek di server). */
+async function muatDaftarMasukan(){
+  const kartu = document.getElementById('kartuDaftarMasukan');
+  if(!kartu) return;
+  kartu.style.display = 'none';
+  const email = ((typeof MegaEngine !== 'undefined' && MegaEngine.getEmail && MegaEngine.getEmail()) ||
+                 localStorage.getItem('bpkh_email') || (typeof S !== 'undefined' && S.email) || '').trim();
+  if(!email || !navigator.onLine) return;
+  try{
+    const r = await fetch('/api/masukan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aksi: 'daftar', email })
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok || !j.ok) return;
+    document.getElementById('stJumlahMasukan').textContent = j.jumlah;
+    document.getElementById('stRataMasukan').textContent = j.jumlah ? (j.rata + ' dari 5') : '—';
+    document.getElementById('listMasukan').innerHTML = j.data.length ? j.data.map(m=>{
+      const n = Math.min(5, Math.max(0, +m.bintang || 0));
+      const bintangTeks = '★'.repeat(n) + '☆'.repeat(5 - n);
+      return '<div style="border:1px solid var(--garis);border-radius:10px;padding:8px 10px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px">'+
+          '<b style="color:#f5a623">'+bintangTeks+'</b><span style="color:var(--teks-2)">'+esc(m.waktu||'')+'</span></div>'+
+        '<div style="font-size:12px;color:var(--teks-2);margin:2px 0">'+esc(m.nama||'Anonim')+' · '+esc(m.room||'-')+' · '+esc(m.platform||'-')+' · v'+esc(m.versi||'-')+'</div>'+
+        (m.pesan ? '<div style="font-size:14px;white-space:pre-wrap">'+esc(m.pesan)+'</div>' : '')+
+      '</div>';
+    }).join('') : '<p class="catatan-kecil">Belum ada masukan.</p>';
+    kartu.style.display = '';
+  }catch(e){ /* diam: kartu tetap tersembunyi */ }
+}
+$('btnMuatMasukan').onclick = ()=> muatDaftarMasukan();
+
 async function muatPengaturan(){
   pasangLipatSetelan();
+  muatDaftarMasukan();
   const emailMega = typeof MegaEngine !== 'undefined' ? MegaEngine.getEmail() : '';
   const idUserTampil = S.userId || (S.nama ? S.nama.replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() : '—');
   $('kartuAkun').innerHTML = emailMega
