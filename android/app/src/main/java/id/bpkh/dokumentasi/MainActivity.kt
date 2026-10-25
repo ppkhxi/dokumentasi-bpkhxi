@@ -33,6 +33,24 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        aman { mulai() }
+    }
+
+    private fun tampilkanError(e: Throwable) {
+        val tv = android.widget.TextView(this).apply {
+            text = "Error saat dibuka:\n\n" + e.stackTraceToString()
+            setTextIsSelectable(true)
+            setPadding(32, 32, 32, 32)
+        }
+        setContentView(android.widget.ScrollView(this).apply { addView(tv) })
+    }
+
+    private inline fun aman(blok: () -> Unit) {
+        try { blok() } catch (e: Throwable) { tampilkanError(e) }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun mulai() {
         prefs = getSharedPreferences("dokumentasi", MODE_PRIVATE)
 
         web = WebView(this)
@@ -93,12 +111,14 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        // Tawarkan izin "tampil di atas aplikasi lain" sekali saja.
-        if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("sudah_tanya_overlay", false)) {
-            prefs.edit().putBoolean("sudah_tanya_overlay", true).apply()
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-        } else if (Settings.canDrawOverlays(this) && !OverlayService.jalan) {
-            ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
+        aman {
+            // Tawarkan izin "tampil di atas aplikasi lain" sekali saja.
+            if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("sudah_tanya_overlay", false)) {
+                prefs.edit().putBoolean("sudah_tanya_overlay", true).apply()
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            } else if (Settings.canDrawOverlays(this) && !OverlayService.jalan) {
+                ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
+            }
         }
     }
 
