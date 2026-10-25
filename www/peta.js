@@ -312,6 +312,7 @@ const PETA = (function () {
 
   // Bersihkan titik lama
   peta.lapisTitik.clearLayers();
+  const fitur3D = [];
 
   // Gambar titik foto lapangan
   berkoordinat.forEach(t => {
@@ -353,6 +354,8 @@ const PETA = (function () {
     });
 
     tanda.addTo(peta.lapisTitik);
+    fitur3D.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [t.lon, t.lat] },
+      properties: { warna: warna, html: htmlPopup } });
   });
 
   // Sesuaikan batas pandangan jika ada titik dan opsi minta fit
@@ -369,6 +372,8 @@ const PETA = (function () {
   if (peta.perbaruiCullingLabel) peta.perbaruiCullingLabel();
   setTimeout(() => { try { peta.invalidateSize(); } catch (e) {} }, 150);
 
+    peta._fitur3D = fitur3D;
+    if (peta.mode3D) terapkan3D(peta);
     return { peta, jumlah: berkoordinat.length };
   }
 
@@ -409,8 +414,86 @@ const PETA = (function () {
   }
 
   /* ------------------- BASEMAP (GOOGLE SATELIT, HYBRID, ESRI SATELIT, GOOGLE MAP, OSM) ------------------- */
+  /* ------------------- MODE 3D: vektor MapLibre dimiringkan, titik foto & GPS ikut 3D ------------------- */
+  const SUMBER_TITIK3D = 'titik-foto-3d';
+  const LAPIS_TITIK3D = 'titik-foto-3d-lingkaran';
+
+  function mapMapLibre(peta) {
+    try { return peta && peta.lapisMapLibre ? peta.lapisMapLibre.getMaplibreMap() : null; }
+    catch (e) { return null; }
+  }
+
+  function terapkan3D(peta) {
+    const ml = mapMapLibre(peta);
+    if (!ml || !window.maplibregl) return;
+    const data = { type: 'FeatureCollection', features: peta._fitur3D || [] };
+    const pasang = () => {
+      try {
+        if (ml.getSource(SUMBER_TITIK3D)) {
+          ml.getSource(SUMBER_TITIK3D).setData(data);
+        } else {
+          ml.addSource(SUMBER_TITIK3D, { type: 'geojson', data: data });
+          ml.addLayer({
+            id: LAPIS_TITIK3D, type: 'circle', source: SUMBER_TITIK3D,
+            paint: {
+              'circle-radius': 8, 'circle-color': ['get', 'warna'],
+              'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5,
+              'circle-pitch-alignment': 'map'
+            }
+          });
+          ml.on('click', LAPIS_TITIK3D, e => {
+            const f = e.features && e.features[0];
+            if (!f) return;
+            new window.maplibregl.Popup({ maxWidth: '240px' })
+              .setLngLat(f.geometry.coordinates)
+              .setHTML(f.properties.html)
+              .addTo(ml);
+          });
+          ml.on('mouseenter', LAPIS_TITIK3D, () => { ml.getCanvas().style.cursor = 'pointer'; });
+          ml.on('mouseleave', LAPIS_TITIK3D, () => { ml.getCanvas().style.cursor = ''; });
+        }
+        ml.setLayoutProperty(LAPIS_TITIK3D, 'visibility', 'visible');
+      } catch (e) { console.warn('Titik 3D gagal:', e && e.message); }
+    };
+    if (ml.isStyleLoaded()) pasang(); else ml.once('load', pasang);
+  }
+
+  function aktifkan3D(peta) {
+    const ml = mapMapLibre(peta);
+    if (!ml) return false;
+    peta.mode3D = true;
+    try { peta.removeLayer(peta.lapisTitik); } catch (e) {}
+    try { peta.removeLayer(peta.lapisUser); } catch (e) {}
+    try { peta.removeLayer(peta.lapisKML); } catch (e) {}
+    terapkan3D(peta);
+    ml.easeTo({ pitch: 60, bearing: -20, duration: 700 });
+    return true;
+  }
+
+  function matikan3D(peta) {
+    if (!peta) return;
+    peta.mode3D = false;
+    try { if (!peta.hasLayer(peta.lapisTitik)) peta.addLayer(peta.lapisTitik); } catch (e) {}
+    try { if (!peta.hasLayer(peta.lapisUser)) peta.addLayer(peta.lapisUser); } catch (e) {}
+    try { if (!peta.hasLayer(peta.lapisKML)) peta.addLayer(peta.lapisKML); } catch (e) {}
+    const ml = mapMapLibre(peta);
+    if (ml) {
+      try { if (ml.getLayer(LAPIS_TITIK3D)) ml.setLayoutProperty(LAPIS_TITIK3D, 'visibility', 'none'); } catch (e) {}
+      try { ml.easeTo({ pitch: 0, bearing: 0, duration: 600 }); } catch (e) {}
+    }
+  }
+
+  // true = 3D aktif, false = kembali 2D, null = basemap belum vektor (tidak berubah)
+  function toggle3D(peta) {
+    if (!peta) return null;
+    if (peta.mode3D) { matikan3D(peta); return false; }
+    if (peta.tipeBasemap !== 'maplibre_vector') return null;
+    return aktifkan3D(peta) ? true : null;
+  }
+
   function gantiBasemap(peta, tipe) {
     if (!peta) return 'google_satelit';
+    if (peta.mode3D) matikan3D(peta);
     const targets = ['maplibre_vector', 'google_hybrid'];
     const idx = targets.indexOf(peta.tipeBasemap);
     const target = tipe || targets[(idx + 1) % targets.length] || 'google_satelit';
@@ -988,6 +1071,8 @@ const PETA = (function () {
     perbaruiLokasiUser: perbaruiLokasiUser,
     pusatkanKeUser: pusatkanKeUser,
     gantiBasemap: gantiBasemap,
+    toggle3D: toggle3D,
+    matikan3D: matikan3D,
     dapatkanBasemap: dapatkanBasemap,
     fokusJawa: fokusJawa,
     parseKML: parseKML,
