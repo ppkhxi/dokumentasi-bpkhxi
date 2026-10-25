@@ -49,7 +49,7 @@ const KOLOM = ['ID', 'Waktu Ambil', 'Waktu Diterima', 'Nama Petugas', 'Room',
 const KOLOM_ANGGOTA = ['Room', 'Email', 'Nama', 'Bergabung', 'Status'];
 const KOLOM_TELEMETRI = ['Device ID', 'Nama Petugas', 'ID Petugas', 'Room Aktif',
   'Platform', 'Mode Tampilan', 'Versi App', 'Pertama Kali',
-  'Terakhir Aktif', 'Total Sesi', 'Resolusi Layar'];
+  'Terakhir Aktif', 'Total Sesi', 'Resolusi Layar', 'Kunci Akun'];
 
 // ============ TITIK MASUK ==================================================
 
@@ -88,6 +88,7 @@ function doPost(e) {
       case 'ubahAdmin':     return balas(ubahAdmin(p));
       case 'telemetri':     return balas(catatTelemetri(p));
       case 'ambilTelemetri': return balas(ambilTelemetri(p));
+      case 'hitungPengguna': return balas(hitungPengguna(p));
       default:              return balas({ ok: false, pesan: 'Aksi tidak dikenal: ' + aksi });
     }
   } catch (err) {
@@ -471,6 +472,7 @@ function catatTelemetri(p) {
         sesiBaru,
         p.layar || ''
       ]]);
+      sh.getRange(barisTarget, 12).setValue(p.kunci || '');
     } else {
       sh.appendRow([
         p.deviceId,
@@ -483,11 +485,36 @@ function catatTelemetri(p) {
         p.pertamaKali || tglSekarang,
         tglSekarang,
         sesiBaru,
-        p.layar || ''
+        p.layar || '',
+        p.kunci || ''
       ]);
     }
 
     return { ok: true, pesan: 'Telemetri tercatat' };
+  } catch (err) {
+    return { ok: false, pesan: err.message };
+  }
+}
+
+// Hitungan pengguna = jumlah identitas unik: akun MEGA (kalau login),
+// atau perangkat (kalau tidak login). Jumlah kunjungan dan foto TIDAK dipakai.
+function hitungPenggunaUnik(rows) {
+  const set = {};
+  rows.forEach(function(b) {
+    const kunci = String(b[11] || '').trim();
+    set[kunci ? kunci : 'perangkat:' + String(b[0])] = true;
+  });
+  return Object.keys(set).length;
+}
+
+// Publik: hanya mengembalikan angka, tanpa data pribadi.
+function hitungPengguna(p) {
+  try {
+    const sh = bukaSheetTelemetri();
+    const jml = sh.getLastRow();
+    if (jml < 2) return { ok: true, totalPengguna: 0, totalPerangkat: 0 };
+    const rows = sh.getRange(2, 1, jml - 1, KOLOM_TELEMETRI.length).getValues();
+    return { ok: true, totalPengguna: hitungPenggunaUnik(rows), totalPerangkat: rows.length };
   } catch (err) {
     return { ok: false, pesan: err.message };
   }
@@ -523,6 +550,7 @@ function ambilTelemetri(p) {
         pertamaKali: b[7],
         terakhirAktif: b[8],
         totalSesi: b[9],
+        kunci: b[11] || '',
         isAktif: isAktif
       };
     }).reverse();
@@ -530,6 +558,7 @@ function ambilTelemetri(p) {
     return {
       ok: true,
       total: daftar.length,
+      totalPengguna: hitungPenggunaUnik(rows),
       aktif7Hari: aktifCount,
       apkPwa: apkPwaCount,
       daftar: daftar
