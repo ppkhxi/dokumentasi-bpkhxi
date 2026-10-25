@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: apk-build
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -58,14 +62,23 @@ jobs:
           path: android/app/build/outputs/apk/release/app-release.apk
 
       - name: Commit APK ke main (Pages akan deploy otomatis)
+        env:
+          VERSI_APK: ${{ steps.versi.outputs.nama }}
+          NOMOR_BUILD: ${{ github.run_number }}
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add www/dl/dkpoint.apk
-          git diff --cached --quiet && exit 0
-          git commit -m "apk: dkpoint ${{ steps.versi.outputs.nama }} (build ${{ github.run_number }})"
-          for i in 1 2 3; do
-            git pull --rebase origin main && git push origin HEAD:main && exit 0
+          cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/dkpoint.apk"
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            mkdir -p www/dl
+            cp "$RUNNER_TEMP/dkpoint.apk" www/dl/dkpoint.apk
+            git add www/dl/dkpoint.apk
+            if git diff --cached --quiet; then echo "APK sudah sama, tidak ada perubahan"; exit 0; fi
+            git commit -q -m "apk: dkpoint ${VERSI_APK} (build ${NOMOR_BUILD})"
+            if git push -q origin HEAD:main; then echo "APK terkirim"; exit 0; fi
+            echo "Push ditolak, coba lagi ($i)..."
             sleep 5
           done
-          echo "Gagal push APK setelah 3 kali coba"; exit 1
+          echo "Gagal push APK setelah 5 kali coba"; exit 1
