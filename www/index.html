@@ -1404,6 +1404,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .fly-menu{display:flex;gap:6px}
 .fly-tab{flex:1;height:34px;border-radius:10px;border:0;background:#eef2ee;color:#1b2a1d;font-size:13px;font-weight:600}
 .fly-tab.aktif{background:#2e7d32;color:#fff}
+.fly-peta{width:100%;height:320px;border-radius:14px;overflow:hidden;background:#e9efe9}
 #flyRana{width:66px;height:66px;border-radius:50%;border:4px solid #1b5e20;background:#2e7d32;box-sizing:border-box;padding:0}
 #flyRana:active{transform:scale(.92)}
 #flyTirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
@@ -1497,7 +1498,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.26</span>
+            dkpoint <span id="loginVersi">v3.9.27</span>
           </div>
         </div>
       </div>
@@ -2152,12 +2153,17 @@ td img.thumb-tabel:active{transform:scale(0.92)}
       <button id="flyMenuKamera" class="fly-tab aktif" type="button">&#128247; Kamera</button>
       <button id="flyMenuPeta" class="fly-tab" type="button">&#128506; Peta</button>
     </div>
-    <div class="fly-pratinjau">
-      <video id="flyVideo" playsinline muted autoplay></video>
-      <div id="flyTirai"></div>
+    <div id="flyPanelKamera">
+      <div class="fly-pratinjau">
+        <video id="flyVideo" playsinline muted autoplay></video>
+        <div id="flyTirai"></div>
+      </div>
+      <div class="fly-catatan" style="margin-top:10px"><input id="flyCatatan" placeholder="Tulis nomor patok atau catatan..." maxlength="250" autocomplete="off"></div>
+      <div class="fly-rana" style="margin-top:10px"><button id="flyRana" aria-label="Ambil foto"></button></div>
     </div>
-    <div class="fly-catatan"><input id="flyCatatan" placeholder="Tulis nomor patok atau catatan..." maxlength="250" autocomplete="off"></div>
-    <div class="fly-rana"><button id="flyRana" aria-label="Ambil foto"></button></div>
+    <div id="flyPanelPeta" style="display:none">
+      <div id="flyPeta" class="fly-peta"></div>
+    </div>
   </div>
   <div id="navbar" class="sembunyi">
     <button class="nav-item" data-nav="beranda"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.8 20v-6h4.4v6"/></svg></span>Beranda</button>
@@ -2220,7 +2226,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.26';
+const VERSI = '3.9.27';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -8281,7 +8287,30 @@ function perbaruiBubbleCapture(nama){
   b.classList.toggle('tampil', tampil);
   if(!tampil) tutupFlyCapture();
 }
+function tampilkanPanelFly(m){
+  $('flyPanelKamera').style.display = m === 'kamera' ? '' : 'none';
+  $('flyPanelPeta').style.display = m === 'peta' ? '' : 'none';
+  $('flyMenuKamera').classList.toggle('aktif', m === 'kamera');
+  $('flyMenuPeta').classList.toggle('aktif', m === 'peta');
+}
+async function pilihMenuFly(m){
+  if(m === 'peta'){
+    tampilkanPanelFly('peta');
+    tutupFlyCapture();                       // kamera dimatikan saat peta tampil
+    $('flyCapture').classList.add('tampil');
+    try{
+      const titik = await titikPeta();
+      await PETA.gambar($('flyPeta'), titik, { fit: true });
+    }catch(e){
+      pesan('Peta belum bisa dimuat: ' + e.message);
+    }
+  } else {
+    tampilkanPanelFly('kamera');
+    bukaFlyCapture();
+  }
+}
 async function bukaFlyCapture(){
+  tampilkanPanelFly('kamera');
   $('flyInfo').textContent = (S.room || 'LOKAL') + (S.posisi ? ' · GPS terkunci' : ' · GPS belum ada');
   $('flyCapture').classList.add('tampil');
   if(flyStream) return;
@@ -8359,8 +8388,8 @@ async function jepretFlyCapture(){
   b.addEventListener('pointercancel', () => { mulai = null; });
   $('flyTutup').onclick = tutupFlyCapture;
   $('flyRana').onclick = jepretFlyCapture;
-  $('flyMenuKamera').onclick = () => {};
-  $('flyMenuPeta').onclick = () => { tutupFlyCapture(); ke('peta'); };
+  $('flyMenuKamera').onclick = () => pilihMenuFly('kamera');
+  $('flyMenuPeta').onclick = () => pilihMenuFly('peta');
   document.addEventListener('visibilitychange', () => { if(document.hidden) tutupFlyCapture(); });
 })();
 
