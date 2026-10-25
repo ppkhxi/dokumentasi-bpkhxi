@@ -1401,6 +1401,9 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 .fly-pratinjau video{width:100%;height:100%;object-fit:cover;display:block}
 .fly-catatan input{width:100%;box-sizing:border-box;height:38px;border-radius:10px;border:1px solid #dfe5df;padding:0 12px;font-size:14px;background:#f7f9f7}
 .fly-rana{display:flex;justify-content:center}
+.fly-menu{display:flex;gap:6px}
+.fly-tab{flex:1;height:34px;border-radius:10px;border:0;background:#eef2ee;color:#1b2a1d;font-size:13px;font-weight:600}
+.fly-tab.aktif{background:#2e7d32;color:#fff}
 #flyRana{width:66px;height:66px;border-radius:50%;border:4px solid #1b5e20;background:#2e7d32;box-sizing:border-box;padding:0}
 #flyRana:active{transform:scale(.92)}
 #flyTirai{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
@@ -1494,7 +1497,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.25</span>
+            dkpoint <span id="loginVersi">v3.9.26</span>
           </div>
         </div>
       </div>
@@ -2145,6 +2148,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
       <div><b>Capture cepat</b><small id="flyInfo">—</small></div>
       <button id="flyTutup" aria-label="Tutup capture cepat">&#10005;</button>
     </div>
+    <div class="fly-menu">
+      <button id="flyMenuKamera" class="fly-tab aktif" type="button">&#128247; Kamera</button>
+      <button id="flyMenuPeta" class="fly-tab" type="button">&#128506; Peta</button>
+    </div>
     <div class="fly-pratinjau">
       <video id="flyVideo" playsinline muted autoplay></video>
       <div id="flyTirai"></div>
@@ -2213,7 +2220,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.25';
+const VERSI = '3.9.26';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -8352,6 +8359,8 @@ async function jepretFlyCapture(){
   b.addEventListener('pointercancel', () => { mulai = null; });
   $('flyTutup').onclick = tutupFlyCapture;
   $('flyRana').onclick = jepretFlyCapture;
+  $('flyMenuKamera').onclick = () => {};
+  $('flyMenuPeta').onclick = () => { tutupFlyCapture(); ke('peta'); };
   document.addEventListener('visibilitychange', () => { if(document.hidden) tutupFlyCapture(); });
 })();
 
