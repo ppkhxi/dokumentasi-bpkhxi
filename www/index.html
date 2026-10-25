@@ -1391,6 +1391,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 #bubbleCapture{position:fixed;right:14px;bottom:112px;width:58px;height:58px;border-radius:50%;border:0;background:#2e7d32;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:900;display:none;align-items:center;justify-content:center;touch-action:none;padding:0}
 #bubbleCapture.tampil{display:flex}
 #bubbleCapture:active{transform:scale(.94)}
+.app-native #bubbleCapture{display:none!important}
+body.modo-flyout{background:transparent!important;overflow:hidden}
+body.modo-flyout #judulBar,body.modo-flyout #desktopNav,body.modo-flyout #layar,body.modo-flyout #navbar,body.modo-flyout #bubbleCapture{display:none!important}
+body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transform:none;width:100%;max-width:none;border-radius:24px;box-shadow:none}
 .flyout-capture{position:fixed;left:50%;transform:translateX(-50%);bottom:108px;width:min(360px,calc(100vw - 24px));box-sizing:border-box;background:#0b0d0c;color:#ffffff;border-radius:28px;box-shadow:0 18px 44px rgba(0,0,0,.5);padding:16px;z-index:950;display:none;flex-direction:column;gap:12px}
 .flyout-capture.tampil{display:flex}
 .fly-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -1506,7 +1510,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.35</span>
+            Dokumentasi <span id="loginVersi">v3.9.36</span>
           </div>
         </div>
       </div>
@@ -2251,7 +2255,13 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.35';
+const VERSI = '3.9.36';
+if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
+(function modeFlyoutNative(){
+  if(new URLSearchParams(location.search).get('flyout') !== '1') return;
+  document.body.classList.add('modo-flyout');
+  window.addEventListener('load', ()=>{ setTimeout(()=>{ try{ bukaFlyCapture(); }catch(e){} }, 300); });
+})();
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -8333,6 +8343,7 @@ function bubbleAktif(){
   try{ return localStorage.getItem('dkpoint_bubble_aktif') !== 'false'; }catch(_){ return true; }
 }
 function perbaruiBubbleCapture(nama){
+  if(document.body.classList.contains('modo-flyout')) return;
   const b = $('bubbleCapture'); if(!b) return;
   const tampil = bubbleAktif() && nama !== 'login' && nama !== 'kamera';
   b.classList.toggle('tampil', tampil);
@@ -8443,7 +8454,10 @@ async function jepretFlyCapture(){
   };
   b.addEventListener('pointerup', selesai);
   b.addEventListener('pointercancel', () => { mulai = null; });
-  $('flyTutup').onclick = tutupFlyCapture;
+  $('flyTutup').onclick = () => {
+    tutupFlyCapture();
+    try{ if(window.DokumentasiNative) window.DokumentasiNative.tutup(); }catch(e){}
+  };
   $('flyRana').onclick = jepretFlyCapture;
   $('flyMenuKamera').onclick = () => pilihMenuFly('kamera');
   $('flyMenuPeta').onclick = () => pilihMenuFly('peta');
