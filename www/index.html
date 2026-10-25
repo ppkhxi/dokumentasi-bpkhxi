@@ -1506,7 +1506,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.33</span>
+            Dokumentasi <span id="loginVersi">v3.9.34</span>
           </div>
         </div>
       </div>
@@ -2094,6 +2094,9 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <input class="f" id="inKantor" value="dkpoint" placeholder="BPKH Wilayah XI">
         
         <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px;">
+          <input type="checkbox" id="cbBubbleAktif"> Aktifkan mode capture cepat (bubble &amp; flyout)
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px;">
           <input type="checkbox" id="cbTanggalWm"> Cantumkan tanggal di watermark foto
         </label>
         <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:14px;">
@@ -2160,7 +2163,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   <div id="flyCapture" class="flyout-capture" role="dialog" aria-label="Capture cepat">
     <div class="fly-head">
       <div class="fly-brand">
-        <svg width="22" height="16" viewBox="0 0 24 18" aria-hidden="true"><path d="M0 18 L8 4 L13 12 L16 8 L24 18Z" fill="#2e7d32"/></svg>
+        <img src="icons/logo-dokumentasi.png" alt="" width="24" height="24" style="flex:0 0 24px;width:24px;height:24px;object-fit:contain;border-radius:6px">
         <div style="min-width:0"><b>Dokumentasi</b><small id="flyInfo">—</small></div>
       </div>
       <button id="flyTutup" aria-label="Tutup capture cepat">&#10005;</button>
@@ -2248,7 +2251,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.33';
+const VERSI = '3.9.34';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2413,6 +2416,7 @@ function ke(nama, dorong=true){
   if($('layar')) $('layar').scrollTop = 0;
   window.scrollTo(0, 0);
   $('judulBar').textContent = JUDUL[nama];
+  window.LAYAR_NAMA = nama;
   perbaruiBubbleCapture(nama);
 
   const login = nama==='login';
@@ -8077,6 +8081,9 @@ async function muatPengaturan(){
   if ($('cbTanggalWm')) {
     $('cbTanggalWm').checked = localStorage.getItem('dkpoint_tanggal_wm') === 'true';
   }
+  if ($('cbBubbleAktif')) {
+    $('cbBubbleAktif').checked = bubbleAktif();
+  }
 
   // Status MEGA Cloud di Pengaturan
   const terhubungMega = adaServer();
@@ -8278,6 +8285,10 @@ $('btnSimpanSetting').onclick = ()=>{
   if ($('cbTanggalWm')) {
     localStorage.setItem('dkpoint_tanggal_wm', $('cbTanggalWm').checked ? 'true' : 'false');
   }
+  if ($('cbBubbleAktif')) {
+    try{ localStorage.setItem('dkpoint_bubble_aktif', $('cbBubbleAktif').checked ? 'true' : 'false'); }catch(_){}
+    perbaruiBubbleCapture(window.LAYAR_NAMA || 'beranda');
+  }
 
   $('inKantor').value = S.kantor;
   $('inTarget').value=S.targetKB; $('inLebar').value=S.lebarMax;
@@ -8318,9 +8329,12 @@ function tutupFlyCapture(){
   if(flyStream){ flyStream.getTracks().forEach(t => t.stop()); flyStream = null; }
   const v = $('flyVideo'); if(v) v.srcObject = null;
 }
+function bubbleAktif(){
+  try{ return localStorage.getItem('dkpoint_bubble_aktif') !== 'false'; }catch(_){ return true; }
+}
 function perbaruiBubbleCapture(nama){
   const b = $('bubbleCapture'); if(!b) return;
-  const tampil = nama !== 'login' && nama !== 'kamera';
+  const tampil = bubbleAktif() && nama !== 'login' && nama !== 'kamera';
   b.classList.toggle('tampil', tampil);
   if(!tampil) tutupFlyCapture();
 }
