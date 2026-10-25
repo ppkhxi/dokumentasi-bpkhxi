@@ -4480,6 +4480,43 @@ function buatThumbCloud(namaPetugas, noUrut, lat, lon){
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
+/* Mengganti kartu awan (SVG) dengan thumbnail foto asli dari MEGA, satu per satu.
+   Dipicu setelah Tarik Data Regu. Foto tetap ditandai isCloudOnly agar detail
+   masih memakai tombol "Muat & Tampilkan Foto Asli" untuk versi penuh. */
+let thumbCloudBerjalan = false;
+async function lengkapiThumbCloud(maks = 80){
+  if(thumbCloudBerjalan || !adaServer() || !navigator.onLine) return 0;
+  thumbCloudBerjalan = true;
+  let selesai = 0;
+  try{
+    const kandidat = (await ambilSemua()).filter(f =>
+      f.isCloudOnly && f.namaBerkas && f.room &&
+      (!f.dataUrl || f.dataUrl.includes('data:image/svg'))
+    ).slice(0, maks);
+    if(!kandidat.length) return 0;
+    await MegaEngine.pastikanTerhubung();
+    const master = await MegaEngine.dapatkanFolderMaster();
+    for(const f of kandidat){
+      try{
+        const folderRoom = master.find(String(f.room).toUpperCase());
+        const target = folderRoom && folderRoom.children &&
+          folderRoom.children.find(c => c.name === f.namaBerkas);
+        if(!target) continue;
+        const unduh = await MegaEngine.unduhFotoDataUrl(target, 60000);
+        f.dataUrl = await buatThumbnailKml(unduh.dataUrl, 360, 0.7);
+        await simpanFoto(f);
+        selesai++;
+        if(selesai % 3 === 0) muatGaleri();
+      }catch(e){ /* lewati; dicoba lagi saat Tarik Data Regu berikutnya */ }
+    }
+  }catch(e){ /* tidak terhubung / offline: biarkan kartu awan */ }
+  finally{
+    thumbCloudBerjalan = false;
+    if(selesai) muatGaleri();
+  }
+  return selesai;
+}
+
 /* Tarik data foto dan rekapan dari seluruh anggota di Cloud MEGA (Mode Instan & Hemat Kuota) */
 async function tarikDataReguMega(){
   if(!adaServer()){
@@ -4572,6 +4609,7 @@ async function tarikDataReguMega(){
 
     segarkanLayar();
     if(petaAktif) muatPeta();
+    lengkapiThumbCloud();
   }catch(e){
     dialog('<h3>Gagal Menarik Data</h3><p>'+esc(e.message)+'</p><button class="tombol" onclick="tutupDialog()">Tutup</button>');
   }
