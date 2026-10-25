@@ -34,12 +34,23 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val p = getSharedPreferences("dokumentasi", MODE_PRIVATE)
+        val crash = p.getString("crash_terakhir", null)
+        if (crash != null) {
+            p.edit().remove("crash_terakhir").commit()
+            tampilkanTeks("Crash pada pembukaan sebelumnya:\n\n" + crash)
+            return
+        }
         aman { mulai() }
     }
 
     private fun tampilkanError(e: Throwable) {
+        tampilkanTeks("Error saat dibuka:\n\n" + e.stackTraceToString())
+    }
+
+    private fun tampilkanTeks(isi: String) {
         val tv = android.widget.TextView(this).apply {
-            text = "Error saat dibuka:\n\n" + e.stackTraceToString()
+            text = isi
             setTextIsSelectable(true)
             setPadding(32, 32, 32, 32)
         }
