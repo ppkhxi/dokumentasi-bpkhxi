@@ -1476,7 +1476,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.21</span>
+            dkpoint <span id="loginVersi">v3.9.22</span>
           </div>
         </div>
       </div>
@@ -2100,6 +2100,20 @@ td img.thumb-tabel:active{transform:scale(0.92)}
         <button class="tombol abu" id="btnEkspor">Ekspor Metadata (JSON)</button>
       </div>
       <div class="kartu">
+        <div class="kartu-judul">Feedback &amp; Masukan</div>
+        <p class="catatan-kecil" style="margin-top:0">Beri penilaian untuk dkpoint dan tulis saran agar aplikasi bisa kami kembangkan lebih baik.</p>
+        <div id="bintangFeedback" role="group" aria-label="Penilaian 1 sampai 5 bintang" style="display:flex;justify-content:center;gap:4px;margin:6px 0 10px">
+          <button type="button" data-bintang="1" aria-label="1 bintang" style="background:none;border:0;color:#bbb;font-size:36px;line-height:1;cursor:pointer;padding:0 4px">&#9733;</button>
+          <button type="button" data-bintang="2" aria-label="2 bintang" style="background:none;border:0;color:#bbb;font-size:36px;line-height:1;cursor:pointer;padding:0 4px">&#9733;</button>
+          <button type="button" data-bintang="3" aria-label="3 bintang" style="background:none;border:0;color:#bbb;font-size:36px;line-height:1;cursor:pointer;padding:0 4px">&#9733;</button>
+          <button type="button" data-bintang="4" aria-label="4 bintang" style="background:none;border:0;color:#bbb;font-size:36px;line-height:1;cursor:pointer;padding:0 4px">&#9733;</button>
+          <button type="button" data-bintang="5" aria-label="5 bintang" style="background:none;border:0;color:#bbb;font-size:36px;line-height:1;cursor:pointer;padding:0 4px">&#9733;</button>
+        </div>
+        <label class="f" for="inMasukanFeedback" style="margin-top:0">Saran dan masukan untuk pengembangan</label>
+        <textarea class="f" id="inMasukanFeedback" rows="4" maxlength="1000" placeholder="Tulis saran, kendala, atau fitur yang Anda harapkan"></textarea>
+        <button class="tombol" id="btnKirimFeedback">Kirim Masukan</button>
+      </div>
+      <div class="kartu">
         <div class="kartu-judul">Akun</div>
         <div id="kartuAkun"></div>
         <div class="meta-baris"><span>Room aktif</span><b id="stRoom">—</b></div>
@@ -2171,7 +2185,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.21';
+const VERSI = '3.9.22';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -8020,6 +8034,56 @@ $('btnPutusMega').onclick = ()=>{
       '<button class="tombol abu" onclick="tutupDialog()">Batal</button>'+
       '<button class="tombol" style="background:var(--merah)" onclick="MegaEngine.logout(); S.email=\'\'; localStorage.removeItem(\'bpkh_email\'); tutupDialog(); muatPengaturan(); pesan(\'Akun MEGA diputuskan\');">Putuskan</button>'+
     '</div>');
+};
+
+
+/* ---------- Feedback & Masukan (bintang 1-5 + saran) ---------- */
+let bintangFeedback = 0;
+function pilihBintangFeedback(n){
+  bintangFeedback = n;
+  document.querySelectorAll('#bintangFeedback button').forEach(b=>{
+    const aktif = +b.dataset.bintang <= n;
+    b.style.color = aktif ? '#f5a623' : '#bbb';
+    b.setAttribute('aria-pressed', +b.dataset.bintang === n ? 'true' : 'false');
+  });
+}
+document.querySelectorAll('#bintangFeedback button').forEach(b=>{
+  b.onclick = ()=> pilihBintangFeedback(+b.dataset.bintang);
+});
+pilihBintangFeedback(0);
+
+$('btnKirimFeedback').onclick = async ()=>{
+  if(!bintangFeedback){ pesan('Pilih jumlah bintang terlebih dahulu'); return; }
+  if(!navigator.onLine){ pesan('Perlu koneksi internet untuk mengirim masukan'); return; }
+  const tombol = $('btnKirimFeedback');
+  tombol.disabled = true;
+  tombol.textContent = 'Mengirim…';
+  try{
+    const r = await fetch('/api/masukan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: dapatkanDeviceId(),
+        nama: (typeof S !== 'undefined' && S.nama) || localStorage.getItem('bpkh_nama') || 'Anonim',
+        userId: (typeof S !== 'undefined' && S.userId) || localStorage.getItem('bpkh_userId') || '',
+        room: (typeof S !== 'undefined' && S.room) || localStorage.getItem('bpkh_room') || 'LOKAL',
+        platform: deteksiPlatform(),
+        versi: typeof VERSI !== 'undefined' ? VERSI : '',
+        bintang: bintangFeedback,
+        pesan: $('inMasukanFeedback').value.trim()
+      })
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok || !j.ok) throw new Error(j.pesan || 'Server menolak masukan');
+    $('inMasukanFeedback').value = '';
+    pilihBintangFeedback(0);
+    pesan('Terima kasih! Masukan Anda sudah terkirim');
+  }catch(e){
+    pesan('Gagal mengirim masukan: ' + e.message);
+  }finally{
+    tombol.disabled = false;
+    tombol.textContent = 'Kirim Masukan';
+  }
 };
 
 $('btnBukaBuatRoom').onclick = dialogBuatRoom;

@@ -33,3 +33,17 @@ CREATE TABLE IF NOT EXISTS telemetri (
   kunci          TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_telemetri_kunci ON telemetri (kunci);
+
+CREATE TABLE IF NOT EXISTS masukan (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id TEXT,
+  nama      TEXT,
+  user_id   TEXT,
+  room      TEXT,
+  platform  TEXT,
+  versi     TEXT,
+  bintang   INTEGER NOT NULL,
+  pesan     TEXT,
+  waktu     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_masukan_waktu ON masukan (waktu);
