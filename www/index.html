@@ -1475,7 +1475,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.14</span>
+            dkpoint <span id="loginVersi">v3.9.15</span>
           </div>
         </div>
       </div>
@@ -1817,7 +1817,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
 
         <!-- Bilah Alat Ramping Mengambang Vertikal di Kanan Atas (Dock) -->
         <div id="dockPetaAlat" class="dock-peta-alat">
-          <button id="btnPetaBasemap" class="btn-alat-peta" title="Peta Dasar: Satelit / Hybrid / Esri / Jalan / OSM">
+          <button id="btnPetaBasemap" class="btn-alat-peta" title="Peta Dasar: Satelit / Hybrid / Esri / Jalan / OSM / Vektor">
             <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span id="labelBasemapPeta">Satelit</span>
           </button>
@@ -2162,7 +2162,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.14';
+const VERSI = '3.9.15';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -5272,6 +5272,8 @@ $('btnPetaBasemap').onclick = () => {
     $('labelBasemapPeta').textContent = 'Esri';
   } else if (baru === 'google_map') {
     $('labelBasemapPeta').textContent = 'Jalan';
+  } else if (baru === 'maplibre_vector') {
+    $('labelBasemapPeta').textContent = 'Vektor';
   } else {
     $('labelBasemapPeta').textContent = 'OSM';
   }

@@ -51,6 +51,84 @@ const PETA = (function () {
     return janjiMuat;
   }
 
+  /* ------------------- MAPLIBRE GL JS 4.7.1 (basemap vektor lewat adapter Leaflet) ------------------- */
+  let janjiMapLibre = null;
+
+  function muatSkrip(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => res();
+      s.onerror = () => rej(new Error('Gagal memuat ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  function muatMapLibre() {
+    if (window.maplibregl && window.L && window.L.maplibreGL) return Promise.resolve();
+    if (janjiMapLibre) return janjiMapLibre;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = MAPLIBRE_CSS;
+    document.head.appendChild(css);
+    janjiMapLibre = muatSkrip(MAPLIBRE_JS)
+      .then(() => muatSkrip(MAPLIBRE_BRIDGE_JS))
+      .then(() => {
+        if (!(window.maplibregl && window.L && window.L.maplibreGL)) {
+          throw new Error('Adapter MapLibre tidak siap');
+        }
+      })
+      .catch(err => { janjiMapLibre = null; throw err; });
+    return janjiMapLibre;
+  }
+
+  function dukungWebGL() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    } catch (e) { return false; }
+  }
+
+  // Cek style bisa diambil (koneksi internet) sebelum MapLibre dipasang
+  async function cekStyleMapLibre() {
+    const ctl = new AbortController();
+    const batas = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(MAPLIBRE_STYLE, { signal: ctl.signal });
+      if (!r.ok) throw new Error('Style HTTP ' + r.status);
+    } finally {
+      clearTimeout(batas);
+    }
+  }
+
+  // Pasang basemap vektor. Jika WebGL/internet/pustaka gagal, kembali ke Google Satelit.
+  async function aktifkanMapLibre(peta) {
+    try {
+      if (!dukungWebGL()) throw new Error('WebGL tidak tersedia');
+      await muatMapLibre();
+      await cekStyleMapLibre();
+      if (!peta || peta.tipeBasemap !== 'maplibre_vector') return true; // pengguna sudah pindah basemap
+      if (!peta.lapisMapLibre) {
+        peta.lapisMapLibre = L.maplibreGL({ style: MAPLIBRE_STYLE, attribution: ATRIBUSI_MAPLIBRE });
+      }
+      ['lapisGoogleSat', 'lapisGoogleHyb', 'lapisEsriSat', 'lapisGoogleMap', 'lapisOSM'].forEach(k => {
+        try { if (peta[k]) peta.removeLayer(peta[k]); } catch (e) {}
+      });
+      peta.lapisMapLibre.addTo(peta);
+      return true;
+    } catch (e) {
+      console.warn('Basemap vektor tidak tersedia:', e && e.message);
+      if (peta && peta.tipeBasemap === 'maplibre_vector') {
+        try { peta.lapisGoogleSat.addTo(peta); } catch (err) {}
+        peta.tipeBasemap = 'google_satelit';
+        if (typeof window.pesan === 'function') {
+          window.pesan('Basemap vektor tidak tersedia (offline/WebGL). Kembali ke Google Satelit.');
+        }
+      }
+      return false;
+    }
+  }
+
   const punyaKoordinat = t => t && t.lat != null && t.lon != null &&
                               isFinite(t.lat) && isFinite(t.lon);
 
@@ -75,6 +153,13 @@ const PETA = (function () {
   // 5. OpenStreetMap (OSM - Ringan & Cepat Offline)
   const URL_TILE_OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const ATRIBUSI_OSM = '&copy; OpenStreetMap contributors';
+
+  // 6. MapLibre GL JS 4.7.1 (vektor WebGL) — dimuat hanya saat basemap ini dipilih
+  const MAPLIBRE_CSS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
+  const MAPLIBRE_JS = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+  const MAPLIBRE_BRIDGE_JS = 'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js';
+  const MAPLIBRE_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+  const ATRIBUSI_MAPLIBRE = '&copy; OpenFreeMap &copy; OpenMapTiles &copy; OpenStreetMap contributors';
 
   // Fokus Pulau Jawa
   const PUSAT_JAWA = [-7.5, 110.5];
@@ -164,6 +249,10 @@ const PETA = (function () {
         peta.lapisEsriSat.addTo(peta);
       } else if (prefBasemap === 'osm') {
         peta.lapisOSM.addTo(peta);
+      } else if (prefBasemap === 'maplibre_vector') {
+        // Google Satelit sementara tampil sampai MapLibre siap
+        peta.lapisGoogleSat.addTo(peta);
+        aktifkanMapLibre(peta);
       } else {
         peta.lapisGoogleSat.addTo(peta);
       }
@@ -320,7 +409,7 @@ const PETA = (function () {
   /* ------------------- BASEMAP (GOOGLE SATELIT, HYBRID, ESRI SATELIT, GOOGLE MAP, OSM) ------------------- */
   function gantiBasemap(peta, tipe) {
     if (!peta) return 'google_satelit';
-    const targets = ['google_satelit', 'google_hybrid', 'esri_satelit', 'google_map', 'osm'];
+    const targets = ['google_satelit', 'google_hybrid', 'esri_satelit', 'google_map', 'osm', 'maplibre_vector'];
     const idx = targets.indexOf(peta.tipeBasemap);
     const target = tipe || targets[(idx + 1) % targets.length] || 'google_satelit';
     
@@ -330,6 +419,7 @@ const PETA = (function () {
     try { if (peta.lapisEsriSat) peta.removeLayer(peta.lapisEsriSat); } catch (e) {}
     try { if (peta.lapisGoogleMap) peta.removeLayer(peta.lapisGoogleMap); } catch (e) {}
     try { if (peta.lapisOSM) peta.removeLayer(peta.lapisOSM); } catch (e) {}
+    try { if (peta.lapisMapLibre) peta.removeLayer(peta.lapisMapLibre); } catch (e) {}
     
     let label = 'Google Satelit';
     if (target === 'google_hybrid') {
@@ -344,6 +434,11 @@ const PETA = (function () {
     } else if (target === 'osm') {
       try { peta.lapisOSM.addTo(peta); } catch (e) {}
       label = 'Peta Jalan (OpenStreetMap)';
+    } else if (target === 'maplibre_vector') {
+      try { peta.lapisGoogleSat.addTo(peta); } catch (e) {}
+      peta.tipeBasemap = target;
+      label = 'MapLibre Vektor';
+      aktifkanMapLibre(peta);
     } else {
       try { peta.lapisGoogleSat.addTo(peta); } catch (e) {}
       label = 'Google Satelit';
