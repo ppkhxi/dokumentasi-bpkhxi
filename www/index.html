@@ -1475,7 +1475,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.19</span>
+            dkpoint <span id="loginVersi">v3.9.20</span>
           </div>
         </div>
       </div>
@@ -1821,6 +1821,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span id="labelBasemapPeta">Satelit</span>
           </button>
+          <button id="btnPeta3D" class="btn-alat-peta" title="Mode 3D (peta vektor miring)">
+            <svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></svg>
+            <span id="labelPeta3D">3D</span>
+          </button>
           <button id="btnPetaLokasi" class="btn-alat-peta" title="Lokasi Berdiri Saya">
             <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
             <span>Lokasi</span>
@@ -2162,7 +2166,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.19';
+const VERSI = '3.9.20';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -5276,6 +5280,7 @@ if (btnPetaLabelFoto) {
 $('btnPetaBasemap').onclick = () => {
   if (!petaAktif) return;
   const baru = PETA.gantiBasemap(petaAktif);
+  if ($('labelPeta3D')) $('labelPeta3D').textContent = '3D';
   if (baru === 'google_satelit') {
     $('labelBasemapPeta').textContent = 'Satelit';
   } else if (baru === 'google_hybrid') {
@@ -5289,6 +5294,17 @@ $('btnPetaBasemap').onclick = () => {
   } else {
     $('labelBasemapPeta').textContent = 'OSM';
   }
+};
+
+$('btnPeta3D').onclick = () => {
+  if (!petaAktif) return;
+  const aktif = PETA.toggle3D(petaAktif);
+  if (aktif === null) {
+    pesan('Mode 3D memakai basemap Vektor. Pilih basemap Vektor dulu.');
+    return;
+  }
+  $('labelPeta3D').textContent = aktif ? '2D' : '3D';
+  pesan(aktif ? 'Mode 3D aktif. Geser dua jari untuk memutar.' : 'Kembali ke mode 2D');
 };
 
 // Popover Menu Alat Peta
