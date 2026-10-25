@@ -1475,7 +1475,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            dkpoint <span id="loginVersi">v3.9.16</span>
+            dkpoint <span id="loginVersi">v3.9.17</span>
           </div>
         </div>
       </div>
@@ -2162,7 +2162,7 @@ td img.thumb-tabel:active{transform:scale(0.92)}
    PORTAL DOKUMENTASI DKPOINT
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.16';
+const VERSI = '3.9.17';
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */
 function bacaRooms(){
@@ -2392,9 +2392,22 @@ addEventListener('offline', ()=>{perbaruiKoneksi(); pesan('Mode offline — foto
 
 /* ---------- GPS (Dengan Filter Anti-Jitter / Last Known Good Fix) ---------- */
 let terakhirGpsBagus = null;
+let idGpsWatch = null, gpsDiminta = false;
+// Hemat baterai: GPS dimatikan saat aplikasi di latar belakang, dinyalakan lagi saat kembali
+document.addEventListener('visibilitychange', () => {
+  if (!gpsDiminta || !navigator.geolocation) return;
+  if (document.hidden) {
+    if (idGpsWatch !== null) { navigator.geolocation.clearWatch(idGpsWatch); idGpsWatch = null; }
+  } else if (idGpsWatch === null) {
+    mulaiGPS();
+  }
+});
 function mulaiGPS(){
   if(!navigator.geolocation){ $('chipGps').textContent='GPS tidak tersedia di perangkat ini'; return; }
-  navigator.geolocation.watchPosition(
+  gpsDiminta = true;
+  // Hanya satu watcher GPS: hapus yang lama sebelum membuat yang baru
+  if(idGpsWatch !== null){ navigator.geolocation.clearWatch(idGpsWatch); idGpsWatch = null; }
+  idGpsWatch = navigator.geolocation.watchPosition(
     p=>{
       const akurasi = Math.round(p.coords.accuracy);
       const lat = p.coords.latitude, lon = p.coords.longitude;
@@ -2748,7 +2761,7 @@ function gagalGanda(html){
 }
 function matikanGanda(){
   if(G.rekam) batalRekam();
-  if(G.raf){ cancelAnimationFrame(G.raf); G.raf = 0; }
+  if(G.raf){ clearTimeout(G.raf); G.raf = 0; }
   if(G.gpsTimer){ clearInterval(G.gpsTimer); G.gpsTimer = 0; }
   if(G.stream){ G.stream.getTracks().forEach(t=>t.stop()); G.stream = null; }
   if(G.audio){ G.audio.getTracks().forEach(t=>t.stop()); G.audio = null; }
@@ -2774,10 +2787,9 @@ function gGambar(cv, sumber, vw, vh){
   ctx.drawImage(sumber, c.sx, c.sy, c.sw, c.sh, 0, 0, W, H);
   gambarWatermark(ctx, W, H);   // watermark sama persis dengan kamera biasa
 }
-function gLoop(ts){
-  G.raf = requestAnimationFrame(gLoop);
-  if(ts && ts - G.fpsLalu < 1000/G_FPS) return;   // ditahan di ~24 fps supaya HP tidak panas
-  G.fpsLalu = ts || 0;
+function gLoop(){
+  // Timer ~24 fps (lebih hemat daripada rAF yang berjalan 60 Hz)
+  G.raf = setTimeout(gLoop, 1000/G_FPS);
   const v = gEl();
   if(!G.stream || !v.videoWidth) return;
   gGambar($('cvPot'), v, v.videoWidth, v.videoHeight);
