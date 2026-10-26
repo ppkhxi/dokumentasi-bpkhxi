@@ -59,6 +59,7 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        CatatanAplikasi.catat(this, "service_onCreate")
         jalan = true
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         buatNotifikasi()
