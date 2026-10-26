@@ -217,13 +217,8 @@ class OverlayService : Service() {
         tv.visibility = View.VISIBLE
     }
 
-    /** Flyout: kamera asli (CameraX) di bawah, antarmuka web di atasnya. Dimuat sekali per kali dibuka. */
     @SuppressLint("SetJavaScriptEnabled")
     private fun siapkanFlyout() {
-        val pv = PreviewView(this).apply {
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
         val wv = WebView(this)
         wv.setBackgroundColor(Color.parseColor("#0E100E"))
         wv.settings.apply {
@@ -247,10 +242,6 @@ class OverlayService : Service() {
                 callback?.invoke(origin, lokasi, false)
             }
         }
-        val kt = FrameLayout(this).apply {
-            addView(wv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-            addView(pv, FrameLayout.LayoutParams(dp(300), dp(300)).apply { leftMargin = dp(10); topMargin = dp(60) })
-        }
         val lp = WindowManager.LayoutParams(
             dp(320), dp(420), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -259,14 +250,10 @@ class OverlayService : Service() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = 0
         }
-        kt.visibility = View.GONE
-        wm.addView(kt, lp)
+        wv.visibility = View.GONE
+        wm.addView(wv, lp)
         flyout = wv
-        kontainer = kt
-        preview = pv
         wv.loadUrl(URL_FLYOUT)
-        pemilikSiklus.atur(Lifecycle.State.RESUMED)
-        nyalakanKamera()
     }
 
     /** Kamera asli dinyalakan lewat CameraX; pratinjau dipasang ke PreviewView. */
