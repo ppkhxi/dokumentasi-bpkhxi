@@ -282,7 +282,7 @@ class OverlayService : Service() {
                 val prov = future.get()
                 camProvider = prov
                 val prev = Preview.Builder().build().also { it.setSurfaceProvider(pv.surfaceProvider) }
-                val cap = ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+                val cap = ImageCapture.Builder().build()
                 imageCapture = cap
                 prov.unbindAll()
                 prov.bindToLifecycle(pemilikSiklus, CameraSelector.DEFAULT_BACK_CAMERA, prev, cap)
