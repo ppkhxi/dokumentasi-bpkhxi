@@ -1,6 +1,9 @@
 package id.bpkh.dokumentasi
 
 import android.Manifest
+import android.media.MediaActionSound
+import android.os.Vibrator
+import android.os.VibrationEffect
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -103,6 +106,7 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
+        try { bunyiRana.release() } catch (_: Exception) {}
         jalan = false
         hentikanKamera()
         pemilikSiklus.atur(Lifecycle.State.DESTROYED)
@@ -327,9 +331,26 @@ class OverlayService : Service() {
     }
 
     /** Ambil satu foto, potong 3:4, lalu kirim ke halaman web untuk diberi watermark dan disimpan. */
+    /** Bunyi rana seperti kamera HP (dipakai saat foto diambil). */
+    private val bunyiRana by lazy { MediaActionSound().also { it.load(MediaActionSound.SHUTTER_CLICK) } }
+
+    /** Getaran singkat saat tombol rana ditekan. */
+    private fun getaranRana() {
+        try {
+            val v = getSystemService(Vibrator::class.java) ?: return
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                v.vibrate(VibrationEffect.createOneShot(25, VibrationEffect.DEFAULT_AMPLITUDE))
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun ambilFoto() {
         val cap = imageCapture
         if (cap == null) { kabar("Kamera belum siap, tunggu sebentar."); return }
+        getaranRana()
+        try { bunyiRana.play(MediaActionSound.SHUTTER_CLICK) } catch (_: Exception) {}
         cap.takePicture(pekerja, object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
                 try {
