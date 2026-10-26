@@ -381,14 +381,26 @@ async function simpanDenganRekaman(hasil) {
 
 /* ---------- GPS & info ---------- */
 function perbaruiInfo() {
-  $('info').textContent = (S.room || 'LOKAL') + (S.posisi ? ' · GPS terkunci' : (galatGps ? ' · ' + galatGps : ' · GPS belum ada'));
+  // Koordinat selalu tampil: GPS aktif, atau posisi terakhir yang tersimpan bila sinyal hilang.
+  let teks = S.room || 'LOKAL';
+  if (S.posisi) teks += ' · ' + fmtKoord(S.posisi) + ' · GPS terkunci';
+  else if (posisiTerakhir) teks += ' · ' + fmtKoord(posisiTerakhir) + ' · GPS terakhir' + (galatGps ? ' (' + galatGps + ')' : '');
+  else teks += ' · ' + (galatGps || 'GPS belum ada');
+  $('info').textContent = teks;
 }
 let galatGps = '';
+// Posisi terakhir disimpan di perangkat, dipakai untuk tampilan saat sinyal GPS hilang.
+let posisiTerakhir = (() => {
+  try { const v = JSON.parse(localStorage.getItem('posisi_terakhir') || 'null'); return v && v.lat != null ? v : null; }
+  catch (_) { return null; }
+})();
 function mulaiGps() {
   if (!navigator.geolocation) { galatGps = 'lokasi tidak didukung'; perbaruiInfo(); return; }
   navigator.geolocation.watchPosition(p => {
     galatGps = '';
     S.posisi = { lat: p.coords.latitude, lon: p.coords.longitude, alt: p.coords.altitude, akurasi: p.coords.accuracy };
+    posisiTerakhir = { lat: S.posisi.lat, lon: S.posisi.lon, t: Date.now() };
+    try { localStorage.setItem('posisi_terakhir', JSON.stringify(posisiTerakhir)); } catch (_) {}
     perbaruiInfo();
   }, (err) => {
     S.posisi = null;
