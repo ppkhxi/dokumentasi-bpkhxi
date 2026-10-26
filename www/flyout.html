@@ -30,6 +30,7 @@
     padding:0; box-shadow:0 0 0 3px rgba(255,255,255,.25); }
   #rana:active { transform:scale(.94); }
   #rana:disabled { opacity:.5; }
+  #cobaLagi { margin-top:10px; background:#fff; color:#111; border:0; border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600; }
   #pesan { position:fixed; left:50%; bottom:86px; transform:translateX(-50%); background:rgba(0,0,0,.85);
     padding:6px 10px; border-radius:10px; font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none;
     max-width:90%; text-align:center; }
@@ -48,7 +49,7 @@
   <div class="pratinjau">
     <video id="video" playsinline muted autoplay></video>
     <div id="tirai"></div>
-    <div id="kosong" class="kosong" style="display:none"></div>
+    <div id="kosong" class="kosong" style="display:none"><div><div id="kosongTeks"></div><button id="cobaLagi" type="button">Coba lagi</button></div></div>
   </div>
   <input id="catatan" maxlength="250" placeholder="Tulis nomor patok atau catatan..." autocomplete="off">
   <div class="bawah"><button id="rana" type="button" aria-label="Ambil foto"></button></div>
@@ -243,10 +244,17 @@ async function bukaKamera() {
     await v.play().catch(() => {});
   } catch (e) {
     console.error('Kamera flyout gagal:', e);
+    S.stream = null;
+    if (!bukaKamera.sudahUlang) {
+      /* Sekali coba ulang otomatis: kamera kadang masih dipegang sesaat setelah dilepas. */
+      bukaKamera.sudahUlang = true;
+      setTimeout(bukaKamera, 1200);
+      return;
+    }
     tampilKosong('Kamera tidak bisa dibuka (' + (e && e.name ? e.name : 'error') + '). Izinkan akses kamera untuk aplikasi.');
   }
 }
-function tampilKosong(t) { const k = $('kosong'); k.textContent = t; k.style.display = 'flex'; }
+function tampilKosong(t) { $('kosongTeks').textContent = t; $('kosong').style.display = 'flex'; }
 function hentikanKamera() {
   if (S.stream) { S.stream.getTracks().forEach(t => t.stop()); S.stream = null; }
   const v = $('video'); if (v) v.srcObject = null;
@@ -370,6 +378,7 @@ function tutupKamera() {
 
 $('rana').onclick = jepret;
 $('tutup').onclick = tutupKamera;
+$('cobaLagi').onclick = () => { bukaKamera.sudahUlang = false; bukaKamera(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) hentikanKamera(); else bukaKamera(); });
 
 muatPengaturan();
