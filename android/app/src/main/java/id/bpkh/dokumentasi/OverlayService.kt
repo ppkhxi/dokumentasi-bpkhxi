@@ -65,11 +65,7 @@ class OverlayService : Service() {
     private var imageCapture: ImageCapture? = null
     private val pekerja = Executors.newSingleThreadExecutor()
     /** Siklus hidup untuk CameraX; kamera hidup selama pemilik ini aktif. */
-    private val pemilikSiklus = object : LifecycleOwner {
-        private val daftar = LifecycleRegistry(this)
-        override fun getLifecycle(): Lifecycle = daftar
-        fun atur(s: Lifecycle.State) { daftar.currentState = s }
-    }
+    private val pemilikSiklus = PemilikSiklusKamera()
     private var keadaan = 0
     private val handler = Handler(Looper.getMainLooper())
 
@@ -382,5 +378,15 @@ class OverlayService : Service() {
         fun aturPratinjau(x: Int, y: Int, w: Int, h: Int) {
             this@OverlayService.aturPratinjau(x, y, w, h)
         }
+    }
+}
+
+/** Pemilik siklus hidup untuk CameraX. */
+class PemilikSiklusKamera : LifecycleOwner {
+    private val daftar = LifecycleRegistry(this)
+    override val lifecycle: Lifecycle
+        get() = daftar
+    fun atur(s: Lifecycle.State) {
+        daftar.currentState = s
     }
 }
