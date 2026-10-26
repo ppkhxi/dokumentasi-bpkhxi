@@ -822,8 +822,10 @@ const PETA = (function () {
   }
 
   /* Freehand Sentuh (HP & desktop):
-     - 1 jari / mouse di atas gambar: geser gambar (peta diam).
-     - 2 jari: cubit untuk memperbesar/mengecilkan dengan rasio tetap (sambil digeser).
+     - Geser biasa / zoom peta TETAP normal, termasuk di atas gambar.
+     - Untuk memindahkan gambar: tekan dan TAHAN di atas gambar (~350 ms) sampai peta terkunci,
+       lalu geser (drag & drop) gambarnya.
+     - Saat mode geser gambar, dua jari = cubit (perbesar/perkecil) dengan rasio tetap.
      - Tidak ada pin sudut, sehingga gambar tidak bisa dipipihkan atau dimiringkan. */
   let dragAktif = false;
   let dragHandler = null;
@@ -834,11 +836,12 @@ const PETA = (function () {
     if (!ov) return;
 
     const wadah = peta.getContainer();
-    const touchAwal = wadah.style.touchAction;
-    wadah.style.touchAction = 'none';
+    const TAHAN_MS = 350;
+    const TOLERANSI_PX = 8;
 
-    const titikSentuh = new Map();   // pointerId -> posisi di wadah peta (piksel)
-    let geser = false;               // true selama gerakan freehand berlangsung
+    const titik = new Map();      // pointerId -> posisi di wadah peta (piksel), hanya saat geser gambar
+    let tahan = null;             // {pid, x0, y0, x, y, timer}: menunggu tekan-tahan
+    let geser = false;            // true saat mode geser gambar aktif
     let midSebelum = null, jarakSebelum = 0;
 
     const posisi = (e) => {
@@ -853,64 +856,91 @@ const PETA = (function () {
              pt.y >= Math.min(a.y, c.y) && pt.y <= Math.max(a.y, c.y);
     };
     const nilaiTengah = () => {
-      const arr = [...titikSentuh.values()];
+      const arr = [...titik.values()];
       if (arr.length === 1) return arr[0];
       return L.point((arr[0].x + arr[1].x) / 2, (arr[0].y + arr[1].y) / 2);
     };
     const nilaiJarak = () => {
-      const arr = [...titikSentuh.values()];
+      const arr = [...titik.values()];
       if (arr.length < 2) return 0;
       return Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y);
     };
     const catatAwal = () => { midSebelum = nilaiTengah(); jarakSebelum = nilaiJarak(); };
 
-    const onDown = (e) => {
-      const pt = posisi(e);
-      if (!geser) {
-        if (!dalamGambar(pt)) return;      // di luar gambar: biarkan peta bergerak seperti biasa
-        geser = true;
-        peta.dragging.disable();
-        peta.touchZoom.disable();
-        peta.doubleClickZoom.disable();
-      }
-      titikSentuh.set(e.pointerId, pt);
+    const batalTahan = () => {
+      if (tahan) { clearTimeout(tahan.timer); tahan = null; }
+    };
+    const mulaiGeser = () => {
+      geser = true;
+      titik.set(tahan.pid, L.point(tahan.x, tahan.y));
+      tahan = null;
+      peta.dragging.disable();
+      peta.touchZoom.disable();
+      peta.doubleClickZoom.disable();
+      wadah.style.touchAction = 'none';
+      try { if (navigator.vibrate) navigator.vibrate(15); } catch (_) {}
       catatAwal();
-      try { wadah.setPointerCapture(e.pointerId); } catch (_) {}
-      e.preventDefault();
-      e.stopPropagation();
+    };
+    const akhiriGeser = () => {
+      geser = false;
+      wadah.style.touchAction = '';
+      peta.dragging.enable();
+      peta.touchZoom.enable();
+      peta.doubleClickZoom.enable();
     };
 
+    // Tekan di atas gambar: belum mengubah apa pun. Peta tetap bisa digeser/zoom.
+    const onDown = (e) => {
+      const pt = posisi(e);
+      if (geser) {
+        titik.set(e.pointerId, pt);   // jari tambahan = cubit
+        catatAwal();
+        return;
+      }
+      if (tahan) { batalTahan(); return; }   // jari kedua saat menunggu = zoom peta, batalkan
+      if (!dalamGambar(pt)) return;
+      tahan = { pid: e.pointerId, x0: pt.x, y0: pt.y, x: pt.x, y: pt.y, timer: null };
+      tahan.timer = setTimeout(() => { if (tahan && !geser) mulaiGeser(); }, TAHAN_MS);
+    };
+
+    // Jari bergerak sebelum tahan selesai = geser peta biasa, freehand tidak jadi.
     const onMove = (e) => {
-      if (!geser || !titikSentuh.has(e.pointerId)) return;
-      titikSentuh.set(e.pointerId, posisi(e));
+      if (geser || !tahan || e.pointerId !== tahan.pid) return;
+      const pt = posisi(e);
+      if (Math.hypot(pt.x - tahan.x0, pt.y - tahan.y0) > TOLERANSI_PX) { batalTahan(); return; }
+      tahan.x = pt.x;
+      tahan.y = pt.y;
+    };
+
+    // Saat geser gambar aktif: tangkap gerakan sebelum peta, supaya peta tidak ikut bergerak.
+    const onMoveGeser = (e) => {
+      if (!geser || !titik.has(e.pointerId)) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      titik.set(e.pointerId, posisi(e));
       const mid = nilaiTengah();
       const j = nilaiJarak();
-      const faktor = (titikSentuh.size >= 2 && jarakSebelum > 0 && j > 0) ? j / jarakSebelum : 1;
+      const faktor = (titik.size >= 2 && jarakSebelum > 0 && j > 0) ? j / jarakSebelum : 1;
       const nb = ubahRasterDiLayar(peta, ov, midSebelum, mid, faktor);
       midSebelum = mid;
       jarakSebelum = j;
       if (onSelesaiGeser) onSelesaiGeser(nb);
-      e.preventDefault();
     };
 
     const onUp = (e) => {
-      if (!titikSentuh.has(e.pointerId)) return;
-      titikSentuh.delete(e.pointerId);
-      try { wadah.releasePointerCapture(e.pointerId); } catch (_) {}
-      if (titikSentuh.size === 0) {
-        geser = false;
-        peta.dragging.enable();
-        peta.touchZoom.enable();
-        peta.doubleClickZoom.enable();
-      } else {
-        catatAwal();
+      if (tahan && e.pointerId === tahan.pid) batalTahan();
+      if (geser && titik.has(e.pointerId)) {
+        titik.delete(e.pointerId);
+        if (titik.size === 0) akhiriGeser();
+        else catatAwal();
       }
     };
 
-    wadah.addEventListener('pointerdown', onDown, true);   // capture: sebelum handler peta
+    wadah.addEventListener('pointerdown', onDown, true);
     wadah.addEventListener('pointermove', onMove);
-    wadah.addEventListener('pointerup', onUp);
-    wadah.addEventListener('pointercancel', onUp);
+    window.addEventListener('pointermove', onMoveGeser, true);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
 
     dragAktif = true;
     dragHandler = {
@@ -918,14 +948,11 @@ const PETA = (function () {
       cleanup: () => {
         wadah.removeEventListener('pointerdown', onDown, true);
         wadah.removeEventListener('pointermove', onMove);
-        wadah.removeEventListener('pointerup', onUp);
-        wadah.removeEventListener('pointercancel', onUp);
-        wadah.style.touchAction = touchAwal || '';
-        if (geser) {
-          peta.dragging.enable();
-          peta.touchZoom.enable();
-          peta.doubleClickZoom.enable();
-        }
+        window.removeEventListener('pointermove', onMoveGeser, true);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        batalTahan();
+        if (geser) akhiriGeser();
       }
     };
   }
