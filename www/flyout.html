@@ -242,7 +242,8 @@ async function bukaKamera() {
     v.srcObject = S.stream;
     await v.play().catch(() => {});
   } catch (e) {
-    tampilKosong('Kamera tidak bisa dibuka. Izinkan akses kamera untuk aplikasi.');
+    console.error('Kamera flyout gagal:', e);
+    tampilKosong('Kamera tidak bisa dibuka (' + (e && e.name ? e.name : 'error') + '). Izinkan akses kamera untuk aplikasi.');
   }
 }
 function tampilKosong(t) { const k = $('kosong'); k.textContent = t; k.style.display = 'flex'; }
