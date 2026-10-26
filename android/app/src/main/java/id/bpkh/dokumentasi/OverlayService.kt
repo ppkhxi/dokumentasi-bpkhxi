@@ -16,6 +16,10 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -254,8 +258,73 @@ class OverlayService : Service() {
     }
 
     /** Tutup semua: kembali ke pil kompak dan kamera berhenti. */
+    /** Catatan dengan suara: pengenal bawaan Android, bahasa Indonesia (id-ID). */
+    private var pengenal: SpeechRecognizer? = null
+
+    private fun punyaIzinMikrofon(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun kirimJs(js: String) {
+        handler.post { flyout?.evaluateJavascript(js, null) }
+    }
+
+    private fun selesaiPengenal() {
+        handler.post {
+            pengenal?.destroy()
+            pengenal = null
+        }
+    }
+
+    private fun mulaiSuaraNative() {
+        if (flyout == null) return
+        if (!punyaIzinMikrofon()) {
+            kirimJs("suaraGagal(${JSONObject.quote("Izin mikrofon belum ada. Buka aplikasi Dokumentasi lalu izinkan Mikrofon.")})")
+            return
+        }
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            kirimJs("suaraGagal(${JSONObject.quote("Pengenal suara tidak tersedia di HP ini.")})")
+            return
+        }
+        selesaiPengenal()
+        val p = SpeechRecognizer.createSpeechRecognizer(this)
+        pengenal = p
+        p.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) { kirimJs("suaraMulai()") }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+            override fun onPartialResults(partialResults: Bundle?) {
+                val t = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: return
+                kirimJs("terimaSuara(${JSONObject.quote(t)}, false)")
+            }
+            override fun onResults(results: Bundle?) {
+                val t = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: ""
+                kirimJs("terimaSuara(${JSONObject.quote(t)}, true)")
+                selesaiPengenal()
+            }
+            override fun onError(error: Int) {
+                val teks = when (error) {
+                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Suara tidak terdengar, coba lagi."
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Izin mikrofon belum ada."
+                    else -> "Catatan suara gagal (kode $error)."
+                }
+                kirimJs("suaraGagal(${JSONObject.quote(teks)})")
+                selesaiPengenal()
+            }
+        })
+        p.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        })
+    }
+
     private fun tutupSemua() {
         keadaan = 0
+        selesaiPengenal()
         hentikanKamera()
         val wv = flyout
         val k = kontainer
@@ -457,6 +526,16 @@ class OverlayService : Service() {
     }
 
     inner class JembatanFlyout {
+        @JavascriptInterface
+        fun mulaiSuara() {
+            handler.post { mulaiSuaraNative() }
+        }
+
+        @JavascriptInterface
+        fun hentikanSuara() {
+            handler.post { pengenal?.stopListening() }
+        }
+
         @JavascriptInterface
         fun tutup() {
             handler.post { tutupSemua() }
