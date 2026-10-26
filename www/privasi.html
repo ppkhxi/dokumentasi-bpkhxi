@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kebijakan Privasi DKPoint</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f4f7f9; color: #333; line-height: 1.6; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 18px 48px; background: #fff; min-height: 100vh; box-sizing: border-box; }
+  h1 { color: #2c3e50; font-size: 24px; margin-top: 8px; }
+  h2 { color: #2c3e50; font-size: 18px; margin-top: 28px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
+  th, td { border: 1px solid #dde3e8; padding: 8px; text-align: left; vertical-align: top; }
+  th { background: #f0f4f7; }
+  .kecil { font-size: 13px; color: #7f8c8d; }
+</style>
+</head>
+<body>
+<main>
+<h1>Kebijakan Privasi DKPoint</h1>
+<p class="kecil">Berlaku untuk aplikasi DKPoint (Android dan web di dkpoint.pages.dev). Terakhir diperbarui: 27 Oktober 2026.</p>
+
+<h2>1. Ringkasan</h2>
+<p>DKPoint adalah aplikasi dokumentasi lapangan untuk pencatatan foto berwatermark dan koordinat GPS. Aplikasi ini tidak memasang iklan, tidak menjual data, dan tidak membaca kontak, SMS, panggilan, atau aplikasi lain di perangkat Anda.</p>
+
+<h2>2. Izin yang diminta dan alasannya</h2>
+<table>
+  <tr><th>Izin</th><th>Untuk apa</th><th>Kapan aktif</th></tr>
+  <tr><td>Kamera</td><td>Memotret dokumentasi di flyout.</td><td>Hanya saat flyout kamera dibuka. Berhenti saat flyout ditutup.</td></tr>
+  <tr><td>Mikrofon</td><td>Mengisi catatan dengan suara (Bahasa Indonesia).</td><td>Hanya saat tombol mikrofon ditekan.</td></tr>
+  <tr><td>Lokasi (GPS)</td><td>Menulis koordinat pada watermark dan metadata foto.</td><td>Saat aplikasi memerlukan koordinat.</td></tr>
+  <tr><td>Tampil di atas aplikasi lain</td><td>Menampilkan pil kamera kecil di tepi layar.</td><td>Terus aktif selama pil ditampilkan. Bisa dimatikan dari pengaturan Android.</td></tr>
+  <tr><td>Notifikasi</td><td>Menjaga layanan pil tetap berjalan di latar. Notifikasi ini tidak menampilkan teks.</td><td>Selama layanan pil aktif.</td></tr>
+  <tr><td>Pasang aplikasi lain</td><td>Memasang pembaruan aplikasi (tombol Perbarui APK).</td><td>Hanya saat Anda menekan tombol Perbarui APK.</td></tr>
+  <tr><td>Getaran</td><td>Getaran singkat saat foto diambil.</td><td>Saat tombol rana ditekan.</td></tr>
+  <tr><td>Internet</td><td>Memuat peta, mengunggah foto, dan mengirim telemetri.</td><td>Saat aplikasi terhubung.</td></tr>
+</table>
+
+<h2>3. Data yang kami proses</h2>
+<table>
+  <tr><th>Data</th><th>Di mana disimpan</th><th>Catatan</th></tr>
+  <tr><td>Foto dan catatan dokumentasi</td><td>Di perangkat Anda (penyimpanan aplikasi).</td><td>Diunggah hanya ke akun MEGA milik Anda sendiri, pada jam 16.00 WIB atau sesudahnya.</td></tr>
+  <tr><td>Koordinat GPS</td><td>Di perangkat, dan ikut tersimpan di foto serta watermark.</td><td>Tidak dikirim ke server DKPoint.</td></tr>
+  <tr><td>Suara (saat memakai mikrofon)</td><td>Tidak disimpan oleh DKPoint.</td><td>Diubah menjadi teks oleh layanan pengenal suara Android di perangkat Anda. Kebijakan layanan itu mengikuti penyedia layanan Android.</td></tr>
+  <tr><td>Telemetri penggunaan</td><td>Server DKPoint (Cloudflare D1).</td><td>Berisi: ID perangkat acak, nama yang Anda isi, ID pengguna, nama room, jenis perangkat, versi aplikasi, jumlah sesi, dan ukuran layar. Jika Anda sudah masuk ke MEGA, email akun MEGA juga ikut dikirim sebagai identitas.</td></tr>
+  <tr><td>Masukan dari pengguna</td><td>Server DKPoint.</td><td>Hanya teks yang Anda kirim lewat fitur masukan.</td></tr>
+</table>
+
+<h2>4. Pihak lain yang menerima permintaan dari aplikasi</h2>
+<ul>
+  <li><b>MEGA</b> (akun Anda sendiri): tempat foto diunggah.</li>
+  <li><b>Penyedia peta</b> (OpenFreeMap, OpenStreetMap, ArcGIS): saat peta dimuat, area peta yang dilihat dikirim sebagai permintaan gambar peta.</li>
+  <li><b>Cloudflare</b>: penyedia server tempat halaman dan telemetri disimpan.</li>
+  <li><b>Layanan pengenal suara Android</b>: saat mikrofon dipakai.</li>
+</ul>
+<p>Kami tidak menjual atau membagikan data Anda untuk iklan.</p>
+
+<h2>5. Yang tidak kami akses</h2>
+<p>DKPoint tidak membaca kontak, SMS, catatan panggilan, daftar aplikasi lain, riwayat peramban, atau file di luar yang Anda pilih sendiri saat mengimpor.</p>
+
+<h2>6. Hak Anda</h2>
+<ul>
+  <li>Foto dan catatan di perangkat bisa dihapus dari dalam aplikasi, atau dengan menghapus data aplikasi dari pengaturan Android.</li>
+  <li>Foto yang sudah diunggah ke MEGA dihapus lewat akun MEGA Anda.</li>
+  <li>Permintaan penghapusan data telemetri dikirim ke kontak di bawah.</li>
+</ul>
+
+<h2>7. Kontak</h2>
+<p>Pertanyaan tentang privasi: <b>[isi alamat email kontak]</b></p>
+</main>
+</body>
+</html>
