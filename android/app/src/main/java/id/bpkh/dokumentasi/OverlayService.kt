@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -141,30 +142,61 @@ class OverlayService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, notif, tipe)
     }
 
-    /** Pil di tepi atas; ukurannya berubah sesuai tahap. */
+    /** Tombol bulat di tepi kanan layar (seperti tombol aksesibilitas). Bisa digeser naik-turun. */
     @SuppressLint("ClickableViewAccessibility")
     private fun pasangBubble() {
-        val tv = TextView(this).apply {
-            text = ""
-            gravity = Gravity.CENTER
-            setTextColor(Color.parseColor("#E4E4E7"))
-            textSize = 12f
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(30).toFloat()
-                setColor(Color.BLACK)
-            }
-            elevation = dp(4).toFloat()
-            setOnClickListener { ketukPil() }
-        }
+        val ukuran = dp(44)
+        val tinggiLayar = resources.displayMetrics.heightPixels
+        val simpan = getSharedPreferences("pil_kamera", MODE_PRIVATE)
         val lp = WindowManager.LayoutParams(
-            dp(120), dp(35), tipeOverlay(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            ukuran, ukuran, tipeOverlay(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = 0
+            gravity = Gravity.TOP or Gravity.END
+            x = 0
+            y = simpan.getInt("y", tinggiLayar / 3).coerceIn(dp(60), tinggiLayar - ukuran - dp(60))
+        }
+        val tv = TextView(this).apply {
+            text = "📷"
+            gravity = Gravity.CENTER
+            textSize = 18f
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#D9111111"))
+            }
+            elevation = dp(4).toFloat()
+        }
+        var yAwal = 0f
+        var lpYAwal = 0
+        var sedangGeser = false
+        tv.setOnTouchListener { _, e ->
+            when (e.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    yAwal = e.rawY
+                    lpYAwal = lp.y
+                    sedangGeser = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val geser = (e.rawY - yAwal).toInt()
+                    if (kotlin.math.abs(geser) > dp(6)) sedangGeser = true
+                    if (sedangGeser) {
+                        lp.y = (lpYAwal + geser).coerceIn(dp(60), tinggiLayar - ukuran - dp(60))
+                        try { wm.updateViewLayout(tv, lp) } catch (_: Exception) {}
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (sedangGeser) {
+                        simpan.edit().putInt("y", lp.y).apply()
+                    } else {
+                        ketukPil()
+                    }
+                    true
+                }
+                else -> false
+            }
         }
         wm.addView(tv, lp)
         bubble = tv
@@ -184,10 +216,7 @@ class OverlayService : Service() {
         keadaan = 1
         if (flyout == null) siapkanFlyout()
         val tv = bubble ?: return
-        val lp = lpBubble ?: return
-        tv.text = "● Kamera Aktif..."
-        lp.width = dp(200)
-        wm.updateViewLayout(tv, lp)
+        tv.text = "📷"
     }
 
     /** Tahap 1 -> 2: panel preview kamera terbuka. */
@@ -214,10 +243,7 @@ class OverlayService : Service() {
             }, 150)
         }
         val tv = bubble ?: return
-        val lp = lpBubble ?: return
-        tv.text = ""
-        lp.width = dp(120)
-        wm.updateViewLayout(tv, lp)
+        tv.text = "📷"
         tv.visibility = View.VISIBLE
     }
 
