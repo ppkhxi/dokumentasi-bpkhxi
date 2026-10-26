@@ -1986,10 +1986,10 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             <button class="btn-tab-kalibrasi" id="tabMode2Titik" type="button">🎯 2 Titik Ikat</button>
           </div>
 
-          <!-- Mode 1: Freehand Sentuh (Body Drag + Corner Pins) -->
+          <!-- Mode 1: Freehand Sentuh (geser & cubit, rasio tetap) -->
           <div id="panelKalibrasiDrag" class="panel-kalibrasi-sub">
             <div class="kalibrasi-ket" style="margin-bottom:8px">
-              💡 <b>Sentuh gambar</b> untuk menggeser. <b>Tarik pin biru di sudut (↖ ↗ ↘ ↙)</b> untuk mengatur ukuran peta langsung di layar.
+              💡 <b>Geser dengan satu jari</b> untuk memindahkan gambar ke titik GCP. <b>Cubit dengan dua jari</b> untuk memperbesar atau mengecilkan, rasio gambar tetap.
             </div>
 
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -6288,7 +6288,7 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
               if (exifPos && exifPos.lat != null) {
                 infoEl.innerHTML = `<span style="color:#28a745;font-weight:700">✅ EXIF GPS Terdeteksi!</span> (${exifPos.lat.toFixed(5)}, ${exifPos.lon.toFixed(5)})`;
               } else {
-                infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">💡 Citra Peta Terpilih</span><br>Dapat disesuaikan langsung dengan Freehand Sentuh (↖ ↗ ↘ ↙).`;
+                infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">💡 Citra Peta Terpilih</span><br>Dapat digeser dan dicubit langsung dengan Freehand Sentuh.`;
               }
             }
           } catch(e) {
@@ -6662,16 +6662,19 @@ async function kompresGambarRaster(file) {
         const buf = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 1.5 });
+        // Target 300 DPI. Canvas HP punya batas luas piksel (sekitar 16 juta), jadi untuk
+        // peta lebar 90 cm skala otomatis turun (sekitar 135-140 DPI) agar tidak gagal dirender.
+        const dasar = page.getViewport({ scale: 1 });
+        const skala = Math.min(300 / 72,
+          Math.sqrt(16000000 / (dasar.width * dasar.height)),
+          10000 / Math.max(dasar.width, dasar.height));
+        const viewport = page.getViewport({ scale: skala });
         const canvas = document.createElement('canvas');
-        canvas.width = Math.min(1800, viewport.width);
-        canvas.height = Math.round(viewport.height * (canvas.width / viewport.width));
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
         const ctx = canvas.getContext('2d');
-        await page.render({
-          canvasContext: ctx,
-          viewport: page.getViewport({ scale: canvas.width / page.getViewport({ scale: 1 }).width })
-        }).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         resolve({
           dataUrl,
           ukuranKB: Math.round(dataUrl.length * 0.75 / 1024),
@@ -6687,25 +6690,16 @@ async function kompresGambarRaster(file) {
 
     const reader = new FileReader();
     reader.onload = () => {
+      // Tanpa pengecilan dan tanpa kompresi ulang: resolusi & ketajaman data asli dipertahankan.
       const img = new Image();
       img.onload = () => {
-        const maxDim = 1800;
-        let w = img.width, h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
-          else { w = Math.round(w * maxDim / h); h = maxDim; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        const dataUrl = reader.result;
         resolve({
           dataUrl,
           ukuranKB: Math.round(dataUrl.length * 0.75 / 1024),
-          width: w,
-          height: h,
-          ratio: w / h
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          ratio: img.naturalWidth / img.naturalHeight
         });
       };
       img.onerror = () => reject(new Error('Gagal membaca format gambar'));
@@ -7149,7 +7143,7 @@ async function bukaDialogRaster(){
           infoEl.innerHTML = `<span style="color:#28a745;font-weight:600">✅ GeoPDF Ber-georeferensi Terdeteksi!</span><br><span style="color:var(--teks-2);font-size:11px">Koordinat asli: [${geoPdf.bounds[0][0].toFixed(4)}, ${geoPdf.bounds[0][1].toFixed(4)}] s/d [${geoPdf.bounds[1][0].toFixed(4)}, ${geoPdf.bounds[1][1].toFixed(4)}] ${geoPdf.epsg ? '(EPSG:' + geoPdf.epsg + ')' : ''}. Peta akan otomatis menempel presisi di koordinat dunia nyata.</span>`;
           return;
         } else {
-          infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">ℹ️ Dokumen / Peta PDF Siap Dipasang</span><br><span style="color:var(--teks-2);font-size:11px">Peta akan diproyeksikan dengan rasio utuh di area kerja Anda dan dapat disesuaikan langsung dengan Freehand Sentuh (geser &amp; tarik sudut).</span>`;
+          infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">ℹ️ Dokumen / Peta PDF Siap Dipasang</span><br><span style="color:var(--teks-2);font-size:11px">Peta akan diproyeksikan dengan rasio utuh di area kerja Anda dan dapat disesuaikan langsung dengan Freehand Sentuh (geser &amp; cubit, rasio tetap).</span>`;
           return;
         }
       }

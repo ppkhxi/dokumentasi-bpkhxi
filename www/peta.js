@@ -796,26 +796,35 @@ const PETA = (function () {
     return newBounds;
   }
 
+  /* Ubah ukuran & posisi raster di layar (piksel), skala SERAGAM supaya rasio gambar tetap.
+     p' = midCur + (p - midPrev) * faktor, berlaku untuk pojok kiri-atas dan kanan-bawah. */
+  function ubahRasterDiLayar(peta, ov, midPrev, midCur, faktor) {
+    const b = ov.getBounds();
+    const p1 = peta.latLngToContainerPoint(b.getNorthWest());
+    const p2 = peta.latLngToContainerPoint(b.getSouthEast());
+    const xf = (p) => L.point(midCur.x + (p.x - midPrev.x) * faktor, midCur.y + (p.y - midPrev.y) * faktor);
+    const nb = L.latLngBounds(peta.containerPointToLatLng(xf(p1)), peta.containerPointToLatLng(xf(p2)));
+    ov.setBounds(nb);
+    ov.currentBounds = nb;
+    return nb;
+  }
+
+  // Tombol Perbesar/Perkecil: seragam dari pusat raster (rasio tetap).
   function skalaRaster(peta, id, faktor) {
     if (!peta || !peta.lapisRaster) return null;
     const ov = peta.lapisRaster.get(id);
     if (!ov) return null;
     const b = ov.getBounds();
-    const c = b.getCenter();
-    const sw = b.getSouthWest(), ne = b.getNorthEast();
-    const dLat = (ne.lat - sw.lat) * faktor / 2;
-    const dLng = (ne.lng - sw.lng) * faktor / 2;
-    const newBounds = L.latLngBounds(
-      [c.lat - dLat, c.lng - dLng],
-      [c.lat + dLat, c.lng + dLng]
-    );
-    ov.setBounds(newBounds);
-    ov.currentBounds = newBounds;
-    return newBounds;
+    const p1 = peta.latLngToContainerPoint(b.getNorthWest());
+    const p2 = peta.latLngToContainerPoint(b.getSouthEast());
+    const pusat = L.point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+    return ubahRasterDiLayar(peta, ov, pusat, pusat, faktor);
   }
 
-  /* Drag & Kalibrasi Freehand Sentuh (Smartphone & Desktop):
-     Mendukung body drag langsung dan 4 pin jangkar sudut (NW, NE, SE, SW) */
+  /* Freehand Sentuh (HP & desktop):
+     - 1 jari / mouse di atas gambar: geser gambar (peta diam).
+     - 2 jari: cubit untuk memperbesar/mengecilkan dengan rasio tetap (sambil digeser).
+     - Tidak ada pin sudut, sehingga gambar tidak bisa dipipihkan atau dimiringkan. */
   let dragAktif = false;
   let dragHandler = null;
 
@@ -824,145 +833,99 @@ const PETA = (function () {
     const ov = peta.lapisRaster.get(id);
     if (!ov) return;
 
-    dragAktif = true;
-    let titikAwal = null;
-    let sedangDrag = false;
+    const wadah = peta.getContainer();
+    const touchAwal = wadah.style.touchAction;
+    wadah.style.touchAction = 'none';
 
-    const imgEl = ov.getElement();
-    if (imgEl) {
-      imgEl.style.cursor = 'grab';
-      imgEl.style.touchAction = 'none';
-      imgEl.style.userSelect = 'none';
-      imgEl.style.webkitUserSelect = 'none';
-      imgEl.draggable = false;
-    }
+    const titikSentuh = new Map();   // pointerId -> posisi di wadah peta (piksel)
+    let geser = false;               // true selama gerakan freehand berlangsung
+    let midSebelum = null, jarakSebelum = 0;
 
-    // Buat 4 Pin Sudut (Corner Handles) Interaktif
-    const buatIconPin = (label) => L.divIcon({
-      className: 'pin-sudut-raster',
-      html: `<div style="width:26px;height:26px;border-radius:50%;background:#007AFF;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;touch-action:none;cursor:nwse-resize">${label}</div>`,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13]
-    });
-
-    const bAwal = ov.getBounds();
-    const pinNW = L.marker([bAwal.getNorth(), bAwal.getWest()], { draggable: true, icon: buatIconPin('↖') }).addTo(peta);
-    const pinNE = L.marker([bAwal.getNorth(), bAwal.getEast()], { draggable: true, icon: buatIconPin('↗') }).addTo(peta);
-    const pinSE = L.marker([bAwal.getSouth(), bAwal.getEast()], { draggable: true, icon: buatIconPin('↘') }).addTo(peta);
-    const pinSW = L.marker([bAwal.getSouth(), bAwal.getWest()], { draggable: true, icon: buatIconPin('↙') }).addTo(peta);
-
-    const sinkronkanPin = (b) => {
-      pinNW.setLatLng([b.getNorth(), b.getWest()]);
-      pinNE.setLatLng([b.getNorth(), b.getEast()]);
-      pinSE.setLatLng([b.getSouth(), b.getEast()]);
-      pinSW.setLatLng([b.getSouth(), b.getWest()]);
+    const posisi = (e) => {
+      const r = wadah.getBoundingClientRect();
+      return L.point(e.clientX - r.left, e.clientY - r.top);
     };
-
-    const onPinDrag = (corner, latlng) => {
+    const dalamGambar = (pt) => {
       const b = ov.getBounds();
-      let n = b.getNorth(), s = b.getSouth(), w = b.getWest(), e = b.getEast();
-      if (corner === 'NW') { n = latlng.lat; w = latlng.lng; }
-      else if (corner === 'NE') { n = latlng.lat; e = latlng.lng; }
-      else if (corner === 'SE') { s = latlng.lat; e = latlng.lng; }
-      else if (corner === 'SW') { s = latlng.lat; w = latlng.lng; }
-
-      // Pastikan urutan koordinat tetap valid
-      const newBounds = L.latLngBounds(
-        [Math.min(s, n), Math.min(w, e)],
-        [Math.max(s, n), Math.max(w, e)]
-      );
-      ov.setBounds(newBounds);
-      ov.currentBounds = newBounds;
-      sinkronkanPin(newBounds);
-      if (onSelesaiGeser) onSelesaiGeser(newBounds);
+      const a = peta.latLngToContainerPoint(b.getNorthWest());
+      const c = peta.latLngToContainerPoint(b.getSouthEast());
+      return pt.x >= Math.min(a.x, c.x) && pt.x <= Math.max(a.x, c.x) &&
+             pt.y >= Math.min(a.y, c.y) && pt.y <= Math.max(a.y, c.y);
     };
+    const nilaiTengah = () => {
+      const arr = [...titikSentuh.values()];
+      if (arr.length === 1) return arr[0];
+      return L.point((arr[0].x + arr[1].x) / 2, (arr[0].y + arr[1].y) / 2);
+    };
+    const nilaiJarak = () => {
+      const arr = [...titikSentuh.values()];
+      if (arr.length < 2) return 0;
+      return Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y);
+    };
+    const catatAwal = () => { midSebelum = nilaiTengah(); jarakSebelum = nilaiJarak(); };
 
-    pinNW.on('drag', e => onPinDrag('NW', e.target.getLatLng()));
-    pinNE.on('drag', e => onPinDrag('NE', e.target.getLatLng()));
-    pinSE.on('drag', e => onPinDrag('SE', e.target.getLatLng()));
-    pinSW.on('drag', e => onPinDrag('SW', e.target.getLatLng()));
-
-    function getEventLatLng(e) {
-      if (e.latlng) return e.latlng;
-      const oe = e.originalEvent || e;
-      const touch = (oe.touches && oe.touches[0]) || (oe.changedTouches && oe.changedTouches[0]);
-      if (touch) {
-        const pt = peta.mouseEventToContainerPoint(touch);
-        return peta.containerPointToLatLng(pt);
-      }
-      if (oe.clientX != null) {
-        const pt = peta.mouseEventToContainerPoint(oe);
-        return peta.containerPointToLatLng(pt);
-      }
-      return null;
-    }
-
-    const onStart = (e) => {
-      const pos = getEventLatLng(e);
-      if (!pos) return;
-      const b = ov.getBounds();
-      // Hanya mulai geser jika sentuhan berada di atas gambar raster
-      if (b.contains(pos)) {
-        sedangDrag = true;
-        titikAwal = pos;
+    const onDown = (e) => {
+      const pt = posisi(e);
+      if (!geser) {
+        if (!dalamGambar(pt)) return;      // di luar gambar: biarkan peta bergerak seperti biasa
+        geser = true;
         peta.dragging.disable();
-        if (imgEl) imgEl.style.cursor = 'grabbing';
-        const oe = e.originalEvent || e;
-        if (oe.stopPropagation) oe.stopPropagation();
-        if (oe.cancelable && oe.preventDefault) oe.preventDefault();
+        peta.touchZoom.disable();
+        peta.doubleClickZoom.disable();
       }
+      titikSentuh.set(e.pointerId, pt);
+      catatAwal();
+      try { wadah.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+      e.stopPropagation();
     };
 
     const onMove = (e) => {
-      if (!sedangDrag || !titikAwal) return;
-      const pos = getEventLatLng(e);
-      if (!pos) return;
-      const dLat = pos.lat - titikAwal.lat;
-      const dLon = pos.lng - titikAwal.lng;
-      titikAwal = pos;
-      const nb = geserRaster(peta, id, dLat, dLon);
-      if (nb) sinkronkanPin(nb);
+      if (!geser || !titikSentuh.has(e.pointerId)) return;
+      titikSentuh.set(e.pointerId, posisi(e));
+      const mid = nilaiTengah();
+      const j = nilaiJarak();
+      const faktor = (titikSentuh.size >= 2 && jarakSebelum > 0 && j > 0) ? j / jarakSebelum : 1;
+      const nb = ubahRasterDiLayar(peta, ov, midSebelum, mid, faktor);
+      midSebelum = mid;
+      jarakSebelum = j;
       if (onSelesaiGeser) onSelesaiGeser(nb);
-      const oe = e.originalEvent || e;
-      if (oe.cancelable && oe.preventDefault) oe.preventDefault();
+      e.preventDefault();
     };
 
-    const onEnd = () => {
-      if (sedangDrag) {
-        sedangDrag = false;
-        titikAwal = null;
+    const onUp = (e) => {
+      if (!titikSentuh.has(e.pointerId)) return;
+      titikSentuh.delete(e.pointerId);
+      try { wadah.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (titikSentuh.size === 0) {
+        geser = false;
         peta.dragging.enable();
-        if (imgEl) imgEl.style.cursor = 'grab';
+        peta.touchZoom.enable();
+        peta.doubleClickZoom.enable();
+      } else {
+        catatAwal();
       }
     };
 
-    ov.on('mousedown touchstart', onStart);
-    peta.on('mousedown touchstart', onStart);
+    wadah.addEventListener('pointerdown', onDown, true);   // capture: sebelum handler peta
+    wadah.addEventListener('pointermove', onMove);
+    wadah.addEventListener('pointerup', onUp);
+    wadah.addEventListener('pointercancel', onUp);
 
-    window.addEventListener('mousemove', onMove, { passive: false });
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('mouseup', onEnd);
-    window.addEventListener('touchend', onEnd);
-    window.addEventListener('touchcancel', onEnd);
-
+    dragAktif = true;
     dragHandler = {
       ov,
-      pins: [pinNW, pinNE, pinSE, pinSW],
-      onStart,
-      onMove,
-      onEnd,
       cleanup: () => {
-        ov.off('mousedown touchstart', onStart);
-        peta.off('mousedown touchstart', onStart);
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('touchmove', onMove);
-        window.removeEventListener('mouseup', onEnd);
-        window.removeEventListener('touchend', onEnd);
-        window.removeEventListener('touchcancel', onEnd);
-        [pinNW, pinNE, pinSE, pinSW].forEach(p => {
-          if (peta.hasLayer(p)) peta.removeLayer(p);
-        });
-        if (imgEl) imgEl.style.cursor = '';
+        wadah.removeEventListener('pointerdown', onDown, true);
+        wadah.removeEventListener('pointermove', onMove);
+        wadah.removeEventListener('pointerup', onUp);
+        wadah.removeEventListener('pointercancel', onUp);
+        wadah.style.touchAction = touchAwal || '';
+        if (geser) {
+          peta.dragging.enable();
+          peta.touchZoom.enable();
+          peta.doubleClickZoom.enable();
+        }
       }
     };
   }
