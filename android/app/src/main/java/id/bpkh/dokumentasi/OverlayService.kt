@@ -138,7 +138,8 @@ class OverlayService : Service() {
 
     private fun ketukPil() {
         when (keadaan) {
-            0 -> mulaiMerekam()
+            // Satu ketuk langsung membuka flyout kamera (kamera ikut aktif).
+            0 -> { mulaiMerekam(); bukaPanel() }
             1 -> bukaPanel()
         }
     }
