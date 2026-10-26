@@ -1511,7 +1511,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.38</span>
+            Dokumentasi <span id="loginVersi">v3.9.39</span>
           </div>
         </div>
       </div>
@@ -2101,6 +2101,11 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px;">
           <input type="checkbox" id="cbBubbleAktif"> Aktifkan mode capture cepat (bubble &amp; flyout)
         </label>
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid #e5e7eb;">
+          <div style="font-size:14px;">Versi aplikasi terpasang: <b id="txtVersiApk">-</b></div>
+          <button type="button" class="tombol" id="btnUnduhApk" style="margin-top:8px;">Unduh APK terbaru</button>
+          <div style="margin-top:6px; font-size:12px; color:#6b7280;">Pasang hasil unduhan di atas aplikasi yang terpasang. Data dan pengaturan tetap aman.</div>
+        </div>
         <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px;">
           <input type="checkbox" id="cbTanggalWm"> Cantumkan tanggal di watermark foto
         </label>
@@ -2256,12 +2261,31 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.38';
+const VERSI = '3.9.39';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
   document.body.classList.add('modo-flyout');
   window.addEventListener('load', ()=>{ setTimeout(()=>{ try{ bukaFlyCapture(); }catch(e){} }, 300); });
+})();
+
+/* Unduh APK terbaru dari dalam aplikasi */
+(function siapkanUnduhApk(){
+  const URL_APK = 'https://dkpoint.pages.dev/dl/dkpoint.apk';
+  const native = (typeof window.DokumentasiNative !== 'undefined') ? window.DokumentasiNative : null;
+  const txt = document.getElementById('txtVersiApk');
+  if (txt) {
+    let v = '';
+    try { v = native && native.versiAplikasi ? native.versiAplikasi() : ''; } catch(_){}
+    txt.textContent = v || 'versi web ' + VERSI;
+  }
+  const btn = document.getElementById('btnUnduhApk');
+  if (btn) btn.onclick = () => {
+    try {
+      if (native && native.bukaLink) native.bukaLink(URL_APK);
+      else window.open(URL_APK, '_blank');
+    } catch(_) { window.open(URL_APK, '_blank'); }
+  };
 })();
 
 /* Daftar room di perangkat ini (dikelola oleh MegaEngine) */

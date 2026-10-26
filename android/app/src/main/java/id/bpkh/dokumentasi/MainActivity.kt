@@ -169,6 +169,20 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun tutup() {}
+
+        /** Buka tautan (misalnya unduhan APK) di peramban luar. */
+        @JavascriptInterface
+        fun bukaLink(url: String) {
+            runOnUiThread {
+                try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
+            }
+        }
+
+        /** Nama versi aplikasi yang terpasang, misalnya 3.9.39. */
+        @JavascriptInterface
+        fun versiAplikasi(): String = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        } catch (_: Exception) { "" }
     }
 
     private fun punyaIzin(izin: String): Boolean =
