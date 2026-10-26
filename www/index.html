@@ -8782,9 +8782,8 @@ function deteksiModeTampilan(){
 
 // Identitas unik: akun MEGA (kalau login), atau perangkat (kalau tidak login)
 function identitasKunci(){
-  let email = '';
-  try { if (typeof MegaEngine !== 'undefined' && MegaEngine.punyaSesi && MegaEngine.punyaSesi()) email = MegaEngine.getEmail() || ''; } catch(e){}
-  return email ? 'akun:' + email.trim().toLowerCase() : 'perangkat:' + dapatkanDeviceId();
+  // Hanya ID perangkat acak yang dikirim (email akun tidak ikut dikirim).
+  return 'perangkat:' + dapatkanDeviceId();
 }
 
 /* Telemetri pengguna dikirim ke endpoint Cloudflare (/api/telemetri). */
