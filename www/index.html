@@ -1989,8 +1989,10 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           <!-- Mode 1: Freehand Sentuh (geser & cubit, rasio tetap) -->
           <div id="panelKalibrasiDrag" class="panel-kalibrasi-sub">
             <div class="kalibrasi-ket" style="margin-bottom:8px">
-              💡 Peta tetap bisa digeser dan di-zoom seperti biasa. Untuk memindahkan gambar ke titik GCP: <b>tekan dan tahan</b> di atas gambar sampai peta terkunci, lalu geser. Saat itu, <b>dua jari</b> bisa mencubit dengan rasio tetap.
+              💡 <b>Geser Gambar OFF</b>: peta bergerak biasa. <b>ON</b>: tekan dan geser gambar ke titik GCP, dua jari untuk cubit (rasio tetap).
             </div>
+
+            <button id="btnModeGeser" class="btn-nudge-aksi" type="button" style="width:100%;margin-bottom:8px">✋ Geser Gambar: OFF</button>
 
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
               <button id="btnZoomKeRasterSaatIni" class="btn-nudge-aksi" type="button" style="flex:1;min-width:120px">🔍 Zoom ke Raster</button>
@@ -7344,6 +7346,9 @@ async function mulaiKalibrasiRaster(id){
   // Bersihkan GCP lama jika ada
   bersihkanGcp();
 
+  // Mode Geser Gambar (tombol ON/OFF), default OFF
+  let modeGeserUi = false;
+
   // Tab switching setup
   const setModeTab = (mode) => {
     $('tabModeDrag').classList.toggle('aktif', mode === 'drag');
@@ -7361,6 +7366,7 @@ async function mulaiKalibrasiRaster(id){
           ];
         }
       });
+      PETA.setModeGeserRaster(petaAktif, modeGeserUi);
       lepasKlik2Titik();
     } else if (mode === '2titik') {
       PETA.nonaktifkanDragRaster(petaAktif);
@@ -7373,6 +7379,16 @@ async function mulaiKalibrasiRaster(id){
 
   // Default ke tab drag
   setModeTab('drag');
+
+  // Tombol Geser Gambar: ON = tekan & geser gambar; OFF = peta bergerak biasa
+  $('btnModeGeser').onclick = () => {
+    modeGeserUi = !modeGeserUi;
+    const t = $('btnModeGeser');
+    t.textContent = modeGeserUi ? '✋ Geser Gambar: ON' : '✋ Geser Gambar: OFF';
+    t.style.background = modeGeserUi ? '#16a34a' : '';
+    t.style.color = modeGeserUi ? '#fff' : '';
+    PETA.setModeGeserRaster(petaAktif, modeGeserUi);
+  };
 
   // Tombol Zoom ke Raster Saat Ini
   $('btnZoomKeRasterSaatIni').onclick = () => {
