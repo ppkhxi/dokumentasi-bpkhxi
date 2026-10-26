@@ -59,6 +59,17 @@ class OverlayService : Service() {
     private var bubble: TextView? = null
     private var lpBubble: WindowManager.LayoutParams? = null
     private var flyout: WebView? = null
+    private var kontainer: FrameLayout? = null
+    private var preview: PreviewView? = null
+    private var camProvider: ProcessCameraProvider? = null
+    private var imageCapture: ImageCapture? = null
+    private val pekerja = Executors.newSingleThreadExecutor()
+    /** Siklus hidup untuk CameraX; kamera hidup selama pemilik ini aktif. */
+    private val pemilikSiklus = object : LifecycleOwner {
+        private val daftar = LifecycleRegistry(this)
+        override fun getLifecycle(): Lifecycle = daftar
+        fun atur(s: Lifecycle.State) { daftar.currentState = s }
+    }
     private var keadaan = 0
     private val handler = Handler(Looper.getMainLooper())
 
@@ -96,8 +107,14 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         jalan = false
-        flyout?.let { try { wm.removeView(it) } catch (_: Exception) {}; it.destroy() }
+        hentikanKamera()
+        pemilikSiklus.atur(Lifecycle.State.DESTROYED)
+        pekerja.shutdown()
+        flyout?.let { it.destroy() }
         flyout = null
+        kontainer?.let { try { wm.removeView(it) } catch (_: Exception) {} }
+        kontainer = null
+        preview = null
         bubble?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         bubble = null
         super.onDestroy()
@@ -177,17 +194,22 @@ class OverlayService : Service() {
     private fun bukaPanel() {
         keadaan = 2
         bubble?.visibility = View.GONE
-        flyout?.visibility = View.VISIBLE
+        kontainer?.visibility = View.VISIBLE
     }
 
     /** Tutup semua: kembali ke pil kompak dan kamera berhenti. */
     private fun tutupSemua() {
         keadaan = 0
-        flyout?.let { wv ->
+        hentikanKamera()
+        val wv = flyout
+        val k = kontainer
+        if (wv != null) {
             flyout = null
+            kontainer = null
+            preview = null
             try { wv.evaluateJavascript("if(typeof tutupFlyCapture==='function')tutupFlyCapture();", null) } catch (_: Exception) {}
             handler.postDelayed({
-                try { wm.removeView(wv) } catch (_: Exception) {}
+                try { k?.let { wm.removeView(it) } } catch (_: Exception) {}
                 wv.destroy()
             }, 150)
         }
@@ -199,11 +221,15 @@ class OverlayService : Service() {
         tv.visibility = View.VISIBLE
     }
 
-    /** Flyout (kamera + catatan + shutter) dimuat sekali per kali dibuka; tampil saat tahap 2. */
+    /** Flyout: kamera asli (CameraX) di bawah, antarmuka web di atasnya. Dimuat sekali per kali dibuka. */
     @SuppressLint("SetJavaScriptEnabled")
     private fun siapkanFlyout() {
+        val pv = PreviewView(this).apply {
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
         val wv = WebView(this)
-        wv.setBackgroundColor(Color.TRANSPARENT)
+        wv.setBackgroundColor(Color.parseColor("#0E100E"))
         wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -225,6 +251,10 @@ class OverlayService : Service() {
                 callback?.invoke(origin, lokasi, false)
             }
         }
+        val kt = FrameLayout(this).apply {
+            addView(wv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(pv, FrameLayout.LayoutParams(dp(300), dp(300)).apply { leftMargin = dp(10); topMargin = dp(60) })
+        }
         val lp = WindowManager.LayoutParams(
             dp(320), dp(420), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -233,10 +263,108 @@ class OverlayService : Service() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = 0
         }
-        wv.visibility = View.GONE
-        wm.addView(wv, lp)
+        kt.visibility = View.GONE
+        wm.addView(kt, lp)
         flyout = wv
+        kontainer = kt
+        preview = pv
         wv.loadUrl(URL_FLYOUT)
+        pemilikSiklus.atur(Lifecycle.State.RESUMED)
+        nyalakanKamera()
+    }
+
+    /** Kamera asli dinyalakan lewat CameraX; pratinjau dipasang ke PreviewView. */
+    private fun nyalakanKamera() {
+        val pv = preview ?: return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            kabar("Izin kamera belum aktif untuk DKPoint.")
+            return
+        }
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            try {
+                val prov = future.get()
+                camProvider = prov
+                val prev = Preview.Builder().build().also { it.setSurfaceProvider(pv.surfaceProvider) }
+                val cap = ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+                imageCapture = cap
+                prov.unbindAll()
+                prov.bindToLifecycle(pemilikSiklus, CameraSelector.DEFAULT_BACK_CAMERA, prev, cap)
+            } catch (e: Exception) {
+                kabar("Kamera tidak bisa dibuka: " + (e.javaClass.simpleName))
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun hentikanKamera() {
+        try { camProvider?.unbindAll() } catch (_: Exception) {}
+        imageCapture = null
+        if (jalan) pemilikSiklus.atur(Lifecycle.State.CREATED)
+    }
+
+    /** Ambil satu foto, potong 3:4, lalu kirim ke halaman web untuk diberi watermark dan disimpan. */
+    private fun ambilFoto() {
+        val cap = imageCapture
+        if (cap == null) { kabar("Kamera belum siap, tunggu sebentar."); return }
+        cap.takePicture(pekerja, object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                try {
+                    val buf = image.planes[0].buffer
+                    val bytes = ByteArray(buf.remaining()).also { buf.get(it) }
+                    val hasil = potongJpeg(bytes, image.imageInfo.rotationDegrees)
+                    val dataUrl = "data:image/jpeg;base64," + Base64.encodeToString(hasil, Base64.NO_WRAP)
+                    handler.post {
+                        flyout?.evaluateJavascript("if(typeof terimaFotoNative==='function')terimaFotoNative(${JSONObject.quote(dataUrl)})", null)
+                    }
+                } catch (e: Exception) {
+                    kabar("Foto gagal diproses: " + e.javaClass.simpleName)
+                } finally {
+                    image.close()
+                }
+            }
+            override fun onError(exc: ImageCaptureException) {
+                kabar("Foto gagal diambil (kode " + exc.imageCaptureError + ")")
+            }
+        })
+    }
+
+    private fun potongJpeg(bytes: ByteArray, rotasi: Int): ByteArray {
+        val opsi = BitmapFactory.Options().apply { inSampleSize = 2 }
+        var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opsi)
+            ?: throw IllegalStateException("decode")
+        if (rotasi != 0) {
+            val m = Matrix().apply { postRotate(rotasi.toFloat()) }
+            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
+        }
+        val w = bmp.width
+        val h = bmp.height
+        val cw: Int
+        val ch: Int
+        if (w.toFloat() / h > 3f / 4f) { ch = h; cw = h * 3 / 4 } else { cw = w; ch = w * 4 / 3 }
+        val x = (w - cw) / 2
+        val y = (h - ch) / 2
+        val potong = Bitmap.createBitmap(bmp, x, y, cw, ch)
+        val keluar = ByteArrayOutputStream()
+        potong.compress(Bitmap.CompressFormat.JPEG, 92, keluar)
+        return keluar.toByteArray()
+    }
+
+    /** Kabar singkat ke halaman flyout (fungsi terimaGagalNative). */
+    private fun kabar(teks: String) {
+        handler.post {
+            flyout?.evaluateJavascript("if(typeof terimaGagalNative==='function')terimaGagalNative(${JSONObject.quote(teks)})", null)
+        }
+    }
+
+    /** Posisi area pratinjau kamera, dikirim dari halaman web (dalam dp). */
+    private fun aturPratinjau(x: Int, y: Int, w: Int, h: Int) {
+        val pv = preview ?: return
+        handler.post {
+            pv.layoutParams = FrameLayout.LayoutParams(dp(w), dp(h)).apply {
+                leftMargin = dp(x)
+                topMargin = dp(y)
+            }
+        }
     }
 
     inner class JembatanFlyout {
@@ -244,14 +372,15 @@ class OverlayService : Service() {
         fun tutup() {
             handler.post { tutupSemua() }
         }
-    }
-}
 
-/** Pemilik siklus hidup untuk CameraX. */
-class PemilikSiklusKamera : LifecycleOwner {
-    private val daftar = LifecycleRegistry(this)
-    override fun getLifecycle(): Lifecycle = daftar
-    fun atur(s: Lifecycle.State) {
-        daftar.currentState = s
+        @JavascriptInterface
+        fun jepretNative() {
+            handler.post { ambilFoto() }
+        }
+
+        @JavascriptInterface
+        fun aturPratinjau(x: Int, y: Int, w: Int, h: Int) {
+            this@OverlayService.aturPratinjau(x, y, w, h)
+        }
     }
 }
