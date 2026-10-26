@@ -135,9 +135,12 @@ class OverlayService : Service() {
             getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
         val notif: Notification = NotificationCompat.Builder(this, CH)
-            .setContentTitle("Dokumentasi")
-            .setContentText("Dynamic Island capture aktif")
+            .setContentTitle("")
+            .setContentText("")
             .setSmallIcon(R.drawable.ic_notif_pil)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setOngoing(true)
             .build()
         // Kamera dipakai dari layanan latar: Android 10+ perlu tipe "camera" agar tidak diblokir.
