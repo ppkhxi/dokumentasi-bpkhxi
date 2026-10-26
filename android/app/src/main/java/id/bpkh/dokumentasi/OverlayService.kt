@@ -148,9 +148,14 @@ class OverlayService : Service() {
             .setOngoing(true)
             .build()
         // Kamera dipakai dari layanan latar: Android 10+ perlu tipe "camera" agar tidak diblokir.
-        val tipe = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-        else 0
+        // Tipe "microphone" hanya dipasang bila izin mikrofon sudah ada (Android 14+ mewajibkannya).
+        val tipe = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var t = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && punyaIzinMikrofon()) {
+                t = t or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            t
+        } else 0
         ServiceCompat.startForeground(this, NOTIF_ID, notif, tipe)
     }
 
