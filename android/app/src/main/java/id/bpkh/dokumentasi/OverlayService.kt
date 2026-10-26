@@ -2,15 +2,14 @@ package id.bpkh.dokumentasi
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
@@ -20,31 +19,31 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.TextView
 import android.widget.Toast
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 /**
  * Pil hitam di tengah atas layar, melayang di atas aplikasi lain. Ketuk untuk membuka
- * flyout kamera (halaman web dkpoint dengan ?flyout=1).
+ * flyout kamera. Flyout dibuat sekali lalu disembunyikan/ditampilkan, supaya bukanya cepat.
  */
 class OverlayService : Service() {
 
     private lateinit var wm: WindowManager
     private var bubble: TextView? = null
     private var flyout: WebView? = null
+    private var flyoutTampil = false
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
@@ -68,6 +67,7 @@ class OverlayService : Service() {
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         buatNotifikasi()
         pasangBubble()
+        siapkanFlyout()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,7 +81,8 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         jalan = false
-        tutupFlyout()
+        flyout?.let { try { wm.removeView(it) } catch (_: Exception) {}; it.destroy() }
+        flyout = null
         bubble?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         bubble = null
         super.onDestroy()
@@ -108,35 +109,36 @@ class OverlayService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     }
 
-    /** Pil hitam di tengah atas (gaya Dynamic Island). Ketuk untuk membuka flyout kamera. */
+    /** Pil hitam kecil, menempel di tepi atas layar. */
     @SuppressLint("ClickableViewAccessibility")
     private fun pasangBubble() {
         val tv = TextView(this).apply {
             text = ""
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(18).toFloat()
+                cornerRadius = dp(14).toFloat()
                 setColor(Color.BLACK)
             }
-            elevation = dp(6).toFloat()
+            elevation = dp(4).toFloat()
             setOnClickListener { bukaFlyout() }
         }
         val lp = WindowManager.LayoutParams(
-            dp(120), dp(36), tipeOverlay(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            dp(84), dp(24), tipeOverlay(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(8)
+            y = 0
         }
         wm.addView(tv, lp)
         bubble = tv
     }
 
+    /** Flyout dibuat sekali saat layanan jalan, lalu cukup disembunyikan atau ditampilkan. */
     @SuppressLint("SetJavaScriptEnabled")
-    private fun bukaFlyout() {
-        if (flyout != null) { tutupFlyout(); return }
-
+    private fun siapkanFlyout() {
+        if (flyout != null) return
         val wv = WebView(this)
         wv.setBackgroundColor(Color.TRANSPARENT)
         wv.settings.apply {
@@ -147,6 +149,10 @@ class OverlayService : Service() {
         }
         wv.addJavascriptInterface(JembatanFlyout(), "DokumentasiNative")
         wv.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                // Halaman memulai kamera sendiri saat dimuat; hentikan lagi kalau flyout belum dibuka.
+                if (!flyoutTampil) view?.evaluateJavascript("if(typeof tutupFlyCapture==='function')tutupFlyCapture();", null)
+            }
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 if (request?.isForMainFrame == true) {
                     Toast.makeText(this@OverlayService, "Flyout gagal dimuat. Periksa koneksi.", Toast.LENGTH_LONG).show()
@@ -160,31 +166,36 @@ class OverlayService : Service() {
                 if (kamera) request.grant(request.resources) else request.deny()
             }
         }
-
         // Flyout tidak mengambil sentuhan di luar kartunya, jadi aplikasi di bawah tetap bisa dipakai.
         val lp = WindowManager.LayoutParams(
             dp(360), dp(480), tipeOverlay(),
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(52)
+            y = dp(32)
         }
+        wv.visibility = View.GONE
         wm.addView(wv, lp)
-        flyout = wv
         wv.loadUrl(URL_FLYOUT)
+        flyout = wv
+    }
+
+    private fun bukaFlyout() {
+        if (flyoutTampil) { tutupFlyout(); return }
+        val wv = flyout ?: run { siapkanFlyout(); flyout } ?: return
+        flyoutTampil = true
+        wv.visibility = View.VISIBLE
+        wv.evaluateJavascript("if(typeof bukaFlyCapture==='function')bukaFlyCapture();", null)
     }
 
     private fun tutupFlyout() {
         val wv = flyout ?: return
-        flyout = null
+        flyoutTampil = false
         try {
             wv.evaluateJavascript("if(typeof tutupFlyCapture==='function')tutupFlyCapture();", null)
         } catch (_: Exception) {}
-        handler.postDelayed({
-            try { wm.removeView(wv) } catch (_: Exception) {}
-            wv.destroy()
-        }, 200)
+        wv.visibility = View.GONE
     }
 
     inner class JembatanFlyout {
