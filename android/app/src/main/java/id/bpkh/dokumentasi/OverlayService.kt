@@ -210,7 +210,7 @@ class OverlayService : Service() {
         val lp = WindowManager.LayoutParams(
             dp(320), dp(420), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
+            PixelFormat.OPAQUE
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = 0
