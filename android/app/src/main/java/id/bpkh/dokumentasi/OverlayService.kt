@@ -29,13 +29,16 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.TextView
+import android.widget.Toast
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 /**
- * Bubble hijau yang melayang di atas aplikasi lain. Ketuk bubble untuk membuka
- * flyout capture (halaman web dkpoint dengan ?flyout=1).
+ * Pil hitam di tengah atas layar, melayang di atas aplikasi lain. Ketuk untuk membuka
+ * flyout kamera (halaman web dkpoint dengan ?flyout=1).
  */
 class OverlayService : Service() {
 
@@ -61,7 +64,6 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        CatatanAplikasi.catat(this, "service_onCreate")
         jalan = true
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         buatNotifikasi()
@@ -106,54 +108,26 @@ class OverlayService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     }
 
+    /** Pil hitam di tengah atas (gaya Dynamic Island). Ketuk untuk membuka flyout kamera. */
     @SuppressLint("ClickableViewAccessibility")
     private fun pasangBubble() {
         val tv = TextView(this).apply {
-            text = "📷"
-            textSize = 22f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+            text = ""
             background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#2E7D32"))
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(18).toFloat()
+                setColor(Color.BLACK)
             }
             elevation = dp(6).toFloat()
+            setOnClickListener { bukaFlyout() }
         }
         val lp = WindowManager.LayoutParams(
-            dp(58), dp(58), tipeOverlay(),
+            dp(120), dp(36), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = resources.displayMetrics.widthPixels - dp(58) - dp(14)
-            y = dp(400)
-        }
-
-        var awalX = 0
-        var awalY = 0
-        var sentuhX = 0f
-        var sentuhY = 0f
-        var geser = false
-        tv.setOnTouchListener { _, e ->
-            when (e.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    awalX = lp.x; awalY = lp.y
-                    sentuhX = e.rawX; sentuhY = e.rawY
-                    geser = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = e.rawX - sentuhX
-                    val dy = e.rawY - sentuhY
-                    if (Math.abs(dx) + Math.abs(dy) > dp(8)) geser = true
-                    if (geser) {
-                        lp.x = awalX + dx.toInt()
-                        lp.y = awalY + dy.toInt()
-                        wm.updateViewLayout(tv, lp)
-                    }
-                }
-                MotionEvent.ACTION_UP -> if (!geser) bukaFlyout()
-            }
-            true
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = dp(8)
         }
         wm.addView(tv, lp)
         bubble = tv
@@ -172,7 +146,13 @@ class OverlayService : Service() {
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
         wv.addJavascriptInterface(JembatanFlyout(), "DokumentasiNative")
-        wv.webViewClient = WebViewClient()
+        wv.webViewClient = object : WebViewClient() {
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                if (request?.isForMainFrame == true) {
+                    Toast.makeText(this@OverlayService, "Flyout gagal dimuat. Periksa koneksi.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         wv.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 val kamera = ContextCompat.checkSelfPermission(this@OverlayService, Manifest.permission.CAMERA) ==
@@ -187,9 +167,8 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
-            x = dp(14)
-            y = dp(100)
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = dp(52)
         }
         wm.addView(wv, lp)
         flyout = wv

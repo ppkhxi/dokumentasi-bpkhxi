@@ -34,7 +34,6 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CatatanAplikasi.catat(this, "activity_onCreate")
         val p = getSharedPreferences("dokumentasi", MODE_PRIVATE)
         val crash = p.getString("crash_terakhir", null)
         if (crash != null) {
@@ -124,7 +123,6 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        CatatanAplikasi.catat(this, "activity_onStart")
         aman {
             // Tawarkan izin "tampil di atas aplikasi lain" sekali saja.
             if (!Settings.canDrawOverlays(this) && !prefs.getBoolean("sudah_tanya_overlay", false)) {
