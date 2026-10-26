@@ -61,6 +61,7 @@ class OverlayService : Service() {
     private var lpBubble: WindowManager.LayoutParams? = null
     private var flyout: WebView? = null
     private var kontainer: FrameLayout? = null
+    private var lpFlyout: WindowManager.LayoutParams? = null
     private var preview: PreviewView? = null
     private var camProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
@@ -111,6 +112,7 @@ class OverlayService : Service() {
         flyout = null
         kontainer?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         kontainer = null
+        lpFlyout = null
         preview = null
         bubble?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         bubble = null
@@ -291,6 +293,7 @@ class OverlayService : Service() {
         }
         kt.visibility = View.GONE
         wm.addView(kt, lp)
+        lpFlyout = lp
         flyout = wv
         kontainer = kt
         preview = pv
@@ -382,6 +385,17 @@ class OverlayService : Service() {
         }
     }
 
+    private fun aturFokusKetik(aktif: Boolean) {
+        val lp = lpFlyout ?: return
+        val k = kontainer ?: return
+        lp.flags = if (aktif) {
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+        } else {
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        }
+        try { wm.updateViewLayout(k, lp) } catch (_: Exception) {}
+    }
+
     /** Posisi area pratinjau kamera, dikirim dari halaman web (dalam dp). */
     private fun aturPratinjau(x: Int, y: Int, w: Int, h: Int) {
         val pv = preview ?: return
@@ -397,6 +411,12 @@ class OverlayService : Service() {
         @JavascriptInterface
         fun tutup() {
             handler.post { tutupSemua() }
+        }
+
+        /** Kolom catatan diketuk: jendela boleh menerima fokus agar keyboard muncul. */
+        @JavascriptInterface
+        fun fokusKetik(aktif: Boolean) {
+            handler.post { aturFokusKetik(aktif) }
         }
 
         @JavascriptInterface

@@ -447,6 +447,16 @@ perbaruiInfo();
 mulaiGps();
 bukaKamera();
 setTimeout(kirimPosisiPratinjau, 400);
+if (KAMERA_ASLI) {
+  /* Kolom catatan: minta jendela menerima fokus supaya keyboard muncul. */
+  $('catatan').addEventListener('focus', () => {
+    try { DokumentasiNative.fokusKetik(true); } catch (_) {}
+    setTimeout(() => $('catatan').focus(), 150);
+  });
+  $('catatan').addEventListener('blur', () => {
+    try { DokumentasiNative.fokusKetik(false); } catch (_) {}
+  });
+}
 setTimeout(kirimPosisiPratinjau, 1200);
 </script>
 </body>
