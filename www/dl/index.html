@@ -11,8 +11,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 24px 0;
+            box-sizing: border-box;
             color: #333;
         }
         .container {
@@ -45,6 +47,9 @@
             font-weight: bold;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
+        .izin { text-align: left; font-size: 14px; color: #444; margin: 0 0 24px; padding-left: 20px; line-height: 1.6; }
+        .izin li { margin-bottom: 4px; }
+        .catatan-kecil { font-size: 13px; color: #7f8c8d; margin: 20px 0 0; }
         .btn-download:hover {
             background-color: #0056b3;
             transform: translateY(-2px);
@@ -57,7 +62,18 @@
         <img src="../icons/logo-dokumentasi.png" alt="Logo DKPoint" style="width:96px;height:96px;object-fit:contain;margin-bottom:12px">
         <h1>DKPoint</h1>
         <p>Silakan klik tombol di bawah ini untuk mengunduh aplikasi DKPoint ke perangkat Android Anda.</p>
+        <p style="text-align:left;margin-bottom:8px"><b>Izin yang dipakai DKPoint:</b></p>
+        <ul class="izin">
+            <li><b>Kamera</b>: memotret dokumentasi lapangan.</li>
+            <li><b>Mikrofon</b>: mengisi catatan dengan suara.</li>
+            <li><b>Lokasi</b>: menulis koordinat GPS pada foto.</li>
+            <li><b>Tampil di atas aplikasi lain</b>: pil kamera di tepi layar.</li>
+            <li><b>Notifikasi</b>: layanan pil tetap berjalan di latar. Notifikasi ini tidak menampilkan teks.</li>
+            <li><b>Pasang aplikasi</b>: tombol Perbarui APK, agar pembaruan bisa dipasang dengan satu ketuk.</li>
+            <li><b>Internet</b>: sinkronisasi dan peta.</li>
+        </ul>
         <a href="https://dkpoint.pages.dev/dl/dkpoint.apk" class="btn-download">Download APK</a>
+        <p class="catatan-kecil">Jika Android menampilkan peringatan Play Protect, pilih "Pasang tetap" (atau "Install anyway").</p>
     </div>
 
 </body>
