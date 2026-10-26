@@ -12,7 +12,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -147,7 +146,7 @@ class OverlayService : Service() {
     /** Tombol bulat di tepi kanan layar (seperti tombol aksesibilitas). Bisa digeser naik-turun. */
     @SuppressLint("ClickableViewAccessibility")
     private fun pasangBubble() {
-        val ukuran = dp(44)
+        val ukuran = dp(56)
         val tinggiLayar = resources.displayMetrics.heightPixels
         val simpan = getSharedPreferences("pil_kamera", MODE_PRIVATE)
         val lp = WindowManager.LayoutParams(
@@ -160,14 +159,8 @@ class OverlayService : Service() {
             y = simpan.getInt("y", tinggiLayar / 3).coerceIn(dp(60), tinggiLayar - ukuran - dp(60))
         }
         val tv = TextView(this).apply {
-            text = "📷"
-            gravity = Gravity.CENTER
-            textSize = 18f
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#D9111111"))
-            }
-            elevation = dp(4).toFloat()
+            // Bentuk pil dari aset (putih transparan, abu-abu transparan 25%).
+            background = androidx.core.content.ContextCompat.getDrawable(this@OverlayService, R.drawable.pil_kamera)
         }
         var yAwal = 0f
         var lpYAwal = 0
@@ -217,8 +210,6 @@ class OverlayService : Service() {
     private fun mulaiMerekam() {
         keadaan = 1
         if (flyout == null) siapkanFlyout()
-        val tv = bubble ?: return
-        tv.text = "📷"
     }
 
     /** Tahap 1 -> 2: panel preview kamera terbuka. */
@@ -245,7 +236,6 @@ class OverlayService : Service() {
             }, 150)
         }
         val tv = bubble ?: return
-        tv.text = "📷"
         tv.visibility = View.VISIBLE
     }
 
@@ -285,11 +275,16 @@ class OverlayService : Service() {
         }
         val lp = WindowManager.LayoutParams(
             dp(320), dp(420), tipeOverlay(),
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.OPAQUE
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = 0
+        }
+        // Ketuk di luar flyout = tutup (kamera berhenti, kembali ke pil).
+        kt.setOnTouchListener { _, e ->
+            if (e.action == MotionEvent.ACTION_OUTSIDE) { handler.post { tutupSemua() }; true } else false
         }
         kt.visibility = View.GONE
         wm.addView(kt, lp)
@@ -388,10 +383,11 @@ class OverlayService : Service() {
     private fun aturFokusKetik(aktif: Boolean) {
         val lp = lpFlyout ?: return
         val k = kontainer ?: return
+        val pantau = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         lp.flags = if (aktif) {
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or pantau
         } else {
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or pantau
         }
         try { wm.updateViewLayout(k, lp) } catch (_: Exception) {}
     }
