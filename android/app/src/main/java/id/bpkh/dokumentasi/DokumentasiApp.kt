@@ -6,6 +6,7 @@ import android.app.Application
 class DokumentasiApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        Pengingat.jadwalkan(this)
         val asli = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             val teks = "Thread: ${t.name}\n\n" + e.stackTraceToString()

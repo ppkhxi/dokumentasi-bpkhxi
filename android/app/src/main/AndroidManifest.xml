@@ -36,5 +36,8 @@
             android:name=".OverlayService"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
+            <receiver
+            android:name=".PengingatReceiver"
+            android:exported="false" />
     </application>
 </manifest>
