@@ -1,6 +1,7 @@
 package id.bpkh.dokumentasi
 
 import android.content.Context
+import androidx.webkit.WebViewAssetLoader
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -9,27 +10,31 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 
 /**
- * Melayani berkas aplikasi dari dalam APK (folder assets/www), sehingga aplikasi dan flyout
+ * Melayani berkas aplikasi dari dalam APK (folder assets/), sehingga aplikasi dan flyout
  * bisa dibuka tanpa sinyal. Origin tetap https://dkpoint.pages.dev, jadi data penyimpanan
  * browser tidak berpindah. Permintaan /api/ dan /dl/ tetap diambil dari internet.
  */
 open class AsetWebClient(private val ctx: Context) : WebViewClient() {
 
+    /**
+     * Berkas aplikasi dibaca langsung dari dalam APK (assets/) dengan alamat dkpoint.pages.dev,
+     * jadi origin tetap sama dan data penyimpanan browser tidak berpindah.
+     */
+    private val pemuat = WebViewAssetLoader.Builder()
+        .setDomain("dkpoint.pages.dev")
+        .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(ctx))
+        .build()
+
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
         val uri = request?.url ?: return null
         if (request.method != "GET" || uri.host != "dkpoint.pages.dev") return null
-        var path = uri.path ?: "/"
+        val path = uri.path ?: "/"
         if (path.startsWith("/api/") || path.startsWith("/dl/")) return null
-        if (path.isEmpty() || path == "/") path = "/index.html"
-        if (path.endsWith("/")) path += "index.html"
-        val mime = mimeDari(path)
-        return try {
-            val masuk = ctx.assets.open("www$path")
-            val teks = mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json")
-            WebResourceResponse(mime, if (teks) "utf-8" else null, masuk)
-        } catch (_: Exception) {
-            null
-        }
+        // Alamat folder (misalnya "/") dibuka sebagai index.html.
+        val tujuan = if (path.isEmpty() || path.endsWith("/"))
+            uri.buildUpon().path(if (path.isEmpty()) "/index.html" else path + "index.html").build()
+        else uri
+        return pemuat.shouldInterceptRequest(tujuan)
     }
 
     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {

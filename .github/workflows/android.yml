@@ -45,10 +45,10 @@ jobs:
 
       - name: Salin aplikasi web ke dalam APK (assets)
         run: |
-          rm -rf android/app/src/main/assets/www
+          rm -rf android/app/src/main/assets
           mkdir -p android/app/src/main/assets
-          cp -r www android/app/src/main/assets/www
-          rm -rf android/app/src/main/assets/www/dl
+          cp -r www/. android/app/src/main/assets/
+          rm -rf android/app/src/main/assets/dl
 
       - name: Build APK release
         working-directory: android
