@@ -470,16 +470,22 @@ bukaKamera();
 setTimeout(kirimPosisiPratinjau, 400);
 /* ---------- Catatan dengan suara (mikrofon, Bahasa Indonesia) ---------- */
 let suaraAwal = '';
+let suaraTimer = null;
+function batalSuaraTimer() { if (suaraTimer) { clearTimeout(suaraTimer); suaraTimer = null; } }
 $('mikrofon').onclick = () => {
   if (!(window.DokumentasiNative && DokumentasiNative.mulaiSuara)) { pesan('Catatan suara hanya tersedia di aplikasi'); return; }
   if ($('mikrofon').classList.contains('aktif')) { try { DokumentasiNative.hentikanSuara(); } catch (_) {} return; }
   suaraAwal = $('catatan').value;
+  pesan('Memulai mikrofon…');
+  batalSuaraTimer();
+  suaraTimer = setTimeout(() => suaraGagal('Mikrofon tidak merespons. Cek izin Mikrofon DKPoint di Pengaturan.'), 4000);
   try { DokumentasiNative.mulaiSuara(); } catch (_) { suaraGagal('Catatan suara tidak bisa dimulai'); }
 };
-function suaraMulai() { $('mikrofon').classList.add('aktif'); pesan('Silakan bicara...'); }
-function suaraSelesai() { $('mikrofon').classList.remove('aktif'); }
+function suaraMulai() { batalSuaraTimer(); $('mikrofon').classList.add('aktif'); pesan('Silakan bicara...'); }
+function suaraSelesai() { batalSuaraTimer(); $('mikrofon').classList.remove('aktif'); }
 function suaraGagal(teks) { suaraSelesai(); pesan(teks); }
 function terimaSuara(teks, akhir) {
+  batalSuaraTimer();
   const c = $('catatan');
   c.value = ((suaraAwal ? suaraAwal + ' ' : '') + teks).slice(0, 250);
   if (akhir) { suaraAwal = c.value; suaraSelesai(); }
