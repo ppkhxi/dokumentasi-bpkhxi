@@ -134,7 +134,11 @@ class OverlayService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .build()
-        ServiceCompat.startForeground(this, NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        // Kamera dipakai dari layanan latar: Android 10+ perlu tipe "camera" agar tidak diblokir.
+        val tipe = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        else 0
+        ServiceCompat.startForeground(this, NOTIF_ID, notif, tipe)
     }
 
     /** Pil di tepi atas; ukurannya berubah sesuai tahap. */
