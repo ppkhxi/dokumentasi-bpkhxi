@@ -249,7 +249,7 @@ class MainActivity : Activity() {
         ContextCompat.checkSelfPermission(this, izin) == PackageManager.PERMISSION_GRANTED
 
     private fun mintaIzin() {
-        val daftar = mutableListOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION)
+        val daftar = mutableListOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= 33) daftar.add(Manifest.permission.POST_NOTIFICATIONS)
         val belum = daftar.filter { !punyaIzin(it) }
         if (belum.isNotEmpty()) requestPermissions(belum.toTypedArray(), REQ_IZIN)
