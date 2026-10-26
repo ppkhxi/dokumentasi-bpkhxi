@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Kamera cepat</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin:0; height:100%; background:transparent; overflow:hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#fff; }
+  .kartu { position:fixed; inset:0; display:flex; flex-direction:column; gap:8px; padding:8px;
+    box-sizing:border-box; background:rgba(14,16,14,.94); border-radius:22px; }
+  .kepala { display:flex; align-items:center; gap:8px; min-height:30px; }
+  .kepala img { width:22px; height:22px; border-radius:6px; object-fit:contain; }
+  .kepala .info { flex:1; min-width:0; font-size:11px; line-height:1.25; }
+  .kepala .info b { display:block; font-size:12px; }
+  .kepala .info span { color:#b8c4bb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  #tutup { background:#2a2f2a; color:#fff; border:0; border-radius:50%; width:30px; height:30px; font-size:14px; }
+  .pratinjau { position:relative; flex:1 1 auto; min-height:0; border-radius:14px; overflow:hidden; background:#000; }
+  #video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #tirai { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+  #tirai.kilat { animation: kilat .18s ease-out; }
+  @keyframes kilat { from { opacity:.85 } to { opacity:0 } }
+  input#catatan { width:100%; box-sizing:border-box; border:0; border-radius:12px; padding:9px 11px;
+    background:#1f241f; color:#fff; font-size:14px; outline:none; }
+  input#catatan::placeholder { color:#7d8a80; }
+  .bawah { display:flex; justify-content:center; align-items:center; flex:0 0 auto; padding-top:2px; }
+  #rana { width:58px; height:58px; border-radius:50%; border:4px solid #fff; background:#fff;
+    padding:0; box-shadow:0 0 0 3px rgba(255,255,255,.25); }
+  #rana:active { transform:scale(.94); }
+  #rana:disabled { opacity:.5; }
+  #pesan { position:fixed; left:50%; bottom:86px; transform:translateX(-50%); background:rgba(0,0,0,.85);
+    padding:6px 10px; border-radius:10px; font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none;
+    max-width:90%; text-align:center; }
+  #pesan.tampil { opacity:1; }
+  .kosong { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:16px; box-sizing:border-box; font-size:13px; color:#c9d3cb; }
+</style>
+</head>
+<body>
+<div class="kartu" role="dialog" aria-label="Kamera cepat">
+  <div class="kepala">
+    <img src="icons/logo-dokumentasi.png" alt="">
+    <div class="info"><b>Dokumentasi</b><span id="info">—</span></div>
+    <button id="tutup" type="button" aria-label="Tutup">&#10005;</button>
+  </div>
+  <div class="pratinjau">
+    <video id="video" playsinline muted autoplay></video>
+    <div id="tirai"></div>
+    <div id="kosong" class="kosong" style="display:none"></div>
+  </div>
+  <input id="catatan" maxlength="250" placeholder="Tulis nomor patok atau catatan..." autocomplete="off">
+  <div class="bawah"><button id="rana" type="button" aria-label="Ambil foto"></button></div>
+</div>
+<div id="pesan" role="status" aria-live="polite"></div>
+
+<script src="js/security.js"></script>
+<script src="js/exif-gps.js"></script>
+<script>
+/* Kamera cepat untuk APK (ringan). Hanya kamera, catatan, dan rana.
+   Foto disimpan ke penyimpanan yang sama dengan Galeri (IndexedDB bpkh_portal),
+   berwatermark sama, dan diunggah pada jadwal 16.00 WIB seperti biasa.
+   Logika penyimpanan & watermark sengaja disalin dari index.html; ubah keduanya bersamaan. */
+
+const $ = id => document.getElementById(id);
+const LOGO_BAWAAN = 'icons/logo-dokumentasi.png';
+const DBNAMA = 'bpkh_portal', STORE = 'foto';
+
+const S = {
+  nama: '', userId: '', room: '', kantor: 'BPKH WILAYAH XI',
+  targetKB: 500, lebarMax: 1600, logo: '', logoPilih: 'baru', logoImg: null,
+  posisi: null, stream: null, orientasi: 0
+};
+
+function baca(k, bawaan) { try { const v = localStorage.getItem(k); return v === null ? bawaan : v; } catch (_) { return bawaan; } }
+function muatPengaturan() {
+  S.nama = baca('bpkh_nama', '');
+  S.userId = baca('bpkh_userId', '');
+  S.room = baca('bpkh_room', '');
+  const k = baca('dkpoint_kantor', '') || baca('bpkh_kantor', '');
+  S.kantor = (!k || k === 'dkpoint' || k === 'Portal Dokumentasi BPKH Wilayah XI') ? 'BPKH WILAYAH XI' : k;
+  S.targetKB = +baca('bpkh_target', 500);
+  S.lebarMax = +baca('bpkh_lebar', 1600);
+  S.logo = baca('bpkh_logo', '');
+  S.logoPilih = baca('bpkh_logo_pilih', 'baru') === 'lama' ? 'lama' : 'baru';
+  const im = new Image();
+  const sumber = (S.logoPilih === 'lama' && S.logo) ? S.logo : LOGO_BAWAAN;
+  im.onload = () => S.logoImg = im;
+  im.onerror = () => S.logoImg = null;
+  im.src = sumber;
+}
+
+function pesan(t) {
+  const el = $('pesan'); el.textContent = t; el.classList.add('tampil');
+  clearTimeout(pesan._t); pesan._t = setTimeout(() => el.classList.remove('tampil'), 2200);
+}
+
+/* ---------- Penyimpanan (sama dengan index.html) ---------- */
+function bukaDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DBNAMA, 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE, { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('peta_kml')) d.createObjectStore('peta_kml', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('peta_raster')) d.createObjectStore('peta_raster', { keyPath: 'id' });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function hitungFotoRoom(namaRoom) {
+  const d = await bukaDB();
+  return new Promise((res, rej) => {
+    let n = 0;
+    const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) return res(n);
+      if (((c.value.room || 'LOKAL').trim().toUpperCase()) === namaRoom.toUpperCase()) n++;
+      c.continue();
+    };
+    req.onerror = () => rej(req.error);
+  });
+}
+async function simpanFoto(rec) {
+  const d = await bukaDB();
+  return new Promise((res, rej) => {
+    const t = d.transaction(STORE, 'readwrite');
+    t.objectStore(STORE).put(rec);
+    t.oncomplete = res;
+    t.onerror = () => rej(t.error);
+  });
+}
+
+/* Status upload: sama aturannya dengan MegaEngine.bisaUpload di aplikasi utama */
+function bisaUploadRoom(namaRoom) {
+  if (baca('dkpoint_mega_auth', '')) return true;
+  let daftar = [];
+  try { daftar = JSON.parse(baca('dkpoint_mega_rooms', '[]')) || []; } catch (_) {}
+  const target = (namaRoom || '').trim().toUpperCase();
+  const r = daftar.find(x => (x.nama || '').trim().toUpperCase() === target);
+  return !!(r && (r.authTicket || r.tipe === 'host'));
+}
+
+/* ---------- Watermark (sama dengan index.html) ---------- */
+const fmtKoord = p => p ? p.lat.toFixed(6) + ', ' + p.lon.toFixed(6) : 'Tidak tersedia';
+const fmtWaktu = ts => new Date(ts).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+function gambarWatermark(ctx, W, H, rot = 0) {
+  ctx.save();
+  const pad = Math.round(Math.min(W, H) * 0.025);
+  const fBesar = Math.max(13, Math.round(Math.min(W, H) * 0.032));
+  const fKecil = Math.max(10, Math.round(Math.min(W, H) * 0.022));
+  const lineH = Math.round(fKecil * 1.35);
+  const mauTanggal = baca('dkpoint_tanggal_wm', 'true') !== 'false';
+  const mauCatatan = baca('dkpoint_catatan_wm', 'false') === 'true';
+
+  let jumlahBaris = 1;
+  if (mauTanggal) jumlahBaris++;
+  let catatanWm = '';
+  if (mauCatatan) {
+    const raw = $('catatan').value.trim();
+    if (raw) { catatanWm = raw.length > 55 ? raw.substring(0, 52) + '...' : raw; jumlahBaris++; }
+  }
+
+  const tinggiContent = fBesar + lineH * jumlahBaris + pad * 0.8;
+  const sisiLogo = Math.max(Math.round(tinggiContent * 0.72), 34);
+
+  ctx.font = 'bold ' + fBesar + 'px Roboto, sans-serif';
+  const wKantor = ctx.measureText(S.kantor || 'BPKH WILAYAH XI').width;
+  ctx.font = fKecil + 'px Roboto, sans-serif';
+  const wKoord = ctx.measureText('\u{1F4CD} ' + fmtKoord(S.posisi)).width;
+  const wWaktu = mauTanggal ? ctx.measureText(fmtWaktu(Date.now()) + ' WIB').width : 0;
+  const wCatatan = catatanWm ? ctx.measureText(catatanWm).width : 0;
+
+  const wTeksMax = Math.max(wKantor, wKoord, wWaktu, wCatatan);
+  const boxW = Math.round(pad * 1.5 + sisiLogo + pad * 0.7 + wTeksMax + pad * 1.2);
+  const boxH = Math.round(tinggiContent + pad * 0.8);
+
+  if (rot === 90) { ctx.translate(W - pad - boxH, H - pad); ctx.rotate(-Math.PI / 2); }
+  else if (rot === -90) { ctx.translate(pad + boxH, pad); ctx.rotate(Math.PI / 2); }
+  else { ctx.translate(pad, H - boxH - pad); }
+
+  ctx.fillStyle = 'rgba(0,0,0,0.68)';
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(0, 0, boxW, boxH, Math.round(pad * 0.7)); ctx.fill(); }
+  else ctx.fillRect(0, 0, boxW, boxH);
+
+  const xLogo = pad, yLogo = Math.round((boxH - sisiLogo) / 2);
+  if (S.logoImg) {
+    const r = Math.min(sisiLogo / S.logoImg.width, sisiLogo / S.logoImg.height);
+    const w = S.logoImg.width * r, h = S.logoImg.height * r;
+    ctx.drawImage(S.logoImg, xLogo + (sisiLogo - w) / 2, yLogo + (sisiLogo - h) / 2, w, h);
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(xLogo, yLogo, sisiLogo, sisiLogo);
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.font = 'bold ' + Math.round(sisiLogo * 0.22) + 'px Roboto, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('LOGO', xLogo + sisiLogo / 2, yLogo + sisiLogo / 2);
+  }
+
+  const xTeks = xLogo + sisiLogo + Math.round(pad * 0.7);
+  let yTeks = Math.round(pad * 0.55);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 3;
+
+  ctx.font = 'bold ' + fBesar + 'px Roboto, sans-serif';
+  ctx.fillText(S.kantor, xTeks, yTeks);
+  yTeks += fBesar + Math.round(pad * 0.25);
+  ctx.font = fKecil + 'px Roboto, sans-serif';
+  ctx.fillText('\u{1F4CD} ' + fmtKoord(S.posisi), xTeks, yTeks);
+  yTeks += lineH;
+  if (mauTanggal) { ctx.fillText(fmtWaktu(Date.now()) + ' WIB', xTeks, yTeks); yTeks += lineH; }
+  if (catatanWm) ctx.fillText(catatanWm, xTeks, yTeks);
+  ctx.restore();
+}
+
+/* Orientasi dari screen.orientation, sama dengan aplikasi utama */
+function sudutLayar() {
+  if (!screen.orientation) return 0;
+  const tipe = screen.orientation.type || '';
+  if (!tipe.startsWith('landscape')) return 0;
+  return screen.orientation.angle === 270 ? -90 : 90;
+}
+
+/* ---------- Kamera ---------- */
+async function bukaKamera() {
+  $('kosong').style.display = 'none';
+  if (S.stream) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    tampilKosong('Kamera tidak didukung di perangkat ini.'); return;
+  }
+  try {
+    S.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } },
+      audio: false
+    });
+    const v = $('video');
+    v.srcObject = S.stream;
+    await v.play().catch(() => {});
+  } catch (e) {
+    tampilKosong('Kamera tidak bisa dibuka. Izinkan akses kamera untuk aplikasi.');
+  }
+}
+function tampilKosong(t) { const k = $('kosong'); k.textContent = t; k.style.display = 'flex'; }
+function hentikanKamera() {
+  if (S.stream) { S.stream.getTracks().forEach(t => t.stop()); S.stream = null; }
+  const v = $('video'); if (v) v.srcObject = null;
+}
+/* Dipanggil dari aplikasi (OverlayService) saat flyout ditutup */
+function tutupFlyCapture() { hentikanKamera(); }
+
+/* Potong tengah ke rasio 3:4, sama dengan kamera aplikasi utama */
+function potongKeRasio(v) {
+  const vw = v.videoWidth, vh = v.videoHeight;
+  let sw, sh;
+  if (vw / vh > 3 / 4) { sh = vh; sw = Math.round(vh * 3 / 4); }
+  else { sw = vw; sh = Math.round(vw * 4 / 3); }
+  const sx = Math.round((vw - sw) / 2), sy = Math.round((vh - sh) / 2);
+  const kanvas = document.createElement('canvas');
+  kanvas.width = sw; kanvas.height = sh;
+  kanvas.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
+  return kanvas;
+}
+
+async function prosesFoto(sumber, wAsli, hAsli) {
+  const rot = sudutLayar();
+  const sk = Math.min(1, S.lebarMax / Math.max(wAsli, hAsli));
+  const W = Math.round(wAsli * sk), H = Math.round(hAsli * sk);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(sumber, 0, 0, W, H);
+  gambarWatermark(ctx, W, H, rot);
+
+  const keBlob = (cv, q) => new Promise(r => cv.toBlob(r, 'image/jpeg', q));
+  let q = 0.85, blob = await keBlob(c, q);
+  while (blob.size / 1024 > S.targetKB && q > 0.35) { q -= 0.08; blob = await keBlob(c, q); }
+  let dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+
+  if (typeof ExifGps !== 'undefined' && S.posisi && S.posisi.lat != null) {
+    const rawCat = $('catatan').value.trim();
+    dataUrl = ExifGps.sematkanKeDataUrl(dataUrl, {
+      lat: S.posisi.lat, lon: S.posisi.lon, alt: S.posisi.alt || 0, ts: Date.now(),
+      deskripsi: rawCat || 'Dokumentasi dkpoint', kantor: S.kantor
+    });
+  }
+  return { dataUrl, ukuran: Math.round(dataUrl.length * 0.75), w: W, h: H };
+}
+
+let sedangSimpan = false;
+async function jepret() {
+  const v = $('video');
+  if (!S.stream || !v.videoWidth) { pesan('Kamera belum siap, tunggu sebentar'); return; }
+  if (sedangSimpan) return;
+  sedangSimpan = true;
+  $('rana').disabled = true;
+  const tirai = $('tirai');
+  tirai.classList.add('kilat'); setTimeout(() => tirai.classList.remove('kilat'), 180);
+  if (navigator.vibrate) navigator.vibrate(35);
+  try {
+    const beku = potongKeRasio(v);
+    const hasil = await prosesFoto(beku, beku.width, beku.height);
+    await simpanDenganRekaman(hasil);
+    $('catatan').value = '';
+    pesan('Foto tersimpan');
+  } catch (err) {
+    console.error('Gagal kamera cepat:', err);
+    pesan('Gagal memproses foto: ' + err.message);
+  } finally {
+    sedangSimpan = false;
+    $('rana').disabled = false;
+  }
+}
+
+async function simpanDenganRekaman(hasil) {
+  const ts = Date.now();
+  const rawCatatan = $('catatan').value.trim();
+  const catatan = (window.DK_SECURITY ? DK_SECURITY.bersihkanTeks(rawCatatan, 250) : rawCatatan) || '-';
+  const namaRoom = (S.room || 'LOKAL').trim();
+  const statusAwal = bisaUploadRoom(namaRoom) ? 'pending' : 'lokal';
+
+  let latValid = null, lonValid = null, akurasiValid = null;
+  if (S.posisi && S.posisi.lat != null && (!window.DK_SECURITY || DK_SECURITY.validasiKoordinat(S.posisi))) {
+    latValid = S.posisi.lat; lonValid = S.posisi.lon; akurasiValid = S.posisi.akurasi;
+  }
+
+  const noUrut = (await hitungFotoRoom(namaRoom)) + 1;
+  const noUrutStr = String(noUrut).padStart(3, '0');
+  const kodeRoom = namaRoom.replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
+  const idUser = (S.userId || S.nama || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
+  const koordStr = (latValid != null && lonValid != null) ? `_${latValid.toFixed(5)}_${lonValid.toFixed(5)}` : '';
+  const namaBerkas = `${kodeRoom}_${idUser}_${noUrutStr}${koordStr}.jpg`;
+
+  try {
+    await simpanFoto({
+      id: 'F' + ts, ts, nama: S.nama || 'Petugas', userId: idUser, noUrut, room: namaRoom, catatan,
+      lat: latValid, lon: lonValid, akurasi: akurasiValid, namaBerkas,
+      dataUrl: hasil.dataUrl, ukuran: hasil.ukuran, status: statusAwal
+    });
+  } catch (err) {
+    const penuh = /quota|storage|space/i.test(err.name + ' ' + err.message);
+    pesan(penuh ? 'Penyimpanan HP penuh. Buka aplikasi, kirim foto antrean, lalu hapus foto lama.' : 'Foto gagal disimpan: ' + err.message);
+    throw err;
+  }
+}
+
+/* ---------- GPS & info ---------- */
+function perbaruiInfo() {
+  $('info').textContent = (S.room || 'LOKAL') + (S.posisi ? ' · GPS terkunci' : ' · GPS belum ada');
+}
+function mulaiGps() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(p => {
+    S.posisi = { lat: p.coords.latitude, lon: p.coords.longitude, alt: p.coords.altitude, akurasi: p.coords.accuracy };
+    perbaruiInfo();
+  }, () => { perbaruiInfo(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+
+/* ---------- Tutup ---------- */
+function tutupKamera() {
+  hentikanKamera();
+  try {
+    if (window.DokumentasiNative && DokumentasiNative.tutup) { DokumentasiNative.tutup(); return; }
+  } catch (_) {}
+}
+
+$('rana').onclick = jepret;
+$('tutup').onclick = tutupKamera;
+document.addEventListener('visibilitychange', () => { if (document.hidden) hentikanKamera(); else bukaKamera(); });
+
+muatPengaturan();
+perbaruiInfo();
+mulaiGps();
+bukaKamera();
+</script>
+</body>
+</html>

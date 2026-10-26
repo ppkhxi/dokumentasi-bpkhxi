@@ -49,7 +49,7 @@ class OverlayService : Service() {
         var jalan = false
         private const val CH = "dokumentasi_bubble"
         private const val NOTIF_ID = 42
-        private const val URL_FLYOUT = "https://dkpoint.pages.dev/?flyout=1"
+        private const val URL_FLYOUT = "https://dkpoint.pages.dev/flyout.html"
 
         fun kirimPerintah(ctx: Context, aksi: String) {
             if (!jalan) return
@@ -189,6 +189,7 @@ class OverlayService : Service() {
             javaScriptEnabled = true
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
+            setGeolocationEnabled(true)
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
         wv.addJavascriptInterface(JembatanFlyout(), "DokumentasiNative")
@@ -199,9 +200,14 @@ class OverlayService : Service() {
                         PackageManager.PERMISSION_GRANTED
                 if (kamera) request.grant(request.resources) else request.deny()
             }
+            override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: android.webkit.GeolocationPermissions.Callback?) {
+                val lokasi = ContextCompat.checkSelfPermission(this@OverlayService, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED
+                callback?.invoke(origin, lokasi, false)
+            }
         }
         val lp = WindowManager.LayoutParams(
-            dp(320), dp(320), tipeOverlay(),
+            dp(320), dp(420), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
