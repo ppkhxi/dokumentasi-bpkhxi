@@ -175,6 +175,7 @@ class OverlayService : Service() {
                     yAwal = e.rawY
                     lpYAwal = lp.y
                     sedangGeser = false
+                    bangunBubble()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -192,6 +193,7 @@ class OverlayService : Service() {
                     } else {
                         ketukPil()
                     }
+                    jadwalCiutkan()
                     true
                 }
                 else -> false
@@ -200,6 +202,31 @@ class OverlayService : Service() {
         wm.addView(tv, lp)
         bubble = tv
         lpBubble = lp
+        jadwalCiutkan()
+    }
+
+    /** Pil kembali penuh di tepi kanan. */
+    private fun bangunBubble() {
+        handler.removeCallbacks(ciutkanRunnable)
+        val lp = lpBubble ?: return
+        val tv = bubble ?: return
+        if (lp.x == 0) return
+        lp.x = 0
+        try { wm.updateViewLayout(tv, lp) } catch (_: Exception) {}
+    }
+
+    /** Setelah diam beberapa detik, pil menyusut jadi setengah lingkaran di tepi kanan (tidak hilang). */
+    private val ciutkanRunnable = Runnable {
+        val lp = lpBubble ?: return@Runnable
+        val tv = bubble ?: return@Runnable
+        if (keadaan != 0 || tv.visibility != View.VISIBLE) return@Runnable
+        lp.x = -dp(56) / 2
+        try { wm.updateViewLayout(tv, lp) } catch (_: Exception) {}
+    }
+
+    private fun jadwalCiutkan() {
+        handler.removeCallbacks(ciutkanRunnable)
+        if (keadaan == 0) handler.postDelayed(ciutkanRunnable, 5000)
     }
 
     private fun ketukPil() {
@@ -241,6 +268,8 @@ class OverlayService : Service() {
         }
         val tv = bubble ?: return
         tv.visibility = View.VISIBLE
+        bangunBubble()
+        jadwalCiutkan()
     }
 
     /** Flyout: kamera asli (CameraX) di bawah, antarmuka web di atasnya. Dimuat sekali per kali dibuka. */
