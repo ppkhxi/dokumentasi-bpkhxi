@@ -2258,7 +2258,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.44';
+const VERSI = '3.9.45';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -3698,6 +3698,8 @@ function gambarAksiGaleri(data){
     '<span class="jml">'+n+' dipilih</span>'+
     '<button class="tombol-mini" id="btnSemua">'+(semua?'Kosongkan':'Pilih semua')+'</button>'+
     '<button class="tombol-mini" id="btnUploadPilih" style="background:#0284c7;color:#fff;border-color:#0284c7"'+(n?'':' disabled')+'>☁️ Unggah ke Cloud</button>'+
+    '<button class="tombol-mini" id="btnBagiWaPilih"'+(n?'':' disabled')+'>Bagikan ke WA</button>'+
+    '<button class="tombol-mini" id="btnBagiDrivePilih"'+(n?'':' disabled')+'>Drive</button>'+
     '<button class="tombol-mini utama" id="btnUnduhPilihan"'+(n?'':' disabled')+'>Unduh</button>'+
     '<button class="tombol-mini bahaya" id="btnHapusPilihan"'+(n?'':' disabled')+'>Hapus</button>'+
     '<button class="tombol-mini" id="btnBatalPilih">Batal</button>';
@@ -3713,6 +3715,8 @@ function gambarAksiGaleri(data){
   };
   $('btnBatalPilih').onclick=()=>{ S.modePilih=false; S.terpilih.clear(); muatGaleri(false); };
   $('btnUnduhPilihan').onclick=unduhPilihan;
+  $('btnBagiWaPilih').onclick=()=>bagiPilihan('WA');
+  $('btnBagiDrivePilih').onclick=()=>bagiPilihan('Drive');
   $('btnUploadPilih').onclick=()=>{
     const n = S.terpilih.size;
     if(!n) return;
@@ -3783,6 +3787,42 @@ async function hapusPilihan(){
   S.terpilih.clear(); S.modePilih=false;
   pesan(daftar.length+' foto dihapus');
   muatGaleri();
+}
+
+/* Membuka lembar Bagikan Android (WhatsApp, Google Drive, dll. muncul di dalamnya). */
+async function bagikanBerkas(files, teks){
+  if(!(navigator.canShare && navigator.canShare({files}))){
+    pesan('Perangkat ini tidak mendukung Bagikan berkas');
+    return false;
+  }
+  try{
+    await navigator.share({files, title:'Dokumentasi '+(S.room||'dkpoint'), text:teks});
+    return true;
+  }catch(e){
+    if(e.name!=='AbortError') pesan('Gagal membuka Bagikan: '+e.message);
+    return false;
+  }
+}
+async function bagiPilihan(tujuan){
+  const semua=await ambilSemua();
+  const pilih=semua.filter(f=>S.terpilih.has(f.id));
+  if(!pilih.length) return;
+  pesan('Menyiapkan '+pilih.length+' foto…');
+  try{
+    const files=pilih.map((f,i)=>{
+      const kodeRoom=(f.room||'LOKAL').trim().replace(/\s+/g,'_').replace(/[^\w-]/g,'').toUpperCase();
+      const idUser=(f.userId||f.nama||'USER').trim().replace(/\s+/g,'_').replace(/[^\w-]/g,'').toUpperCase();
+      const noUrutStr=String(f.noUrut||(i+1)).padStart(3,'0');
+      const nama=f.namaBerkas||`${kodeRoom}_${idUser}_${noUrutStr}.jpg`;
+      return new File([dataUrlKeBytes(f.dataUrl)], nama, {type:'image/jpeg'});
+    });
+    const teks='Dokumentasi lapangan'+(S.kantor?' - '+S.kantor:'')+(tujuan==='WA'?' (kirim ke WhatsApp)':' (simpan ke Google Drive)');
+    if(await bagikanBerkas(files, teks)){
+      pesan(pilih.length+' foto dibuka di Bagikan');
+    }
+  }catch(e){
+    pesan('Gagal menyiapkan foto: '+e.message);
+  }
 }
 
 async function unduhPilihan(){
@@ -4935,6 +4975,7 @@ $('btnLembar').onclick = async ()=>{
       '<button class="tombol" id="btnLembarPdf" style="margin-top:0">&#128196; PDF</button>' +
       '<button class="tombol sekunder" id="btnLembarDocx" style="margin-top:0">&#128209; DOCX</button>' +
     '</div>' +
+    '<button class="tombol sekunder" id="btnBagiLembar" style="margin-top:8px">Bagikan PDF ke WA / Drive</button>' +
     '<button class="tombol abu" onclick="tutupDialog()">Batal</button>'
   );
 
@@ -4980,9 +5021,10 @@ $('btnLembar').onclick = async ()=>{
 
   $('btnLembarPdf').onclick = ()=>eksporPDFLembar(window.dataLembar, $('inJudulLembar').value);
   $('btnLembarDocx').onclick = ()=>eksporWordLembar(window.dataLembar, $('inJudulLembar').value);
+  $('btnBagiLembar').onclick = ()=>eksporPDFLembar(window.dataLembar, $('inJudulLembar').value, true);
 };
 
-async function eksporPDFLembar(dataFoto, judul) {
+async function eksporPDFLembar(dataFoto, judul, bagi=false) {
   const btn = $('btnLembarPdf');
   btn.disabled = true; btn.textContent = 'Menyusun...';
   try {
@@ -5063,8 +5105,13 @@ async function eksporPDFLembar(dataFoto, judul) {
 
     tutupDialog();
     const berkas = 'Lembar_Dokumentasi_' + (S.lingkupTabel==='room' ? S.room.replace(/\s+/g,'_') : 'SemuaRoom') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
-    doc.save(berkas);
-    pesan('PDF Lembar berhasil diunduh');
+    if(bagi){
+      const berkasPdf = new File([doc.output('blob')], berkas, {type:'application/pdf'});
+      await bagikanBerkas([berkasPdf], 'Lembar dokumentasi lapangan');
+    } else {
+      doc.save(berkas);
+      pesan('PDF Lembar berhasil diunduh');
+    }
   } catch(e) {
     pesan('Gagal: ' + e.message);
   } finally {
