@@ -16,8 +16,6 @@ import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebViewClient
 import androidx.core.content.ContextCompat
 
@@ -76,7 +74,7 @@ class MainActivity : Activity() {
             mediaPlaybackRequiresUserGesture = false
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
-        web.webViewClient = PenyajiAset()
+        web.webViewClient = AsetWebClient(this)
         web.addJavascriptInterface(JembatanApp(), "DokumentasiNative")
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -113,52 +111,6 @@ class MainActivity : Activity() {
         web.loadUrl(URL_APP)
     }
 
-
-    /**
-     * Melayani berkas aplikasi dari dalam APK (folder assets/www), sehingga aplikasi tetap
-     * bisa dibuka tanpa sinyal. Origin tetap https://dkpoint.pages.dev, jadi data di
-     * penyimpanan browser (foto antrean, room, pengaturan) tidak berpindah tempat.
-     * Permintaan /api/ dan /dl/ tetap diambil dari internet.
-     */
-    private inner class PenyajiAset : WebViewClient() {
-        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-            val uri = request?.url ?: return null
-            if (request.method != "GET" || uri.host != "dkpoint.pages.dev") return null
-            var path = uri.path ?: "/"
-            if (path.startsWith("/api/") || path.startsWith("/dl/")) return null
-            if (path.isEmpty() || path == "/") path = "/index.html"
-            if (path.endsWith("/")) path += "index.html"
-            val mime = mimeDari(path)
-            return try {
-                val masuk = this@MainActivity.assets.open("www$path")
-                WebResourceResponse(mime, if (mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json")) "utf-8" else null, masuk)
-            } catch (_: Exception) {
-                null
-            }
-        }
-
-        private fun mimeDari(path: String): String {
-            val ext = path.substringAfterLast('.', "").lowercase()
-            return when (ext) {
-                "html" -> "text/html"
-                "js" -> "application/javascript"
-                "css" -> "text/css"
-                "json" -> "application/json"
-                "webmanifest" -> "application/manifest+json"
-                "png" -> "image/png"
-                "jpg", "jpeg" -> "image/jpeg"
-                "gif" -> "image/gif"
-                "webp" -> "image/webp"
-                "svg" -> "image/svg+xml"
-                "ico" -> "image/x-icon"
-                "woff" -> "font/woff"
-                "woff2" -> "font/woff2"
-                "ttf" -> "font/ttf"
-                "md", "txt" -> "text/plain"
-                else -> "application/octet-stream"
-            }
-        }
-    }
 
     override fun onResume() {
         super.onResume()

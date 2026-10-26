@@ -19,31 +19,25 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 
 /**
- * Pil hitam di tengah atas layar, melayang di atas aplikasi lain. Ketuk untuk membuka
- * flyout kamera. Flyout dibuat sekali lalu disembunyikan/ditampilkan, supaya bukanya cepat.
+ * Pil hitam kecil di tepi atas layar, melayang di atas aplikasi lain. Ketuk untuk membuka
+ * flyout kamera. Halaman flyout (?flyout=1) membuka kamera sendiri saat dimuat.
  */
 class OverlayService : Service() {
 
     private lateinit var wm: WindowManager
     private var bubble: TextView? = null
     private var flyout: WebView? = null
-    private var flyoutTampil = false
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
@@ -67,13 +61,12 @@ class OverlayService : Service() {
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         buatNotifikasi()
         pasangBubble()
-        siapkanFlyout()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            "SEMBUNYI" -> bubble?.visibility = View.GONE
-            "TAMPIL" -> bubble?.visibility = View.VISIBLE
+            "SEMBUNYI" -> bubble?.visibility = android.view.View.GONE
+            "TAMPIL" -> bubble?.visibility = android.view.View.VISIBLE
             "TUTUP_FLYOUT" -> tutupFlyout()
         }
         return START_STICKY
@@ -81,8 +74,7 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         jalan = false
-        flyout?.let { try { wm.removeView(it) } catch (_: Exception) {}; it.destroy() }
-        flyout = null
+        tutupFlyout(segera = true)
         bubble?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         bubble = null
         super.onDestroy()
@@ -135,10 +127,11 @@ class OverlayService : Service() {
         bubble = tv
     }
 
-    /** Flyout dibuat sekali saat layanan jalan, lalu cukup disembunyikan atau ditampilkan. */
+    /** Flyout dibuat saat dibuka dan dilepas saat ditutup; aset web dibaca dari dalam APK. */
     @SuppressLint("SetJavaScriptEnabled")
-    private fun siapkanFlyout() {
-        if (flyout != null) return
+    private fun bukaFlyout() {
+        if (flyout != null) { tutupFlyout(); return }
+
         val wv = WebView(this)
         wv.setBackgroundColor(Color.TRANSPARENT)
         wv.settings.apply {
@@ -148,17 +141,7 @@ class OverlayService : Service() {
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
         wv.addJavascriptInterface(JembatanFlyout(), "DokumentasiNative")
-        wv.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                // Halaman memulai kamera sendiri saat dimuat; hentikan lagi kalau flyout belum dibuka.
-                if (!flyoutTampil) view?.evaluateJavascript("if(typeof tutupFlyCapture==='function')tutupFlyCapture();", null)
-            }
-            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                if (request?.isForMainFrame == true) {
-                    Toast.makeText(this@OverlayService, "Flyout gagal dimuat. Periksa koneksi.", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
+        wv.webViewClient = AsetWebClient(this)
         wv.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 val kamera = ContextCompat.checkSelfPermission(this@OverlayService, Manifest.permission.CAMERA) ==
@@ -175,27 +158,22 @@ class OverlayService : Service() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = dp(32)
         }
-        wv.visibility = View.GONE
         wm.addView(wv, lp)
-        wv.loadUrl(URL_FLYOUT)
         flyout = wv
+        wv.loadUrl(URL_FLYOUT)
     }
 
-    private fun bukaFlyout() {
-        if (flyoutTampil) { tutupFlyout(); return }
-        val wv = flyout ?: run { siapkanFlyout(); flyout } ?: return
-        flyoutTampil = true
-        wv.visibility = View.VISIBLE
-        wv.evaluateJavascript("if(typeof bukaFlyCapture==='function')bukaFlyCapture();", null)
-    }
-
-    private fun tutupFlyout() {
+    private fun tutupFlyout(segera: Boolean = false) {
         val wv = flyout ?: return
-        flyoutTampil = false
+        flyout = null
         try {
             wv.evaluateJavascript("if(typeof tutupFlyCapture==='function')tutupFlyCapture();", null)
         } catch (_: Exception) {}
-        wv.visibility = View.GONE
+        val lepas = Runnable {
+            try { wm.removeView(wv) } catch (_: Exception) {}
+            wv.destroy()
+        }
+        if (segera) lepas.run() else handler.postDelayed(lepas, 200)
     }
 
     inner class JembatanFlyout {
