@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - "android/**"
+      - "www/**"
+      - "!www/dl/**"
       - ".github/workflows/android.yml"
 
 permissions:
@@ -40,6 +42,13 @@ jobs:
       - name: Ambil versi dari index.html
         id: versi
         run: echo "nama=$(grep -oP "const VERSI = '\K[^']+" www/index.html)" >> "$GITHUB_OUTPUT"
+
+      - name: Salin aplikasi web ke dalam APK (assets)
+        run: |
+          rm -rf android/app/src/main/assets/www
+          mkdir -p android/app/src/main/assets
+          cp -r www android/app/src/main/assets/www
+          rm -rf android/app/src/main/assets/www/dl
 
       - name: Build APK release
         working-directory: android
