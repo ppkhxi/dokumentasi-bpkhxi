@@ -271,25 +271,7 @@ class OverlayService : Service() {
 
     /** Kamera asli dinyalakan lewat CameraX; pratinjau dipasang ke PreviewView. */
     private fun nyalakanKamera() {
-        val pv = preview ?: return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            kabar("Izin kamera belum aktif untuk DKPoint.")
-            return
-        }
-        val future = ProcessCameraProvider.getInstance(this)
-        future.addListener({
-            try {
-                val prov = future.get()
-                camProvider = prov
-                val prev = Preview.Builder().build().also { it.setSurfaceProvider(pv.surfaceProvider) }
-                val cap = ImageCapture.Builder().build()
-                imageCapture = cap
-                prov.unbindAll()
-                prov.bindToLifecycle(pemilikSiklus, CameraSelector.DEFAULT_BACK_CAMERA, prev, cap)
-            } catch (e: Exception) {
-                kabar("Kamera tidak bisa dibuka: " + (e.javaClass.simpleName))
-            }
-        }, ContextCompat.getMainExecutor(this))
+        preview ?: return
     }
 
     private fun hentikanKamera() {
