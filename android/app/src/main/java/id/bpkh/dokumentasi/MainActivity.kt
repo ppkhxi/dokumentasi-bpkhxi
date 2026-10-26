@@ -18,6 +18,11 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 
 class MainActivity : Activity() {
 
@@ -179,11 +184,65 @@ class MainActivity : Activity() {
             }
         }
 
+        /**
+         * Perbarui APK sekali ketuk: unduh di latar belakang, lalu buka pemasang Android.
+         * Android tetap meminta satu konfirmasi "Pasang" dari pengguna; itu tidak bisa dilewati
+         * untuk aplikasi di luar Play Store.
+         */
+        @JavascriptInterface
+        fun perbaruiAplikasi(url: String) {
+            kabar("Mengunduh pembaruan…")
+            Thread {
+                val berkas: File? = try {
+                    val tujuan = File(cacheDir, "apk/dkpoint.apk").apply { parentFile?.mkdirs() }
+                    val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15000
+                        readTimeout = 60000
+                        instanceFollowRedirects = true
+                    }
+                    try {
+                        conn.inputStream.use { masuk -> tujuan.outputStream().use { masuk.copyTo(it) } }
+                    } finally { conn.disconnect() }
+                    tujuan
+                } catch (_: Exception) { null }
+
+                runOnUiThread {
+                    if (berkas == null) {
+                        kabar("Unduhan gagal. Periksa sinyal, lalu coba lagi.")
+                        return@runOnUiThread
+                    }
+                    if (!packageManager.canRequestPackageInstalls()) {
+                        kabar("Izinkan DKPoint memasang aplikasi, lalu tekan Perbarui lagi.")
+                        try {
+                            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                        } catch (_: Exception) {}
+                        return@runOnUiThread
+                    }
+                    try {
+                        val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", berkas)
+                        startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    } catch (_: Exception) {
+                        kabar("Pemasang tidak bisa dibuka.")
+                    }
+                }
+            }.start()
+        }
+
         /** Nama versi aplikasi yang terpasang, misalnya 3.9.39. */
         @JavascriptInterface
         fun versiAplikasi(): String = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: ""
         } catch (_: Exception) { "" }
+    }
+
+    /** Tampilkan kabar singkat di halaman web (fungsi pesan()). */
+    private fun kabar(teks: String) {
+        runOnUiThread {
+            web.evaluateJavascript("if(typeof pesan==='function')pesan(${JSONObject.quote(teks)})", null)
+        }
     }
 
     private fun punyaIzin(izin: String): Boolean =

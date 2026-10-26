@@ -2157,7 +2157,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <div id="kartuAkun"></div>
         <div class="meta-baris"><span>Room aktif</span><b id="stRoom">—</b></div>
         <div class="meta-baris"><span>Versi</span><b id="stVersi" style="cursor:pointer">—</b></div>
-        <div class="meta-baris" style="border-bottom:0"><span>Aplikasi Android</span><button type="button" class="tombol sekunder" onclick="bukaUnduhApk()" style="padding:6px 12px;font-size:13px">Unduh APK terbaru</button></div>
+        <div class="meta-baris" style="border-bottom:0"><span>Aplikasi Android</span><button type="button" class="tombol sekunder" onclick="bukaUnduhApk()" style="padding:6px 12px;font-size:13px">Perbarui APK</button></div>
         <button class="tombol abu" id="btnKeluar" style="color:var(--merah)">Keluar</button>
       </div>
     </section>
@@ -2258,7 +2258,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.48';
+const VERSI = '3.9.49';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -2270,6 +2270,7 @@ if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classLis
 function bukaUnduhApk(){
   const URL_APK = 'https://dkpoint.pages.dev/dl/dkpoint.apk';
   try {
+    if (window.DokumentasiNative && DokumentasiNative.perbaruiAplikasi) { DokumentasiNative.perbaruiAplikasi(URL_APK); return; }
     if (window.DokumentasiNative && DokumentasiNative.bukaLink) DokumentasiNative.bukaLink(URL_APK);
     else window.open(URL_APK, '_blank');
   } catch(_) { window.open(URL_APK, '_blank'); }
