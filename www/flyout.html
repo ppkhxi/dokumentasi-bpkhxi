@@ -241,6 +241,12 @@ async function bukaKamera() {
     });
     const v = $('video');
     v.srcObject = S.stream;
+    /* Kalau sistem mematikan track kamera (misalnya direbut aplikasi lain), coba nyalakan lagi. */
+    S.stream.getVideoTracks().forEach(tr => tr.onended = () => {
+      if (!S.stream) return;
+      S.stream = null;
+      setTimeout(() => bukaKamera(), 800);
+    });
     await v.play().catch(() => {});
   } catch (e) {
     console.error('Kamera flyout gagal:', e);
@@ -385,7 +391,6 @@ function tutupKamera() {
 $('rana').onclick = jepret;
 $('tutup').onclick = tutupKamera;
 $('cobaLagi').onclick = () => { bukaKamera.sudahUlang = false; bukaKamera(); };
-document.addEventListener('visibilitychange', () => { if (document.hidden) hentikanKamera(); else bukaKamera(); });
 
 muatPengaturan();
 perbaruiInfo();
