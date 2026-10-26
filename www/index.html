@@ -1989,10 +1989,10 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           <!-- Mode 1: Freehand Sentuh (geser & cubit, rasio tetap) -->
           <div id="panelKalibrasiDrag" class="panel-kalibrasi-sub">
             <div class="kalibrasi-ket" style="margin-bottom:8px">
-              💡 Tombol <b>Move</b> tidak aktif: peta bergerak biasa. Aktif (hijau): tekan dan geser gambar ke titik GCP, dua jari untuk cubit (rasio tetap).
+              💡 Tombol <b>Shift</b> tidak aktif: peta bergerak biasa. Aktif (hijau): tekan dan geser gambar ke titik GCP, dua jari untuk cubit (rasio tetap).
             </div>
 
-            <button id="btnModeGeser" class="btn-nudge-aksi" type="button" style="width:100%;margin-bottom:8px">Move</button>
+            <button id="btnModeGeser" class="btn-nudge-aksi" type="button" style="width:100%;margin-bottom:8px">Shift</button>
 
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
               <button id="btnZoomKeRasterSaatIni" class="btn-nudge-aksi" type="button" style="flex:1;min-width:120px">🔍 Zoom ke Raster</button>
@@ -7380,7 +7380,7 @@ async function mulaiKalibrasiRaster(id){
   // Default ke tab drag
   setModeTab('drag');
 
-  // Tombol Move: aktif = tekan & geser gambar; tidak aktif = peta bergerak biasa
+  // Tombol Shift: aktif = tekan & geser gambar; tidak aktif = peta bergerak biasa
   $('btnModeGeser').onclick = () => {
     modeGeserUi = !modeGeserUi;
     const t = $('btnModeGeser');
