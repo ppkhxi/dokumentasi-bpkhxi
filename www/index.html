@@ -1511,7 +1511,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             </p>
           </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.42</span>
+            Dokumentasi <span id="loginVersi">v3.9.43</span>
           </div>
         </div>
       </div>
@@ -2257,7 +2257,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.42';
+const VERSI = '3.9.43';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -2501,6 +2501,8 @@ function perbaruiKoneksi(){
   $('pilStatus').classList.toggle('offline', !on);
 }
 addEventListener('online', ()=>{perbaruiKoneksi(); pesan('Kembali online — mengirim antrian…'); sinkron(true);});
+// Cek tiap menit: begitu lewat pukul 16.00 WIB dan ada sinyal, antrean dikirim otomatis.
+setInterval(()=>{ if(navigator.onLine && bolehUploadSekarang()) sinkron(true); }, 60000);
 addEventListener('offline', ()=>{perbaruiKoneksi(); pesan('Mode offline — foto disimpan di antrian lokal');});
 
 /* ---------- GPS (Dengan Filter Anti-Jitter / Last Known Good Fix) ---------- */
@@ -3481,9 +3483,21 @@ const adaServer = ()=> typeof MegaEngine !== 'undefined' && MegaEngine.punyaSesi
 /* ---------- Sinkronisasi ke MEGA Cloud ---------- */
 let sedangSinkron = false;
 let _sinkronWdTimer = null;
+/* Upload ke cloud hanya dibuka mulai pukul 16.00 WIB, supaya saat bekerja tidak terganggu. */
+const JAM_BUKA_UPLOAD = 16;
+function jamWIB(){
+  try { return parseInt(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'numeric',hourCycle:'h23'}).format(new Date()),10); }
+  catch(_) { return new Date().getHours(); }
+}
+function bolehUploadSekarang(){ return jamWIB() >= JAM_BUKA_UPLOAD; }
+
 async function sinkron(diam){
   if(sedangSinkron) return;
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
+  if(!bolehUploadSekarang()){
+    if(!diam) pesan('Upload dibuka mulai pukul 16.00 WIB. Foto tetap aman di antrian HP.');
+    return;
+  }
 
   const semua = await ambilSemua();
   let antri = semua.filter(f => f.status === 'pending' || f.status === 'gagal');
