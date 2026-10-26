@@ -358,14 +358,20 @@ async function simpanDenganRekaman(hasil) {
 
 /* ---------- GPS & info ---------- */
 function perbaruiInfo() {
-  $('info').textContent = (S.room || 'LOKAL') + (S.posisi ? ' · GPS terkunci' : ' · GPS belum ada');
+  $('info').textContent = (S.room || 'LOKAL') + (S.posisi ? ' · GPS terkunci' : (galatGps ? ' · ' + galatGps : ' · GPS belum ada'));
 }
+let galatGps = '';
 function mulaiGps() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) { galatGps = 'lokasi tidak didukung'; perbaruiInfo(); return; }
   navigator.geolocation.watchPosition(p => {
+    galatGps = '';
     S.posisi = { lat: p.coords.latitude, lon: p.coords.longitude, alt: p.coords.altitude, akurasi: p.coords.accuracy };
     perbaruiInfo();
-  }, () => { perbaruiInfo(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+  }, (err) => {
+    S.posisi = null;
+    galatGps = err && err.code === 1 ? 'izin lokasi ditolak' : (err && err.code === 2 ? 'sinyal GPS tidak tersedia' : 'GPS belum terkunci');
+    perbaruiInfo();
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
 }
 
 /* ---------- Tutup ---------- */
