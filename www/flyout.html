@@ -188,7 +188,7 @@ function gambarWatermark(ctx, W, H, rot = 0) {
   ctx.font = 'bold ' + fBesar + 'px Roboto, sans-serif';
   const wKantor = ctx.measureText(S.kantor || 'BPKH WILAYAH XI').width;
   ctx.font = fKecil + 'px Roboto, sans-serif';
-  const wKoord = ctx.measureText('\u{1F4CD} ' + fmtKoord(S.posisi)).width;
+  const wKoord = ctx.measureText('\u{1F4CD} ' + fmtKoord(posisiFoto())).width;
   const wWaktu = mauTanggal ? ctx.measureText(fmtWaktu(Date.now()) + ' WIB').width : 0;
   const wCatatan = catatanWm ? ctx.measureText(catatanWm).width : 0;
 
@@ -228,7 +228,7 @@ function gambarWatermark(ctx, W, H, rot = 0) {
   ctx.fillText(S.kantor, xTeks, yTeks);
   yTeks += fBesar + Math.round(pad * 0.25);
   ctx.font = fKecil + 'px Roboto, sans-serif';
-  ctx.fillText('\u{1F4CD} ' + fmtKoord(S.posisi), xTeks, yTeks);
+  ctx.fillText('\u{1F4CD} ' + fmtKoord(posisiFoto()), xTeks, yTeks);
   yTeks += lineH;
   if (mauTanggal) { ctx.fillText(fmtWaktu(Date.now()) + ' WIB', xTeks, yTeks); yTeks += lineH; }
   if (catatanWm) ctx.fillText(catatanWm, xTeks, yTeks);
@@ -313,10 +313,10 @@ async function prosesFoto(sumber, wAsli, hAsli) {
   while (blob.size / 1024 > S.targetKB && q > 0.35) { q -= 0.08; blob = await keBlob(c, q); }
   let dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
 
-  if (typeof ExifGps !== 'undefined' && S.posisi && S.posisi.lat != null) {
+  if (typeof ExifGps !== 'undefined' && posisiFoto() && posisiFoto().lat != null) {
     const rawCat = $('catatan').value.trim();
     dataUrl = ExifGps.sematkanKeDataUrl(dataUrl, {
-      lat: S.posisi.lat, lon: S.posisi.lon, alt: S.posisi.alt || 0, ts: Date.now(),
+      lat: posisiFoto().lat, lon: posisiFoto().lon, alt: posisiFoto().alt || 0, ts: Date.now(),
       deskripsi: rawCat || 'Dokumentasi dkpoint', kantor: S.kantor
     });
   }
@@ -364,8 +364,8 @@ async function simpanDenganRekaman(hasil) {
   const statusAwal = bisaUploadRoom(namaRoom) ? 'pending' : 'lokal';
 
   let latValid = null, lonValid = null, akurasiValid = null;
-  if (S.posisi && S.posisi.lat != null && (!window.DK_SECURITY || DK_SECURITY.validasiKoordinat(S.posisi))) {
-    latValid = S.posisi.lat; lonValid = S.posisi.lon; akurasiValid = S.posisi.akurasi;
+  if (posisiFoto() && posisiFoto().lat != null && (!window.DK_SECURITY || DK_SECURITY.validasiKoordinat(posisiFoto()))) {
+    latValid = posisiFoto().lat; lonValid = posisiFoto().lon; akurasiValid = posisiFoto().akurasi;
   }
 
   const noUrut = (await hitungFotoRoom(namaRoom)) + 1;
@@ -403,6 +403,10 @@ let posisiTerakhir = (() => {
   try { const v = JSON.parse(localStorage.getItem('posisi_terakhir') || 'null'); return v && v.lat != null ? v : null; }
   catch (_) { return null; }
 })();
+// Koordinat untuk watermark & metadata: GPS aktif, atau posisi terakhir bila sinyal belum ada.
+function posisiFoto() {
+  return S.posisi || posisiTerakhir || null;
+}
 // Lokasi dari aplikasi (native) dipakai bila ada; WebView tidak dipakai agar tidak menimpa data.
 function terimaLokasiNative(lat, lon, akurasi, segar) {
   galatGps = '';
