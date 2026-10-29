@@ -233,6 +233,29 @@ class MainActivity : Activity() {
 
         /** Nama versi aplikasi yang terpasang, misalnya 3.9.39. */
         @JavascriptInterface
+        fun mulaiTracking(): Boolean {
+            if (!punyaIzin(Manifest.permission.ACCESS_FINE_LOCATION)) return false
+            TrackingService.kirim(this@MainActivity, TrackingService.AKSI_MULAI)
+            return true
+        }
+
+        @JavascriptInterface
+        fun jedaTracking() { TrackingService.kirim(this@MainActivity, TrackingService.AKSI_JEDA) }
+
+        @JavascriptInterface
+        fun lanjutTracking() { TrackingService.kirim(this@MainActivity, TrackingService.AKSI_LANJUT) }
+
+        @JavascriptInterface
+        fun hentikanTracking() { TrackingService.kirim(this@MainActivity, TrackingService.AKSI_STOP) }
+
+        @JavascriptInterface
+        fun ambilTracking(dari: Int): String = TrackingService.baca(this@MainActivity, dari)
+
+        @JavascriptInterface
+        fun izinLatarBelakang(): Boolean =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || punyaIzin(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+
+        @JavascriptInterface
         fun versiAplikasi(): String = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: ""
         } catch (_: Exception) { "" }

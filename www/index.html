@@ -5939,7 +5939,52 @@ function onClickDigitLine(e) {
   tambahTitikTracking(e.latlng);
 }
 
+/* Tracking latar belakang (native): jejak tetap direkam walau layar mati. */
+let sudahMulaiNative = false;
+let jumlahTitikNative = 0;
+let pollTrackNative = null;
+function trackingNativeAda() {
+  return !!(window.DokumentasiNative && DokumentasiNative.mulaiTracking);
+}
+function mulaiPollTrackingNative() {
+  stopPollTrackingNative();
+  pollTrackNative = setInterval(() => {
+    try {
+      const baru = JSON.parse(DokumentasiNative.ambilTracking(jumlahTitikNative) || '[]');
+      baru.forEach(p => {
+        const ll = L.latLng(p.lat, p.lon);
+        if (!titikTracking.length || titikTracking[titikTracking.length - 1].distanceTo(ll) >= 3) tambahTitikTracking(ll);
+      });
+      jumlahTitikNative += baru.length;
+    } catch (_) {}
+  }, 3000);
+}
+function stopPollTrackingNative() {
+  if (pollTrackNative) { clearInterval(pollTrackNative); pollTrackNative = null; }
+}
+
 function mulaiGpsTracking() {
+  if (trackingNativeAda()) {
+    sedangRekamGps = true;
+    $('btnAksiTracking').textContent = '⏸️ Jeda';
+    $('btnAksiTracking').style.background = '#f59e0b';
+    $('teksStatusTracking').textContent = '🛰️ Merekam jejak di latar belakang…';
+    if (!sudahMulaiNative) {
+      jumlahTitikNative = 0;
+      if (!DokumentasiNative.mulaiTracking()) {
+        pesan('Izin lokasi belum ada. Buka Pengaturan dan izinkan Lokasi.');
+        return;
+      }
+      sudahMulaiNative = true;
+    } else {
+      DokumentasiNative.lanjutTracking();
+    }
+    if (!DokumentasiNative.izinLatarBelakang()) {
+      pesan('Agar tetap merekam saat layar mati, pilih "Izinkan sepanjang waktu" di Pengaturan lokasi.');
+    }
+    mulaiPollTrackingNative();
+    return;
+  }
   if (!navigator.geolocation) {
     pesan('Perangkat tidak mendukung geolokasi GPS'); return;
   }
@@ -5974,6 +6019,10 @@ function mulaiGpsTracking() {
 
 function jedaGpsTracking() {
   sedangRekamGps = false;
+  if (trackingNativeAda() && sudahMulaiNative) {
+    try { DokumentasiNative.jedaTracking(); } catch (_) {}
+    stopPollTrackingNative();
+  }
   if (watchIdGpsTrack != null) {
     navigator.geolocation.clearWatch(watchIdGpsTrack);
     watchIdGpsTrack = null;
@@ -6000,6 +6049,12 @@ function aktifkanTracking() {
 
 function nonaktifkanTracking() {
   trackingAktif = false;
+  if (trackingNativeAda() && sudahMulaiNative) {
+    try { DokumentasiNative.hentikanTracking(); } catch (_) {}
+    stopPollTrackingNative();
+    sudahMulaiNative = false;
+    jumlahTitikNative = 0;
+  }
   $('btnPetaTracking').classList.remove('aktif');
   $('barTrackingPeta').classList.add('sembunyi');
   if (watchIdGpsTrack != null) {
