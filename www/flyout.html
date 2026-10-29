@@ -375,6 +375,7 @@ async function prosesFoto(sumber, wAsli, hAsli) {
   return { dataUrl, ukuran: Math.round(dataUrl.length * 0.75), w: W, h: H };
 }
 
+let cacheJumlah = null, cacheRoom = '';
 let sedangSimpan = false;
 let timerDetik = 0, sedangHitung = false;
 function jepret() {
@@ -411,7 +412,7 @@ async function jepretSekarang() {
     const hasil = await prosesFoto(beku, beku.width, beku.height);
     await simpanDenganRekaman(hasil);
     $('catatan').value = '';
-    pesan('Foto tersimpan'); muatMiniatur(); muatJumlahFoto();
+    pesan('Foto tersimpan');
   } catch (err) {
     console.error('Gagal kamera cepat:', err);
     pesan('Gagal memproses foto: ' + err.message);
@@ -433,7 +434,11 @@ async function simpanDenganRekaman(hasil) {
     latValid = posisiFoto().lat; lonValid = posisiFoto().lon; akurasiValid = posisiFoto().akurasi;
   }
 
-  const noUrut = (await hitungFotoRoom(namaRoom)) + 1;
+  /* Jumlah foto room dipindai sekali saat flyout dibuka (pindaiAwal), lalu dihitung di memori.
+     Memindai ulang tiap jepret membaca semua foto dari IndexedDB dan membuat jepret lag. */
+  const kunciRoom = namaRoom.toUpperCase();
+  const dasar = (cacheJumlah !== null && cacheRoom === kunciRoom) ? cacheJumlah : await hitungFotoRoom(namaRoom);
+  const noUrut = dasar + 1;
   const noUrutStr = String(noUrut).padStart(3, '0');
   const kodeRoom = namaRoom.replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
   const idUser = (S.userId || S.nama || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
@@ -447,6 +452,9 @@ async function simpanDenganRekaman(hasil) {
       dataUrl: hasil.dataUrl, ukuran: hasil.ukuran, status: statusAwal,
       salinanHp: salinKeGaleriHp(namaBerkas, hasil.dataUrl)
     });
+    cacheJumlah = noUrut; cacheRoom = kunciRoom;
+    $('nilFoto').textContent = noUrut;
+    fotoBaruAda = true; setMini(hasil.dataUrl);
   } catch (err) {
     const penuh = /quota|storage|space/i.test(err.name + ' ' + err.message);
     pesan(penuh ? 'Penyimpanan HP penuh. Buka aplikasi, kirim foto antrean, lalu hapus foto lama.' : 'Foto gagal disimpan: ' + err.message);
@@ -527,7 +535,7 @@ function terimaFotoNative(dataUrl) {
       const hasil = await prosesFoto(img, img.naturalWidth, img.naturalHeight);
       await simpanDenganRekaman(hasil);
       $('catatan').value = '';
-      pesan('Foto tersimpan'); muatMiniatur(); muatJumlahFoto(); muatJumlahFoto();
+      pesan('Foto tersimpan');
     } catch (err) {
       pesan('Gagal memproses foto: ' + err.message);
     } finally {
@@ -545,23 +553,40 @@ function terimaGagalNative(teks) {
 }
 
 /* ---------- Foto terakhir (miniatur) ---------- */
-async function muatMiniatur() {
+function setMini(dataUrl) {
+  const m = $('mini');
+  m.style.backgroundImage = 'url("' + dataUrl + '")';
+  m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop');
+}
+/* Satu kali pindai saat dibuka: jumlah foto room ini dan foto terbaru (ts terbesar) dari semua room. */
+async function pindaiAwal() {
   try {
     const d = await bukaDB();
-    const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor(null, 'prev');
-    req.onsuccess = () => {
-      const c = req.result;
-      if (c && c.value && c.value.dataUrl) { const m = $('mini'); m.style.backgroundImage = 'url("' + c.value.dataUrl + '")'; m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
-    };
+    const kunci = (S.room || 'LOKAL').trim().toUpperCase();
+    let n = 0, terbaru = null;
+    await new Promise((res, rej) => {
+      const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) return res();
+        const v = c.value;
+        if (((v.room || 'LOKAL').trim().toUpperCase()) === kunci) n++;
+        if (v.dataUrl && (!terbaru || (v.ts || 0) > terbaru.ts)) terbaru = { ts: v.ts || 0, dataUrl: v.dataUrl };
+        c.continue();
+      };
+      req.onerror = () => rej(req.error);
+    });
+    if (cacheJumlah === null) { cacheJumlah = n; cacheRoom = kunci; $('nilFoto').textContent = n; }
+    if (terbaru && !fotoBaruAda) setMini(terbaru.dataUrl);
   } catch (_) {}
 }
+let fotoBaruAda = false;
 $('mini').onclick = () => pesan('Foto terakhir. Lihat semua di Galeri aplikasi');
 
 /* ---------- Panel pengaturan cepat ---------- */
 function tandaiOpsi(grup, nilai) {
   grup.querySelectorAll('button').forEach(b => b.classList.toggle('pilih', b.dataset.v === String(nilai)));
 }
-async function muatJumlahFoto() { try { $('nilFoto').textContent = await hitungFotoRoom((S.room || 'LOKAL').trim()); } catch (_) {} }
 $('panelBtn').onclick = () => {
   const buka = !$('panel').classList.contains('buka');
   $('panel').classList.toggle('buka', buka);
@@ -599,8 +624,7 @@ $('cobaLagi').onclick = () => { bukaKamera.sudahUlang = false; bukaKamera(); };
 
 muatPengaturan();
 tandaiOpsi($('opsiMutu'), S.targetKB);
-muatMiniatur();
-muatJumlahFoto();
+pindaiAwal();
 perbaruiInfo();
 mulaiGps();
 bukaKamera();

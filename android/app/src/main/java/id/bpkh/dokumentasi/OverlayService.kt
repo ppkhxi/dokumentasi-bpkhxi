@@ -598,8 +598,14 @@ class OverlayService : Service() {
         val x = (w - cw) / 2
         val y = (h - ch) / 2
         val potong = Bitmap.createBitmap(bmp, x, y, cw, ch)
+        // Perkecil di sini (sisi terpanjang maks 1600) supaya data ke halaman web jauh lebih kecil dan jepret tidak lag.
+        val sisi = maxOf(cw, ch)
+        val akhir = if (sisi > 1600) {
+            val f = 1600f / sisi
+            Bitmap.createScaledBitmap(potong, Math.round(cw * f), Math.round(ch * f), true)
+        } else potong
         val keluar = ByteArrayOutputStream()
-        potong.compress(Bitmap.CompressFormat.JPEG, 92, keluar)
+        akhir.compress(Bitmap.CompressFormat.JPEG, 90, keluar)
         return keluar.toByteArray()
     }
 
