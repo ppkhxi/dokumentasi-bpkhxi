@@ -2256,7 +2256,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.60';
+const VERSI = '3.9.61';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -3492,11 +3492,12 @@ function jamWIB(){
 }
 function bolehUploadSekarang(){ return jamWIB() >= JAM_BUKA_UPLOAD; }
 
-async function sinkron(diam){
+/* paksa=true: dipicu tombol manual (Kirim Sekarang), tidak menunggu pukul 16.00. Pengiriman otomatis tetap menunggu. */
+async function sinkron(diam, paksa){
   if(sedangSinkron) return;
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
-  if(!bolehUploadSekarang()){
-    if(!diam) pesan('Upload dibuka mulai pukul 16.00 WIB. Foto tetap aman di antrian HP.');
+  if(!paksa && !bolehUploadSekarang()){
+    if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan Kirim Sekarang di menu Antrian untuk mengirim lebih awal.');
     return;
   }
 
@@ -3596,8 +3597,8 @@ function segarkanLayar(){
   const l=layarSekarang();
   ({galeri:muatGaleri,antrian:muatAntrian,beranda:muatBeranda,tabel:muatTabel}[l]||(()=>{}))();
 }
-$('btnSync').onclick = ()=>sinkron(false);
-$('btnSyncManual').onclick = ()=>sinkron(false);
+$('btnSync').onclick = ()=>sinkron(false, true);
+$('btnSyncManual').onclick = ()=>sinkron(false, true);
 
 /* ---------- Beranda ---------- */
 async function muatBeranda(){
@@ -7604,7 +7605,7 @@ async function muatAntrian(){
     ? '<span class="badge terkirim">Terhubung ke Cloud</span>'
     : '<span class="badge lokal">Penyimpanan Lokal HP</span>';
   $('anKeterangan').textContent = punyaCloud
-    ? 'Foto pada room ini akan otomatis diunggah ke Cloud MEGA saat perangkat terhubung internet.'
+    ? 'Foto pada room ini otomatis diunggah ke Cloud MEGA mulai pukul 16.00 WIB saat perangkat terhubung internet. Tekan Kirim Sekarang untuk mengirim lebih awal.'
     : 'Room aktif adalah Room Lokal (tanpa akun/undangan). Foto tersimpan aman di memori HP Anda.';
   $('anKoneksi').textContent=navigator.onLine?'Tersambung':'Terputus';
   $('anPending').textContent=antri.length+' foto';
@@ -8386,7 +8387,7 @@ $('btnKirimFeedback').onclick = async ()=>{
 
 $('btnBukaBuatRoom').onclick = dialogBuatRoom;
 $('btnBukaGabungRoom').onclick = dialogGabungRoom;
-$('btnCobaLagi').onclick = async ()=>{ history.back(); setTimeout(()=>sinkron(false),300); };
+$('btnCobaLagi').onclick = async ()=>{ history.back(); setTimeout(()=>sinkron(false, true),300); };
 $('btnPilihLogo').onclick = ()=>$('inLogo').click();
 $('inLogo').onchange = e=>{
   const f=e.target.files[0]; if(!f) return;
