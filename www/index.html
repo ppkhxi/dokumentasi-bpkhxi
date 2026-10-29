@@ -1489,11 +1489,19 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
 
           <input type="hidden" id="inUserId">
 
-          <div id="areaMega" style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--garis)">
-            <div style="font-weight:600;font-size:13px;color:var(--hijau);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-              <span>&#9729;&#65039;</span> Login via MEGA (Cloud)
-            </div>
-            <p class="catatan-kecil" style="margin-bottom:12px">Login ke akun MEGA untuk menyimpan foto langsung ke cloud dan room regu.</p>
+          <div id="areaOffline" style="margin-top:14px">
+            <button class="tombol" id="btnMasukOffline" style="margin:0;width:100%">Masuk</button>
+            <button class="tombol sekunder" id="btnMasukGabung" style="margin:10px 0 0;width:100%">Masuk &amp; Gabung Room (QR / Kode)</button>
+            <p class="catatan-kecil" style="margin-top:8px;text-align:center">
+              Tidak perlu akun MEGA. Cukup nama Anda, lalu scan QR atau tempel kode dari ketua regu. Foto tersimpan di HP dan terkirim otomatis ke cloud tim.
+            </p>
+          </div>
+
+          <details id="areaMega" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--garis)">
+            <summary style="font-weight:600;font-size:13px;color:var(--hijau);cursor:pointer;list-style:none;text-align:center">
+              &#9729;&#65039; Punya akun MEGA sendiri? (ketua regu / admin)
+            </summary>
+            <p class="catatan-kecil" style="margin:10px 0 12px">Hanya untuk yang membuat room dan menyimpan foto di akun MEGA-nya sendiri.</p>
             <label class="f" for="inMegaEmail" style="margin-top:0">Email MEGA</label>
             <input class="f" id="inMegaEmail" type="email" placeholder="nama@email.com" autocomplete="email">
 
@@ -1502,19 +1510,10 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
 
             <button class="tombol" id="btnMasukMega" style="margin-top:12px;background:#D9272E">&#9729;&#65039; Masuk & Hubungkan MEGA</button>
             <p class="catatan-kecil" id="ketMega" style="margin-top:8px;text-align:center">
-              Belum punya akun? <a href="https://mega.nz/register" target="_blank" rel="noopener" style="color:var(--hijau);font-weight:600">Daftar gratis di MEGA (20-50 GB)</a>
+              Belum punya akun? <a href="https://mega.nz/register" target="_blank" rel="noopener" style="color:var(--hijau);font-weight:600">Daftar gratis di MEGA</a>
             </p>
-          </div>
+          </details>
 
-          <div id="areaOffline" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--garis);text-align:center">
-            <div style="font-weight:600;font-size:13px;color:var(--teks);margin-bottom:8px;">
-              Login Nama Saja (Lokal)
-            </div>
-            <button class="tombol sekunder" id="btnMasukOffline" style="margin:0;width:100%">Masuk Mode Offline</button>
-            <p class="catatan-kecil" style="margin-top:6px">
-              Gunakan mode ini jika sedang di pedalaman tanpa sinyal atau tidak ingin memakai MEGA. Foto tetap tersimpan aman di HP dan dapat diunggah nanti.
-            </p>
-          </div>
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
             Dokumentasi <span id="loginVersi">v3.9.44</span>
           </div>
@@ -2255,7 +2254,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.84';
+const VERSI = '3.9.85';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -8719,7 +8718,7 @@ $('btnMasukMega').onclick = async ()=>{
     $('ketMega').innerHTML = '<span style="color:var(--merah);font-weight:600">❌ Gagal: '+esc(e.message)+'</span>';
     dialog('<h3>Gagal Terhubung ke MEGA</h3>'+
       '<p>'+esc(e.message)+'</p>'+
-      '<p class="catatan-kecil">Pastikan email dan sandi sudah benar. Jika sedang tidak ada sinyal di lapangan, Anda dapat memilih <b>Mode Offline</b> terlebih dahulu.</p>'+
+      '<p class="catatan-kecil">Pastikan email dan sandi sudah benar. Jika sedang tidak ada sinyal di lapangan, Anda dapat memilih <b>Masuk</b> tanpa akun terlebih dahulu.</p>'+
       '<button class="tombol" onclick="tutupDialog()">Periksa Kembali</button>');
   }finally{
     $('btnMasukMega').disabled = false;
@@ -8740,9 +8739,15 @@ $('btnMasukOffline').onclick = ()=>{
   localStorage.setItem('bpkh_nama', n);
   localStorage.setItem('bpkh_userId', idUser);
   localStorage.setItem('bpkh_room', S.room);
-  pesan('Masuk dalam Mode Offline — foto disimpan di HP');
+  pesan('Berhasil masuk — foto disimpan di HP');
   mulaiGPS();
   ke(LAYAR_UTAMA);
+};
+/* Masuk lalu langsung buka dialog gabung room (scan QR / kode dari ketua regu) */
+$('btnMasukGabung').onclick = ()=>{
+  $('btnMasukOffline').onclick();
+  if(!S.nama) return;
+  setTimeout(()=>{ try{ dialogGabungRoom(); }catch(_){} }, 400);
 };
 
 /* ---------- Pemasangan aplikasi (Add to Home Screen) ---------- */
