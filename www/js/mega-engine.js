@@ -30,6 +30,26 @@
   let _sedangLogin = false;
   let _folderMaster = null;
 
+  // Antrean entri indeks (_indeks.json per folder petugas) yang ditulis sekali per sesi unggah.
+  const _indeksTertunda = [];
+
+  // Thumbnail kecil (sisi terpanjang 240 px) untuk galeri di spacedkpoint.
+  function bikinThumb(dataUrl) {
+    return new Promise(res => {
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, 240 / Math.max(im.width, im.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.width * k));
+        c.height = Math.max(1, Math.round(im.height * k));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.6));
+      };
+      im.onerror = () => res('');
+      im.src = dataUrl;
+    });
+  }
+
   // Cache sesi upload anggota agar tidak re-login setiap foto
   const _guestStorageMap = new Map();
   const _targetFolderCache = new Map();
@@ -575,6 +595,24 @@
         throw new Error(petakanErrorMega(upErr));
       }
 
+      // Catat ke indeks petugas (ditulis per sesi lewat tulisIndeks()).
+      try {
+        const th = await bikinThumb(foto.dataUrl);
+        _indeksTertunda.push({
+          folder: userFolder,
+          entri: {
+            f: namaBerkas,
+            no: foto.noUrut || 1,
+            lat: foto.lat != null ? Number(foto.lat) : null,
+            lon: foto.lon != null ? Number(foto.lon) : null,
+            ts: foto.ts || Date.now(),
+            c: foto.catatan || '',
+            nm: foto.nama || namaFolderUser,
+            th
+          }
+        });
+      } catch (e) { /* indeks opsional; foto sudah terunggah */ }
+
       // Link publik instan: nodeId fallback cepat agar antrean tidak tertahan
       let linkPublik = `https://mega.nz/#${(uploadedFile && uploadedFile.nodeId) ? uploadedFile.nodeId : ''}`;
       if (uploadedFile && typeof uploadedFile.link === 'function') {
@@ -589,6 +627,41 @@
         linkDrive: linkPublik,
         ukuran: bytes.byteLength
       };
+    },
+
+    // Tulis _indeks.json di tiap folder petugas (gabung dengan isi lama). Aman dipanggil
+    // berulang; entri yang gagal ditulis dikembalikan ke antrean untuk dicoba lagi.
+    async tulisIndeks() {
+      const antre = _indeksTertunda.splice(0);
+      if (!antre.length) return;
+      const kelompok = new Map();
+      antre.forEach(a => {
+        if (!kelompok.has(a.folder)) kelompok.set(a.folder, []);
+        kelompok.get(a.folder).push(a.entri);
+      });
+      for (const [folder, entri] of kelompok) {
+        try {
+          const lama = (folder.children || []).find(x => !x.directory && x.name === '_indeks.json');
+          let isi = [];
+          if (lama) {
+            const buf = await withTimeout(lama.downloadBuffer(), 30000, 'Indeks lama tidak terbaca');
+            const j = JSON.parse(new TextDecoder().decode(buf));
+            if (Array.isArray(j.foto)) isi = j.foto;
+          }
+          const peta = new Map(isi.map(x => [x.f, x]));
+          entri.forEach(e => peta.set(e.f, e));
+          const bytes = new TextEncoder().encode(JSON.stringify({ v: 1, foto: Array.from(peta.values()) }));
+          const aksi = folder.upload({ name: '_indeks.json', size: bytes.byteLength }, bytes);
+          await withTimeout(new Promise((res, rej) => {
+            aksi.on('error', rej);
+            aksi.complete.then(res).catch(rej);
+          }), 60000, 'Indeks timeout');
+          if (lama) { try { await lama.delete(true); } catch (e) {} }
+        } catch (e) {
+          console.warn('Indeks petugas gagal ditulis, dicoba lagi nanti:', e);
+          entri.forEach(en => _indeksTertunda.push({ folder, entri: en }));
+        }
+      }
     },
 
     // -------------------------------------------------------------

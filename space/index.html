@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>spacedkpoint</title>
+<link rel="icon" href="favicon-96.png">
+<link rel="stylesheet" href="js/leaflet.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<section id="login">
+  <form id="formLogin" class="kartu-login" autocomplete="on">
+    <img src="logo-dokumentasi.png" alt="" class="logo">
+    <h1>spacedkpoint</h1>
+    <p class="sub">Kelola tabel, galeri, dan peta DKPoint dari desktop. Masuk dengan <b>akun MEGA yang sama</b> dengan di HP.</p>
+    <label>Email MEGA<input id="email" type="email" autocomplete="username" required></label>
+    <label>Kata sandi<input id="sandi" type="password" autocomplete="current-password" required></label>
+    <label id="barisKode" hidden>Kode 2FA<input id="kode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 digit"></label>
+    <label class="centang"><input id="ingat" type="checkbox"> Ingat di perangkat ini</label>
+    <button id="btnMasuk" class="utama" type="submit">Masuk</button>
+    <p id="galatLogin" class="galat" role="alert"></p>
+    <p class="kecil">Kata sandi dikirim langsung ke MEGA dari browser ini dan tidak disimpan. Server DKPoint tidak pernah menerimanya. <a href="#" id="linkDemo">Coba mode demo</a></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="atas">
+    <div class="merek"><img src="favicon-96.png" alt=""><b>space</b>dkpoint</div>
+    <nav class="tab" id="tab">
+      <button data-v="tabel" class="pilih">Tabel</button>
+      <button data-v="galeri">Galeri</button>
+      <button data-v="peta">Peta</button>
+    </nav>
+    <div class="saring">
+      <select id="fRoom" title="Room"></select>
+      <select id="fPetugas" title="Petugas"></select>
+      <input id="fCari" type="search" placeholder="Cari catatan / nomor / petugas">
+    </div>
+    <div class="akun">
+      <span id="infoAkun"></span>
+      <button id="btnMuat" title="Baca ulang dari MEGA">Muat ulang</button>
+      <button id="btnKeluar">Keluar</button>
+    </div>
+  </header>
+  <div id="status" class="status"></div>
+
+  <main>
+    <section id="vTabel" class="view">
+      <div class="alat">
+        <span id="jumlah"></span>
+        <span class="rapat"></span>
+        <button id="btnCsv">Unduh CSV</button>
+        <button id="btnKml">Unduh KML</button>
+      </div>
+      <div class="gulir">
+        <table id="tabel">
+          <thead><tr>
+            <th data-k="no">No</th><th data-k="room">Room</th><th data-k="petugas">Petugas</th>
+            <th data-k="lat">Latitude</th><th data-k="lon">Longitude</th><th data-k="ts">Waktu</th>
+            <th data-k="catatan">Catatan</th><th>Foto</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="kecil" id="catatanEdit">Perubahan disimpan sebagai <code>_edit.json</code> di folder petugas pada MEGA. Foto asli tidak diubah.</p>
+    </section>
+
+    <section id="vGaleri" class="view" hidden>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <section id="vPeta" class="view" hidden>
+      <div class="petaWadah">
+        <div id="peta"></div>
+        <aside class="lapisan">
+          <h3>Lapisan</h3>
+          <div class="dasar">
+            <label><input type="radio" name="dasar" value="osm" checked> Peta jalan</label>
+            <label><input type="radio" name="dasar" value="sat"> Satelit</label>
+          </div>
+          <ul id="daftarLapisan"></ul>
+          <label class="tambah">+ Tambah KML <input id="fileKml" type="file" accept=".kml,application/vnd.google-earth.kml+xml" hidden></label>
+          <p class="kecil">KML disimpan di folder <code>_peta</code> pada MEGA. Raster dan sinkron otomatis ke HP menyusul.</p>
+        </aside>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="lightbox" hidden>
+  <div class="isi">
+    <button class="tutup" id="lbTutup" aria-label="Tutup">×</button>
+    <div class="gambar"><img id="lbGambar" alt=""><div id="lbMuat">Mengunduh foto…</div></div>
+    <div class="rincian">
+      <h3 id="lbJudul"></h3>
+      <dl id="lbRincian"></dl>
+      <a id="lbUnduh" class="tombol" download>Unduh foto</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/megajs.umd.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

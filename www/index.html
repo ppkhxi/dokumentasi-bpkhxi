@@ -1793,10 +1793,6 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
             PDF
           </button>
-          <button type="button" class="btn-aksi-tabel" id="btnAksiEditTabel" title="Edit massal informasi foto terpilih">
-            <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
           <button type="button" class="btn-aksi-tabel bahaya" id="btnAksiHapusTabel" title="Hapus foto terpilih">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             Hapus
@@ -2260,7 +2256,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.59';
+const VERSI = '3.9.60';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -3576,6 +3572,7 @@ async function sinkron(diam){
     }
     if(gagal) pesan(sukses+' terkirim ke MEGA, '+gagal+' tertunda: '+pesanGagal);
     else pesan(sukses+' foto berhasil terunggah ke folder MEGA');
+    try{ await MegaEngine.tulisIndeks(); }catch(_){}
   }finally{
     clearTimeout(_sinkronWdTimer);
     sedangSinkron = false;
@@ -3778,6 +3775,7 @@ window.mulaiUploadPilihan = async function(namaRoom){
     segarkanLayar();
   }
   
+  try{ await MegaEngine.tulisIndeks(); }catch(_){}
   S.terpilih.clear(); S.modePilih=false;
   if(gagal) pesan(sukses+' terkirim ke MEGA, '+gagal+' tertunda: '+pesanGagal);
   else pesan(sukses+' foto berhasil terunggah ke '+namaRoom);
@@ -4498,7 +4496,7 @@ $('btnAksiBatalTabel').onclick = () => {
 $('btnAksiPdfTabel').onclick = () => {
   $('btnPdf').click();
 };
-$('btnAksiEditTabel').onclick = bukaDialogEditMassal;
+/* Edit data tabel hanya lewat spacedkpoint (desktop); tombol Edit dihapus dari HP. */
 $('btnAksiHapusTabel').onclick = konfirmasiHapusMassal;
 
 function bukaDialogEditMassal(){
