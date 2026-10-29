@@ -175,7 +175,10 @@ class OverlayService : Service() {
         val simpan = getSharedPreferences("pil_kamera", MODE_PRIVATE)
         val lp = WindowManager.LayoutParams(
             ukuran, ukuran, tipeOverlay(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            // FLAG_LAYOUT_NO_LIMITS: tanpa ini Android menahan window tetap di dalam layar, sehingga pil
+            // tidak bisa menyusut ke setengah lingkaran di tepi (x negatif diabaikan).
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
