@@ -622,6 +622,24 @@ class OverlayService : Service() {
         try { wm.updateViewLayout(k, lp) } catch (_: Exception) {}
     }
 
+    /** Ubah tinggi kartu flyout dengan animasi (dp); posisi tetap di tengah layar. */
+    private var animTinggi: android.animation.ValueAnimator? = null
+    private fun aturTinggi(hDp: Int) {
+        val lp = lpFlyout ?: return
+        val k = kontainer ?: return
+        val tujuan = dp(hDp.coerceIn(300, 640))
+        animTinggi?.cancel()
+        animTinggi = android.animation.ValueAnimator.ofInt(lp.height, tujuan).apply {
+            duration = 250
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener {
+                lp.height = it.animatedValue as Int
+                try { wm.updateViewLayout(k, lp) } catch (_: Exception) {}
+            }
+            start()
+        }
+    }
+
     /** Posisi area pratinjau kamera, dikirim dari halaman web (dalam dp). */
     private fun aturPratinjau(x: Int, y: Int, w: Int, h: Int) {
         val pv = preview ?: return
@@ -666,6 +684,11 @@ class OverlayService : Service() {
             kameraDepan = !kameraDepan
             handler.post { nyalakanKamera() }
             return kameraDepan
+        }
+
+        @JavascriptInterface
+        fun aturTinggi(hDp: Int) {
+            handler.post { this@OverlayService.aturTinggi(hDp) }
         }
 
         @JavascriptInterface

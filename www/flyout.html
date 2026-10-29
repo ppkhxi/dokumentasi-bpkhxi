@@ -566,9 +566,15 @@ $('panelBtn').onclick = () => {
   const buka = !$('panel').classList.contains('buka');
   $('panel').classList.toggle('buka', buka);
   $('panelBtn').setAttribute('aria-expanded', buka);
-  setTimeout(kirimPosisiPratinjau, 60);
-  setTimeout(kirimPosisiPratinjau, 300);
+  /* Seperti referensi: kartu memanjang saat panel dibuka, viewfinder tetap sama besar. */
+  if (KAMERA_ASLI && DokumentasiNative.aturTinggi) {
+    const extra = Math.round($('panel').firstElementChild.scrollHeight);
+    try { DokumentasiNative.aturTinggi(buka ? TINGGI_DASAR + extra : TINGGI_DASAR); } catch (_) {}
+  }
+  const t0 = Date.now();
+  const iv = setInterval(() => { kirimPosisiPratinjau(); if (Date.now() - t0 > 450) clearInterval(iv); }, 40);
 };
+const TINGGI_DASAR = 420; /* dp, sama dengan tinggi jendela di OverlayService */
 const PILIHAN_TIMER = [0, 3, 5, 10];
 $('selTimer').onclick = () => {
   timerDetik = PILIHAN_TIMER[(PILIHAN_TIMER.indexOf(timerDetik) + 1) % PILIHAN_TIMER.length];
