@@ -2057,6 +2057,14 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         </p>
       </div>
 
+      <!-- KARTU CADANGAN & PEMULIHAN -->
+      <div class="kartu">
+        <div class="kartu-judul">&#128737;&#65039; Cadangan &amp; Pemulihan Foto</div>
+        <button class="tombol" id="btnPeriksaPenyimpanan" style="margin-top:0">Periksa penyimpanan &amp; selamatkan foto (ZIP)</button>
+        <button class="tombol sekunder" id="btnCadangSetelan" style="margin-top:8px">Cadangkan foto di HP (ZIP)</button>
+        <p class="catatan-kecil" style="margin-top:8px">Dipakai bila foto atau room tidak tampil. &ldquo;Periksa penyimpanan&rdquo; membaca langsung isi penyimpanan aplikasi dan bisa menyelamatkan semua foto yang masih ada.</p>
+      </div>
+
       <!-- KARTU KELOLA ROOM -->
       <div class="kartu">
         <div class="kartu-judul">&#128193; Manajemen Room Kerja</div>
@@ -2119,7 +2127,6 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <p class="catatan-kecil">Menghemat ruang HP, tetapi foto yang sudah terkirim tidak lagi
           muncul di Galeri dan Tabel Rekap di HP ini — hanya bisa dilihat lewat cloud MEGA atau panel admin.</p>
         <button class="tombol abu" id="btnEkspor">Ekspor Metadata (JSON)</button>
-        <button class="tombol abu" id="btnPeriksaPenyimpanan">Periksa penyimpanan &amp; selamatkan foto (ZIP)</button>
       </div>
       <div class="kartu">
         <div class="kartu-judul">Feedback &amp; Masukan</div>
@@ -2248,7 +2255,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.72';
+const VERSI = '3.9.73';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -4788,6 +4795,7 @@ async function pulihkanDariMega(){
   }
 }
 if($('btnPulihMega')) $('btnPulihMega').onclick=pulihkanDariMega;
+if($('btnCadangSetelan')) $('btnCadangSetelan').onclick=cadangkanZip;
 if($('btnPeriksaPenyimpanan')) $('btnPeriksaPenyimpanan').onclick=()=>{ location.href='periksa.html'; };
 $('btnTarikTabel').onclick = tarikDataReguMega;
 
