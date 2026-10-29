@@ -21,8 +21,16 @@
     display:flex; align-items:center; justify-content:center; font-size:14px; }
   .tbl svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; transition:transform .2s; }
   #panelBtn[aria-expanded="true"] svg { transform:rotate(180deg); }
-  .panel { display:none; background:#1b1f1b; border-radius:16px; padding:9px 10px; font-size:12px; }
-  .panel.buka { display:block; }
+  .panel { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .25s cubic-bezier(.2,.8,.2,1), opacity .2s; font-size:12px; }
+  .panel > div { overflow:hidden; min-height:0; background:#1b1f1b; border-radius:16px; }
+  .panel > div > .dalam { padding:9px 10px; }
+  .panel.buka { grid-template-rows:1fr; opacity:1; }
+  .kartu { animation: munculKartu .28s cubic-bezier(.2,.8,.2,1); }
+  @keyframes munculKartu { from { opacity:0; transform:scale(.94) translateY(8px); } to { opacity:1; transform:none; } }
+  #rana { transition:transform .12s; }
+  #mini.pop { animation: popMini .45s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes popMini { 0% { transform:scale(.6); } 100% { transform:scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .kartu, #mini.pop { animation:none; } .panel { transition:none; } }
   .panel .baris { display:flex; align-items:center; gap:8px; }
   .panel .baris + .baris { margin-top:8px; }
   .panel label { width:58px; color:#9fb0a4; flex:0 0 auto; }
@@ -75,12 +83,12 @@
     <button id="panelBtn" class="tbl" type="button" aria-label="Pengaturan cepat" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
     <button id="tutup" class="tbl" type="button" aria-label="Tutup">&#10005;</button>
   </div>
-  <div class="panel" id="panel">
+  <div class="panel" id="panel"><div><div class="dalam">
     <div class="baris"><label>Timer</label><div class="opsi" id="opsiTimer">
       <button data-v="0" class="pilih">Mati</button><button data-v="3">3 dtk</button><button data-v="5">5 dtk</button><button data-v="10">10 dtk</button></div></div>
     <div class="baris"><label>Kualitas</label><div class="opsi" id="opsiMutu">
       <button data-v="300">Hemat</button><button data-v="500">Normal</button><button data-v="900">Tinggi</button></div></div>
-  </div>
+  </div></div></div>
   <div class="pratinjau">
     <video id="video" playsinline muted autoplay></video>
     <div id="tirai"></div>
@@ -533,7 +541,7 @@ async function muatMiniatur() {
     const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor(null, 'prev');
     req.onsuccess = () => {
       const c = req.result;
-      if (c && c.value && c.value.dataUrl) $('mini').style.backgroundImage = 'url("' + c.value.dataUrl + '")';
+      if (c && c.value && c.value.dataUrl) { const m = $('mini'); m.style.backgroundImage = 'url("' + c.value.dataUrl + '")'; m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
     };
   } catch (_) {}
 }
