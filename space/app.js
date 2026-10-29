@@ -75,14 +75,16 @@
     try {
       const opsi = { email: $('email').value.trim(), password: $('sandi').value, keepalive: false };
       if ($('kode').value.trim()) opsi.secondFactorCode = $('kode').value.trim();
+      if (typeof mega === 'undefined' || !mega.Storage) throw new Error('Pustaka MEGA gagal dimuat (js/megajs.umd.js).');
       const st = new mega.Storage(opsi);
-      await st.ready;
+      await Promise.race([st.ready, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout: MEGA tidak merespons dalam 45 detik')), 45000))]);
       S.storage = st;
       simpanSesi(st, $('ingat').checked);
       $('sandi').value = '';
       await bukaApp(opsi.email);
     } catch (e) {
-      const m = pesanMega(e);
+      console.error('Login MEGA gagal:', e);
+      const m = pesanMega(e) + (e && e.message ? '  [rincian: ' + String(e.message).slice(0, 160) + ']' : '');
       $('galatLogin').textContent = m;
       if (/2FA/.test(m)) { $('barisKode').hidden = false; $('kode').focus(); }
     } finally { btn.disabled = false; btn.textContent = 'Masuk'; }
