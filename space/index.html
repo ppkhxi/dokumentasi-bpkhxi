@@ -65,7 +65,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <p class="kecil" id="catatanEdit">Perubahan disimpan sebagai <code>_edit.json</code> di folder petugas pada MEGA. Foto asli tidak diubah.</p>
+      <p class="kecil" id="catatanEdit">Edit menimpa berkas foto di MEGA (EXIF GPS, deskripsi, dan nama berkas) serta indeks petugas. Tulisan watermark di dalam gambar tidak berubah.</p>
     </section>
 
     <section id="vGaleri" class="view" hidden>
@@ -83,7 +83,8 @@
           </div>
           <ul id="daftarLapisan"></ul>
           <label class="tambah">+ Tambah KML <input id="fileKml" type="file" accept=".kml,application/vnd.google-earth.kml+xml" hidden></label>
-          <p class="kecil">KML disimpan di folder <code>_peta</code> pada MEGA. Raster dan sinkron otomatis ke HP menyusul.</p>
+          <label class="tambah" style="margin-top:6px">+ Tambah Raster (JPG / PNG / PDF) <input id="fileRaster" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" hidden></label>
+          <p class="kecil">KML dan raster disimpan di folder <code>_peta</code> pada MEGA. Sinkron otomatis ke HP menyusul.</p>
         </aside>
       </div>
     </section>
@@ -104,6 +105,9 @@
 
 <script src="js/megajs.umd.js"></script>
 <script src="js/leaflet.js"></script>
+<script src="js/exif-gps.js"></script>
+<script src="js/peta.js"></script>
+<script src="raster-impor.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

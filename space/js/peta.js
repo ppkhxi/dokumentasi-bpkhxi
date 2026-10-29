@@ -1,0 +1,1150 @@
+/* ===========================================================================
+   PETA SEBARAN — dkpoint
+   Mendukung:
+   - Fullscreen interactive Leaflet map
+   - Titik foto dengan pop-up thumbnail & ringkasan
+   - Live marker posisi GPS pengguna (pulsing blue dot + akurasi)
+   - Layer data spasial KML lokal (DOMParser mandiri tanpa dependensi luar)
+   - Layer peta raster georeferensi (JPG/PDF) dengan opasitas & kalibrasi drag
+   =========================================================================== */
+
+const PETA = (function () {
+  const LEAFLET_JS  = './js/leaflet.js';
+  const LEAFLET_CSS = './js/leaflet.css';
+  const LEAFLET_CDN_JS  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  const LEAFLET_CDN_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+
+  const WARNA = ['#1B5E20', '#C62828', '#1565C0', '#EF6C00', '#6A1B9A',
+                 '#00838F', '#AD1457', '#4E342E'];
+
+  function warnaRoom(nama) {
+    let h = 0;
+    for (let i = 0; i < String(nama).length; i++) h = (h * 31 + String(nama).charCodeAt(i)) % 9973;
+    return WARNA[h % WARNA.length];
+  }
+
+  const esc = s => String(s == null ? '' : s)
+    .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let janjiMuat = null;
+  function muatLeaflet() {
+    if (window.L) return Promise.resolve();
+    if (janjiMuat) return janjiMuat;
+    janjiMuat = new Promise((res, rej) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = LEAFLET_CSS;
+      css.onerror = () => { css.href = LEAFLET_CDN_CSS; };
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = LEAFLET_JS;
+      js.onload = () => res();
+      js.onerror = () => {
+        // Fallback ke CDN jika berkas lokal tidak terakses
+        const cdn = document.createElement('script');
+        cdn.src = LEAFLET_CDN_JS;
+        cdn.onload = () => res();
+        cdn.onerror = () => { janjiMuat = null; rej(new Error('Gagal memuat pustaka peta')); };
+        document.head.appendChild(cdn);
+      };
+      document.head.appendChild(js);
+    });
+    return janjiMuat;
+  }
+
+  /* ------------------- MAPLIBRE GL JS 4.7.1 (basemap vektor lewat adapter Leaflet) ------------------- */
+  let janjiMapLibre = null;
+
+  function muatSkrip(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => res();
+      s.onerror = () => rej(new Error('Gagal memuat ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  function muatMapLibre() {
+    if (window.maplibregl && window.L && window.L.maplibreGL) return Promise.resolve();
+    if (janjiMapLibre) return janjiMapLibre;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = MAPLIBRE_CSS;
+    document.head.appendChild(css);
+    janjiMapLibre = muatSkrip(MAPLIBRE_JS)
+      .then(() => muatSkrip(MAPLIBRE_BRIDGE_JS))
+      .then(() => {
+        if (!(window.maplibregl && window.L && window.L.maplibreGL)) {
+          throw new Error('Adapter MapLibre tidak siap');
+        }
+      })
+      .catch(err => { janjiMapLibre = null; throw err; });
+    return janjiMapLibre;
+  }
+
+  function dukungWebGL() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    } catch (e) { return false; }
+  }
+
+  // Cek style bisa diambil (koneksi internet) sebelum MapLibre dipasang
+  async function cekStyleMapLibre() {
+    const ctl = new AbortController();
+    const batas = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(MAPLIBRE_STYLE, { signal: ctl.signal });
+      if (!r.ok) throw new Error('Style HTTP ' + r.status);
+    } finally {
+      clearTimeout(batas);
+    }
+  }
+
+  // Pasang basemap vektor. Jika WebGL/internet/pustaka gagal, kembali ke Google Satelit.
+  async function aktifkanMapLibre(peta) {
+    try {
+      if (!dukungWebGL()) throw new Error('WebGL tidak tersedia');
+      await muatMapLibre();
+      await cekStyleMapLibre();
+      if (!peta || peta.tipeBasemap !== 'maplibre_vector') return true; // pengguna sudah pindah basemap
+      if (!peta.lapisMapLibre) {
+        peta.lapisMapLibre = L.maplibreGL({ style: MAPLIBRE_STYLE, attribution: ATRIBUSI_MAPLIBRE });
+      }
+      ['lapisGoogleSat', 'lapisGoogleHyb', 'lapisEsriSat', 'lapisGoogleMap', 'lapisOSM'].forEach(k => {
+        try { if (peta[k]) peta.removeLayer(peta[k]); } catch (e) {}
+      });
+      peta.lapisMapLibre.addTo(peta);
+      return true;
+    } catch (e) {
+      console.warn('Basemap vektor tidak tersedia:', e && e.message);
+      if (peta && peta.tipeBasemap === 'maplibre_vector') {
+        try { peta.lapisGoogleHyb.addTo(peta); } catch (err) {}
+        peta.tipeBasemap = 'google_hybrid';
+        if (typeof window.pesan === 'function') {
+          window.pesan('Basemap vektor tidak tersedia (offline/WebGL). Kembali ke Google Hybrid.');
+        }
+      }
+      return false;
+    }
+  }
+
+  const punyaKoordinat = t => t && t.lat != null && t.lon != null &&
+                              isFinite(t.lat) && isFinite(t.lon);
+
+  const petaTersimpan = new WeakMap();
+
+  // 1. Google Satelit (sesuai peta google satelite.lyr)
+  const URL_GOOGLE_SAT = 'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+  const ATRIBUSI_GOOGLE_SAT = '&copy; Google Satellite';
+
+  // 2. Google Hybrid (Satelit + Label Jalan & Toponimi)
+  const URL_GOOGLE_HYB = 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+  const ATRIBUSI_GOOGLE_HYB = '&copy; Google Hybrid';
+
+  // 3. Esri World Imagery (Alternatif Citra Satelit Stabil)
+  const URL_ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  const ATRIBUSI_ESRI_SAT = '&copy; Esri World Imagery';
+
+  // 4. Google Maps / Peta Jalan (sesuai peta google map.lyr)
+  const URL_GOOGLE_MAP = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+  const ATRIBUSI_GOOGLE_MAP = '&copy; Google Maps';
+
+  // 5. OpenStreetMap (OSM - Ringan & Cepat Offline)
+  const URL_TILE_OSM = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const ATRIBUSI_OSM = '&copy; OpenStreetMap contributors';
+
+  // 6. MapLibre GL JS 4.7.1 (vektor WebGL) — dimuat hanya saat basemap ini dipilih
+  const MAPLIBRE_CSS = './js/maplibre-gl.css';
+  const MAPLIBRE_JS = './js/maplibre-gl.js';
+  const MAPLIBRE_BRIDGE_JS = './js/leaflet-maplibre-gl.js';
+  const MAPLIBRE_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+  const ATRIBUSI_MAPLIBRE = '&copy; OpenFreeMap &copy; OpenMapTiles &copy; OpenStreetMap contributors';
+
+  // Fokus Pulau Jawa
+  const PUSAT_JAWA = [-7.5, 110.5];
+  const ZOOM_JAWA = 8;
+
+  /* ------------------- INISIALISASI PETA ------------------- */
+  async function gambar(wadah, titik, opsi) {
+    opsi = opsi || {};
+    const berkoordinat = (titik || []).filter(punyaKoordinat);
+
+    try {
+      await muatLeaflet();
+    } catch (e) {
+      wadah.innerHTML = '<div class="peta-kosong">Peta perlu sambungan internet saat pertama kali memuat latar.<br>' +
+        'Data titik tetap aman. Silakan coba lagi setelah ada sinyal, atau unduh berkas KML/GeoJSON.</div>';
+      return { jumlah: berkoordinat.length, gagalMuat: true };
+    }
+
+    let peta = petaTersimpan.get(wadah);
+    if (!peta && wadah && wadah._leaflet_id) {
+      try {
+        delete wadah._leaflet_id;
+        wadah.innerHTML = '';
+      } catch (e) {}
+    }
+    if (!peta) {
+      wadah.innerHTML = '';
+      peta = L.map(wadah, {
+        scrollWheelZoom: true,
+        zoomControl: false,
+        maxZoom: 22,
+        preferCanvas: true,          // vektor (titik/KML) digambar di canvas → pan mulus di HP
+        zoomAnimationThreshold: 2,
+        wheelDebounceTime: 60,
+        wheelPxPerZoomLevel: 120
+      });
+
+      // 1. Layer Google Satelit (peta google satelite.lyr)
+      peta.lapisGoogleSat = L.tileLayer(URL_GOOGLE_SAT, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 22, maxNativeZoom: 20,
+        keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false,
+        attribution: ATRIBUSI_GOOGLE_SAT
+      });
+
+      // 2. Layer Google Hybrid (Satelit + Jalan)
+      peta.lapisGoogleHyb = L.tileLayer(URL_GOOGLE_HYB, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 22, maxNativeZoom: 20,
+        keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false,
+        attribution: ATRIBUSI_GOOGLE_HYB
+      });
+
+      // 3. Layer Esri Satelit (Alternatif Satelit Stabil)
+      peta.lapisEsriSat = L.tileLayer(URL_ESRI_SAT, {
+        maxZoom: 22, maxNativeZoom: 19,
+        keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false,
+        attribution: ATRIBUSI_ESRI_SAT
+      });
+
+      // 4. Layer Google Map Jalan (peta google map.lyr)
+      peta.lapisGoogleMap = L.tileLayer(URL_GOOGLE_MAP, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 22, maxNativeZoom: 20,
+        keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false,
+        attribution: ATRIBUSI_GOOGLE_MAP
+      });
+
+      // 5. Layer OpenStreetMap (Ringan & Offline)
+      peta.lapisOSM = L.tileLayer(URL_TILE_OSM, {
+        subdomains: ['a', 'b', 'c'],
+        maxZoom: 22, maxNativeZoom: 19,
+        keepBuffer: 2, updateWhenIdle: true, updateWhenZooming: false,
+        attribution: ATRIBUSI_OSM
+      });
+
+      // Baca preferensi tersimpan, default ke Google Satelit
+      // Hanya dua basemap: Vektor (MapLibre) dan Google Satelit Hybrid
+      let prefBasemap = 'maplibre_vector';
+      try { prefBasemap = localStorage.getItem('dkpoint_basemap') || 'maplibre_vector'; } catch (e) {}
+      if (prefBasemap !== 'google_hybrid') prefBasemap = 'maplibre_vector';
+      peta.tipeBasemap = prefBasemap;
+
+      if (prefBasemap === 'google_map') {
+        peta.lapisGoogleMap.addTo(peta);
+      } else if (prefBasemap === 'google_hybrid') {
+        peta.lapisGoogleHyb.addTo(peta);
+      } else if (prefBasemap === 'esri_satelit') {
+        peta.lapisEsriSat.addTo(peta);
+      } else if (prefBasemap === 'osm') {
+        peta.lapisOSM.addTo(peta);
+      } else if (prefBasemap === 'maplibre_vector') {
+        // Google Hybrid sementara tampil sampai MapLibre siap
+        peta.lapisGoogleHyb.addTo(peta);
+        aktifkanMapLibre(peta);
+      } else {
+        peta.lapisGoogleSat.addTo(peta);
+      }
+
+      // Grup layer bertingkat
+      peta.lapisRaster = new Map(); // id -> L.imageOverlay
+      peta.lapisKML = L.layerGroup().addTo(peta);
+      peta.lapisTitik = L.layerGroup().addTo(peta);
+      peta.lapisUser = L.layerGroup().addTo(peta);
+
+      // Anti-lag: label permanen (tooltip HTML) disembunyikan saat zoom jauh.
+      // Di zoom jauh label toh saling tumpang-tindih tak terbaca, jadi ini
+      // sekaligus merapikan tampilan dan membuat pan jauh lebih ringan.
+      peta.ambangLabel = 15;
+      peta.perbaruiVisibilitasLabel = function () {
+        try {
+          const c = peta.getContainer();
+          if (c) c.classList.toggle('peta-labels-jauh', peta.getZoom() < peta.ambangLabel);
+        } catch (e) {}
+      };
+      peta.on('zoomend', peta.perbaruiVisibilitasLabel);
+
+      // Culling label: hanya buka tooltip permanen untuk fitur yang ada di dalam
+      // layar (viewport) saat zoom cukup dekat. Fitur di luar layar / zoom jauh
+      // tooltipnya ditutup (DOM dilepas) → pan jauh lebih ringan di HP.
+      peta.perbaruiCullingLabel = function () {
+        let b, z;
+        try { z = peta.getZoom(); b = peta.getBounds().pad(0.25); } catch (e) { return; }
+        const bolehTampil = z >= peta.ambangLabel;
+        const proses = (layer) => {
+          if (layer && layer.getLayers) { layer.getLayers().forEach(proses); return; }
+          if (!layer || !layer.getTooltip) return;
+          const tt = layer.getTooltip();
+          if (!tt || !tt.options || !tt.options.permanent) return;
+          let inView = false;
+          if (bolehTampil) {
+            try {
+              if (layer.getLatLng) inView = b.contains(layer.getLatLng());
+              else if (layer.getBounds) inView = b.intersects(layer.getBounds());
+              else inView = true;
+            } catch (e) { inView = true; }
+          }
+          try {
+            if (inView) { if (!layer.isTooltipOpen()) layer.openTooltip(); }
+            else { if (layer.isTooltipOpen()) layer.closeTooltip(); }
+          } catch (e) {}
+        };
+        if (peta.lapisTitik) proses(peta.lapisTitik);
+        if (peta.lapisKML) proses(peta.lapisKML);
+      };
+      peta.on('moveend zoomend', peta.perbaruiCullingLabel);
+
+      petaTersimpan.set(wadah, peta);
+    }
+
+  // Bersihkan titik lama
+  peta.lapisTitik.clearLayers();
+  const fitur3D = [];
+
+  // Gambar titik foto lapangan
+  berkoordinat.forEach(t => {
+    const warna = warnaRoom(t.room);
+    const tanda = L.circleMarker([t.lat, t.lon], {
+      radius: 8, color: '#ffffff', weight: 2.5,
+      fillColor: warna, fillOpacity: 0.95
+    });
+
+    if (t.akurasi > 0 && t.akurasi < 500) {
+      L.circle([t.lat, t.lon], {
+        radius: t.akurasi, color: warna, weight: 1,
+        opacity: 0.35, fillColor: warna, fillOpacity: 0.08
+      }).addTo(peta.lapisTitik);
+    }
+
+    // Pop-up foto ringkas & bersih
+    const htmlPopup = `
+      <div class="popup-foto-kartu">
+        ${t.thumb ? `<div class="popup-foto-img-wadah"><img src="${t.thumb}" class="popup-foto-img" alt="Foto"></div>` : ''}
+        <div class="popup-foto-info">
+          <div class="popup-foto-baris"><b>👤 Petugas:</b> <span>${esc(t.nama || '-')}</span></div>
+          <div class="popup-foto-baris"><b>📁 Room:</b> <span>${esc(t.room || '-')}</span></div>
+          <div class="popup-foto-baris"><b>🕒 Waktu:</b> <span>${esc(t.waktu || '-')}</span></div>
+          ${t.catatan && t.catatan !== '-' ? `<div class="popup-foto-catatan">"${esc(t.catatan)}"</div>` : ''}
+        </div>
+      </div>
+    `;
+
+    tanda.bindPopup(htmlPopup, { maxWidth: 240, minWidth: 190, className: 'popup-dkpoint-wadah' });
+
+    // Label Titik Foto Lapangan — tampilkan CATATAN (bukan nama petugas)
+    const labelTeks = t.catatan && t.catatan !== '-' ? t.catatan : 'Foto';
+    tanda.bindTooltip(esc(labelTeks), {
+      permanent: true,
+      direction: 'right',
+      offset: [12, -10],
+      className: 'label-titik-foto'
+    });
+
+    tanda.addTo(peta.lapisTitik);
+    fitur3D.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [t.lon, t.lat] },
+      properties: { warna: warna, html: htmlPopup } });
+  });
+
+  // Sesuaikan batas pandangan jika ada titik dan opsi minta fit
+  if (berkoordinat.length && opsi.fit !== false) {
+    const batas = L.latLngBounds(berkoordinat.map(t => [t.lat, t.lon]));
+    peta.fitBounds(batas, { padding: [35, 35], maxZoom: 16 });
+  } else if (!berkoordinat.length && !peta._loaded) {
+    // Peta belum punya view & tidak ada titik → default ke Pulau Jawa.
+    // Pakai _loaded (bukan getCenter yang akan melempar error pada peta baru).
+    peta.setView(PUSAT_JAWA, ZOOM_JAWA);
+  }
+
+  if (peta.perbaruiVisibilitasLabel) peta.perbaruiVisibilitasLabel();
+  if (peta.perbaruiCullingLabel) peta.perbaruiCullingLabel();
+  setTimeout(() => { try { peta.invalidateSize(); } catch (e) {} }, 150);
+
+    peta._fitur3D = fitur3D;
+    if (peta.mode3D) terapkan3D(peta);
+    return { peta, jumlah: berkoordinat.length };
+  }
+
+  /* ------------------- POSISI GPS PENGGUNA ------------------- */
+  function perbaruiLokasiUser(peta, pos) {
+    if (!peta || !peta.lapisUser) return;
+    peta.lapisUser.clearLayers();
+    if (!pos || pos.lat == null || pos.lon == null) return;
+
+    const latlng = [pos.lat, pos.lon];
+    const akurasi = pos.akurasi || 15;
+
+    // Lingkaran akurasi
+    L.circle(latlng, {
+      radius: akurasi,
+      color: '#1E88E5',
+      weight: 1.5,
+      opacity: 0.5,
+      fillColor: '#2196F3',
+      fillOpacity: 0.12
+    }).addTo(peta.lapisUser);
+
+    // Titik denyut biru posisi pengguna
+    L.circleMarker(latlng, {
+      radius: 9,
+      color: '#ffffff',
+      weight: 3,
+      fillColor: '#1976D2',
+      fillOpacity: 1
+    }).bindTooltip('Lokasi Anda berdiri (±' + Math.round(akurasi) + ' m)', { direction: 'top' })
+      .addTo(peta.lapisUser);
+  }
+
+  function pusatkanKeUser(peta, pos) {
+    if (!peta || !pos || pos.lat == null) return false;
+    peta.setView([pos.lat, pos.lon], Math.max(peta.getZoom(), 16), { animate: true });
+    return true;
+  }
+
+  /* ------------------- BASEMAP (GOOGLE SATELIT, HYBRID, ESRI SATELIT, GOOGLE MAP, OSM) ------------------- */
+  /* ------------------- MODE 3D: vektor MapLibre dimiringkan, titik foto & GPS ikut 3D ------------------- */
+  const SUMBER_TITIK3D = 'titik-foto-3d';
+  const LAPIS_TITIK3D = 'titik-foto-3d-lingkaran';
+
+  function mapMapLibre(peta) {
+    try { return peta && peta.lapisMapLibre ? peta.lapisMapLibre.getMaplibreMap() : null; }
+    catch (e) { return null; }
+  }
+
+  function terapkan3D(peta) {
+    const ml = mapMapLibre(peta);
+    if (!ml || !window.maplibregl) return;
+    const data = { type: 'FeatureCollection', features: peta._fitur3D || [] };
+    const pasang = () => {
+      try {
+        if (ml.getSource(SUMBER_TITIK3D)) {
+          ml.getSource(SUMBER_TITIK3D).setData(data);
+        } else {
+          ml.addSource(SUMBER_TITIK3D, { type: 'geojson', data: data });
+          ml.addLayer({
+            id: LAPIS_TITIK3D, type: 'circle', source: SUMBER_TITIK3D,
+            paint: {
+              'circle-radius': 8, 'circle-color': ['get', 'warna'],
+              'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5,
+              'circle-pitch-alignment': 'map'
+            }
+          });
+          ml.on('click', LAPIS_TITIK3D, e => {
+            const f = e.features && e.features[0];
+            if (!f) return;
+            new window.maplibregl.Popup({ maxWidth: '240px' })
+              .setLngLat(f.geometry.coordinates)
+              .setHTML(f.properties.html)
+              .addTo(ml);
+          });
+          ml.on('mouseenter', LAPIS_TITIK3D, () => { ml.getCanvas().style.cursor = 'pointer'; });
+          ml.on('mouseleave', LAPIS_TITIK3D, () => { ml.getCanvas().style.cursor = ''; });
+        }
+        ml.setLayoutProperty(LAPIS_TITIK3D, 'visibility', 'visible');
+      } catch (e) { console.warn('Titik 3D gagal:', e && e.message); }
+    };
+    if (ml.isStyleLoaded()) pasang(); else ml.once('load', pasang);
+  }
+
+  // Gestur dua jari di mode 3D: putar (dua jari berputar) dan miring (dua jari naik-turun).
+  // Leaflet tetap menangani geser dan cubit-zoom dengan satu atau dua jari.
+  function pasangGestur3D(peta) {
+    if (peta._gestur3D) return;
+    peta._gestur3D = true;
+    const el = peta.getContainer();
+    let awal = null;
+    const sudut = (a, b) => Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+    el.addEventListener('touchstart', e => {
+      if (!peta.mode3D || e.touches.length !== 2) return;
+      const ml = mapMapLibre(peta); if (!ml) return;
+      awal = {
+        s: sudut(e.touches[0], e.touches[1]),
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        bearing: ml.getBearing(), pitch: ml.getPitch()
+      };
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (!peta.mode3D || !awal || e.touches.length !== 2) return;
+      const ml = mapMapLibre(peta); if (!ml) return;
+      e.preventDefault();
+      let d = sudut(e.touches[0], e.touches[1]) - awal.s;
+      if (d > 180) d -= 360; if (d < -180) d += 360;
+      const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const pitch = Math.max(0, Math.min(60, awal.pitch - (y - awal.y) * 0.25));
+      ml.jumpTo({ bearing: awal.bearing + d, pitch: pitch });
+    }, { passive: false });
+    const akhir = () => { awal = null; };
+    el.addEventListener('touchend', akhir, { passive: true });
+    el.addEventListener('touchcancel', akhir, { passive: true });
+  }
+
+  function aktifkan3D(peta) {
+    const ml = mapMapLibre(peta);
+    if (!ml) return false;
+    peta.mode3D = true;
+    pasangGestur3D(peta);
+    try { peta.removeLayer(peta.lapisTitik); } catch (e) {}
+    try { peta.removeLayer(peta.lapisUser); } catch (e) {}
+    try { peta.removeLayer(peta.lapisKML); } catch (e) {}
+    terapkan3D(peta);
+    ml.easeTo({ pitch: 60, bearing: -20, duration: 700 });
+    return true;
+  }
+
+  function matikan3D(peta) {
+    if (!peta) return;
+    peta.mode3D = false;
+    matikanGyro3D(peta);
+    try { if (!peta.hasLayer(peta.lapisTitik)) peta.addLayer(peta.lapisTitik); } catch (e) {}
+    try { if (!peta.hasLayer(peta.lapisUser)) peta.addLayer(peta.lapisUser); } catch (e) {}
+    try { if (!peta.hasLayer(peta.lapisKML)) peta.addLayer(peta.lapisKML); } catch (e) {}
+    const ml = mapMapLibre(peta);
+    if (ml) {
+      try { if (ml.getLayer(LAPIS_TITIK3D)) ml.setLayoutProperty(LAPIS_TITIK3D, 'visibility', 'none'); } catch (e) {}
+      try { ml.easeTo({ pitch: 0, bearing: 0, duration: 600 }); } catch (e) {}
+    }
+  }
+
+  // Gyro: arah kompas HP menjadi arah peta (heading di atas). Di iOS perlu izin sensor.
+  function matikanGyro3D(peta) {
+    if (peta && peta.gyroHandler) {
+      window.removeEventListener('deviceorientation', peta.gyroHandler);
+      window.removeEventListener('deviceorientationabsolute', peta.gyroHandler);
+    }
+    if (peta) peta.gyroAktif = false;
+  }
+
+  // true = gyro aktif, false = mati, null = izin ditolak / tidak tersedia / belum 3D
+  async function gyro3D(peta) {
+    if (!peta || !peta.mode3D) return null;
+    if (peta.gyroAktif) { matikanGyro3D(peta); return false; }
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const izin = await DeviceOrientationEvent.requestPermission();
+        if (izin !== 'granted') return null;
+      }
+    } catch (e) { return null; }
+    peta.gyroHandler = e => {
+      const ml = mapMapLibre(peta);
+      if (!ml || !peta.mode3D) return;
+      let heading = null;
+      if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
+        heading = e.webkitCompassHeading;
+      } else if (e.absolute === true && e.alpha != null) {
+        heading = (360 - e.alpha) % 360;
+      }
+      if (heading != null) ml.setBearing(heading);
+    };
+    window.addEventListener('deviceorientation', peta.gyroHandler, { passive: true });
+    window.addEventListener('deviceorientationabsolute', peta.gyroHandler, { passive: true });
+    peta.gyroAktif = true;
+    return true;
+  }
+
+  // true = 3D aktif, false = kembali 2D, null = basemap belum vektor (tidak berubah)
+  function toggle3D(peta) {
+    if (!peta) return null;
+    if (peta.mode3D) { matikan3D(peta); return false; }
+    if (peta.tipeBasemap !== 'maplibre_vector') return null;
+    return aktifkan3D(peta) ? true : null;
+  }
+
+  function gantiBasemap(peta, tipe) {
+    if (!peta) return 'google_satelit';
+    if (peta.mode3D) matikan3D(peta);
+    const targets = ['maplibre_vector', 'google_hybrid'];
+    const idx = targets.indexOf(peta.tipeBasemap);
+    const target = tipe || targets[(idx + 1) % targets.length] || 'google_satelit';
+    
+    // Aman bersihkan semua basemap aktif
+    try { if (peta.lapisGoogleSat) peta.removeLayer(peta.lapisGoogleSat); } catch (e) {}
+    try { if (peta.lapisGoogleHyb) peta.removeLayer(peta.lapisGoogleHyb); } catch (e) {}
+    try { if (peta.lapisEsriSat) peta.removeLayer(peta.lapisEsriSat); } catch (e) {}
+    try { if (peta.lapisGoogleMap) peta.removeLayer(peta.lapisGoogleMap); } catch (e) {}
+    try { if (peta.lapisOSM) peta.removeLayer(peta.lapisOSM); } catch (e) {}
+    try { if (peta.lapisMapLibre) peta.removeLayer(peta.lapisMapLibre); } catch (e) {}
+    
+    let label = 'Google Satelit';
+    if (target === 'google_hybrid') {
+      try { peta.lapisGoogleHyb.addTo(peta); } catch (e) { peta.lapisGoogleSat.addTo(peta); }
+      label = 'Google Satelit Hybrid';
+    } else if (target === 'esri_satelit') {
+      try { peta.lapisEsriSat.addTo(peta); } catch (e) { peta.lapisGoogleSat.addTo(peta); }
+      label = 'Esri World Imagery';
+    } else if (target === 'google_map') {
+      try { peta.lapisGoogleMap.addTo(peta); } catch (e) { peta.lapisOSM.addTo(peta); }
+      label = 'Google Peta Jalan';
+    } else if (target === 'osm') {
+      try { peta.lapisOSM.addTo(peta); } catch (e) {}
+      label = 'Peta Jalan (OpenStreetMap)';
+    } else if (target === 'maplibre_vector') {
+      try { peta.lapisGoogleHyb.addTo(peta); } catch (e) {}
+      peta.tipeBasemap = target;
+      label = 'MapLibre Vektor';
+      aktifkanMapLibre(peta);
+    } else {
+      try { peta.lapisGoogleSat.addTo(peta); } catch (e) {}
+      label = 'Google Satelit';
+    }
+    
+    peta.tipeBasemap = target;
+    try { localStorage.setItem('dkpoint_basemap', target); } catch (e) {}
+    if (typeof window.pesan === 'function') {
+      window.pesan('Basemap: ' + label);
+    }
+    return peta.tipeBasemap;
+  }
+
+  function dapatkanBasemap(peta) {
+    return (peta && peta.tipeBasemap) || 'google_satelit';
+  }
+
+  function fokusJawa(peta) {
+    if (!peta) return;
+    peta.setView(PUSAT_JAWA, ZOOM_JAWA, { animate: true });
+  }
+
+  /* ------------------- PARSER KML MANDIRI (OFFLINE) ------------------- */
+  function parseKoordinatKML(teks) {
+    if (!teks) return [];
+    return teks.trim().split(/\s+/).map(baris => {
+      const p = baris.split(',');
+      if (p.length >= 2) {
+        const lon = parseFloat(p[0]), lat = parseFloat(p[1]);
+        if (!isNaN(lat) && !isNaN(lon)) return [lat, lon];
+      }
+      return null;
+    }).filter(Boolean);
+  }
+
+  function parseKML(kmlString, warnaDefault = '#2E7D32', labelCol = 'name', tampilkanLabel = true, opsi = {}) {
+    if (!window.L) return null;
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(kmlString, 'text/xml');
+    const group = L.featureGroup();
+    group.kmlProps = new Set(['name', 'description']);
+
+    // Pane khusus (urutan antar-lapisan) — tiap vektor digambar di canvas pane-nya sendiri.
+    // Renderer boleh dilewatkan (opsi.renderer) agar bisa di-cache & tidak menumpuk saat reload.
+    const pane = opsi.pane;
+    const renderer = opsi.renderer || ((pane && L.canvas) ? L.canvas({ pane: pane }) : undefined);
+    const opsiPath = pane ? { pane: pane, renderer: renderer } : {};
+
+    const placemarks = xml.querySelectorAll('Placemark');
+    placemarks.forEach(pm => {
+      const nama = (pm.querySelector('name') || {}).textContent || 'Objek KML';
+      const desk = (pm.querySelector('description') || {}).textContent || '';
+      
+      const props = { name: nama, description: desk };
+      const extendedData = pm.querySelectorAll('ExtendedData Data, ExtendedData SimpleData');
+      extendedData.forEach(d => {
+        const key = d.getAttribute('name');
+        const val = (d.querySelector('value') || d).textContent;
+        if (key) { props[key] = val; group.kmlProps.add(key); }
+      });
+      
+      const labelText = props[labelCol] || '';
+
+      const addTooltip = (layer, jenis = 'polygon') => {
+        // Sajikan keterangan fitur sebagai TABEL (bukan deskripsi prosa)
+        const barisProp = Object.keys(props)
+          .filter(k => k !== 'name' && props[k] != null && String(props[k]).trim() !== '')
+          .map(k => `<tr><td class="popup-kml-k">${esc(k)}</td><td class="popup-kml-v">${esc(props[k])}</td></tr>`)
+          .join('');
+        const kmlPopupHtml = `
+          <div class="popup-kml-card">
+            <div class="popup-kml-title"><b>${esc(nama)}</b></div>
+            ${barisProp ? `<table class="popup-kml-tabel">${barisProp}</table>` : ''}
+          </div>`;
+        layer.bindPopup(kmlPopupHtml, { maxWidth: 250, className: 'popup-kml-card' });
+        if (tampilkanLabel !== false && labelText) {
+          // Sedikit digeser agar tidak tumpang tindih dengan fitur aslinya
+          const arah = jenis === 'point' ? 'right' : 'center';
+          const offset = jenis === 'point' ? [10, -6] : [0, -10];
+          layer.bindTooltip(labelText, {
+            permanent: true,
+            direction: arah,
+            offset: offset,
+            className: 'kml-label'
+          });
+        }
+        group.addLayer(layer);
+      };
+
+      // Poligon
+      const polygons = pm.querySelectorAll('Polygon');
+      polygons.forEach(poly => {
+        const outer = poly.querySelector('outerBoundaryIs coordinates');
+        if (outer) {
+          const latlngs = parseKoordinatKML(outer.textContent);
+          if (latlngs.length >= 3) {
+            const layer = L.polygon(latlngs, Object.assign({
+              color: warnaDefault, weight: 2, fillColor: warnaDefault, fillOpacity: 0.25,
+              smoothFactor: 2.5   // simplifikasi RENDER-ONLY (adaptif zoom); koordinat asli & ekspor tidak berubah
+            }, opsiPath));
+            addTooltip(layer, 'polygon');
+          }
+        }
+      });
+
+      // Garis (LineString)
+      const lines = pm.querySelectorAll('LineString');
+      lines.forEach(line => {
+        const coords = line.querySelector('coordinates');
+        if (coords) {
+          const latlngs = parseKoordinatKML(coords.textContent);
+          if (latlngs.length >= 2) {
+            const layer = L.polyline(latlngs, Object.assign({ color: warnaDefault, weight: 3, opacity: 0.85, smoothFactor: 2.5 }, opsiPath));
+            addTooltip(layer, 'line');
+          }
+        }
+      });
+
+      // Titik (Point)
+      const points = pm.querySelectorAll('Point');
+      points.forEach(pt => {
+        const coords = pt.querySelector('coordinates');
+        if (coords) {
+          const latlngs = parseKoordinatKML(coords.textContent);
+          if (latlngs.length >= 1) {
+            const layer = L.circleMarker(latlngs[0], Object.assign({
+              radius: 6, color: '#fff', weight: 2, fillColor: warnaDefault, fillOpacity: 0.9
+            }, opsiPath));
+            addTooltip(layer, 'point');
+          }
+        }
+      });
+    });
+
+    return group;
+  }
+
+  /* ------------------- URUTAN LAPISAN (PANE PER-LAYER) -------------------
+     Tiap lapisan (KML / raster) punya pane sendiri dengan zIndex yang bisa
+     diatur, sehingga urutan atas-bawah antar-lapisan benar-benar terkendali.
+     Rentang 251-399 dijaga di antara tilePane (200) dan overlayPane (400) agar
+     titik foto & lokasi pengguna selalu di paling atas. */
+  function paneLapisan(peta, id, zIndex) {
+    if (!peta || !peta.createPane) return undefined;
+    const nama = 'lap-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+    let p = peta.getPane(nama);
+    if (!p) p = peta.createPane(nama);
+    const z = Math.max(251, Math.min(399, 250 + (Number(zIndex) || 1)));
+    p.style.zIndex = String(z);
+    return nama;
+  }
+
+  /* ------------------- PETA RASTER GEOREFERENSI ------------------- */
+  function pasangRaster(peta, id, dataUrl, bounds, opasitas = 0.75, zIndex = 1) {
+    if (!peta || !window.L) return null;
+    hapusRaster(peta, id);
+
+    const b = L.latLngBounds(bounds);
+    const pane = paneLapisan(peta, id, zIndex);
+    const overlay = L.imageOverlay(dataUrl, b, {
+      opacity: opasitas,
+      interactive: true,
+      pane: pane
+    }).addTo(peta);
+
+    overlay.idRaster = id;
+    overlay.currentBounds = b;
+    peta.lapisRaster.set(id, overlay);
+    return overlay;
+  }
+
+  function setOpasitasRaster(peta, id, opasitas) {
+    if (!peta || !peta.lapisRaster) return;
+    const ov = peta.lapisRaster.get(id);
+    if (ov) ov.setOpacity(opasitas);
+  }
+
+  function hapusRaster(peta, id) {
+    if (!peta || !peta.lapisRaster) return;
+    const ov = peta.lapisRaster.get(id);
+    if (ov) {
+      peta.removeLayer(ov);
+      peta.lapisRaster.delete(id);
+    }
+  }
+
+  function geserRaster(peta, id, dLat, dLon) {
+    if (!peta || !peta.lapisRaster) return null;
+    const ov = peta.lapisRaster.get(id);
+    if (!ov) return null;
+    const b = ov.getBounds();
+    const sw = b.getSouthWest(), ne = b.getNorthEast();
+    const newBounds = L.latLngBounds(
+      [sw.lat + dLat, sw.lng + dLon],
+      [ne.lat + dLat, ne.lng + dLon]
+    );
+    ov.setBounds(newBounds);
+    ov.currentBounds = newBounds;
+    return newBounds;
+  }
+
+  /* Ubah ukuran & posisi raster di layar (piksel), skala SERAGAM supaya rasio gambar tetap.
+     p' = midCur + (p - midPrev) * faktor, berlaku untuk pojok kiri-atas dan kanan-bawah. */
+  function ubahRasterDiLayar(peta, ov, midPrev, midCur, faktor) {
+    const b = ov.getBounds();
+    const p1 = peta.latLngToContainerPoint(b.getNorthWest());
+    const p2 = peta.latLngToContainerPoint(b.getSouthEast());
+    const xf = (p) => L.point(midCur.x + (p.x - midPrev.x) * faktor, midCur.y + (p.y - midPrev.y) * faktor);
+    const nb = L.latLngBounds(peta.containerPointToLatLng(xf(p1)), peta.containerPointToLatLng(xf(p2)));
+    ov.setBounds(nb);
+    ov.currentBounds = nb;
+    return nb;
+  }
+
+  // Tombol Perbesar/Perkecil: seragam dari pusat raster (rasio tetap).
+  function skalaRaster(peta, id, faktor) {
+    if (!peta || !peta.lapisRaster) return null;
+    const ov = peta.lapisRaster.get(id);
+    if (!ov) return null;
+    const b = ov.getBounds();
+    const p1 = peta.latLngToContainerPoint(b.getNorthWest());
+    const p2 = peta.latLngToContainerPoint(b.getSouthEast());
+    const pusat = L.point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+    return ubahRasterDiLayar(peta, ov, pusat, pusat, faktor);
+  }
+
+  /* Freehand Sentuh (HP & desktop) dengan tombol Geser Gambar:
+     - OFF: peta bergerak dan zoom seperti biasa, termasuk di atas gambar.
+     - ON: tekan & geser di atas gambar untuk memindahkan gambar; dua jari = cubit (rasio tetap).
+       Di luar gambar peta tetap bisa digeser/zoom.
+     - Tidak ada pin sudut, jadi gambar tidak bisa dipipihkan atau dimiringkan. */
+  let dragAktif = false;
+  let dragHandler = null;
+
+  function aktifkanDragRaster(peta, id, onSelesaiGeser) {
+    nonaktifkanDragRaster(peta);
+    const ov = peta.lapisRaster.get(id);
+    if (!ov) return;
+
+    const wadah = peta.getContainer();
+    const titik = new Map();      // pointerId -> posisi di wadah peta (piksel), saat geser gambar
+    let modeOn = false;           // tombol Geser Gambar
+    let geser = false;            // gerakan geser gambar sedang berlangsung
+    let midSebelum = null, jarakSebelum = 0;
+
+    const posisi = (e) => {
+      const r = wadah.getBoundingClientRect();
+      return L.point(e.clientX - r.left, e.clientY - r.top);
+    };
+    const dalamGambar = (pt) => {
+      const b = ov.getBounds();
+      const a = peta.latLngToContainerPoint(b.getNorthWest());
+      const c = peta.latLngToContainerPoint(b.getSouthEast());
+      return pt.x >= Math.min(a.x, c.x) && pt.x <= Math.max(a.x, c.x) &&
+             pt.y >= Math.min(a.y, c.y) && pt.y <= Math.max(a.y, c.y);
+    };
+    const nilaiTengah = () => {
+      const arr = [...titik.values()];
+      if (arr.length === 1) return arr[0];
+      return L.point((arr[0].x + arr[1].x) / 2, (arr[0].y + arr[1].y) / 2);
+    };
+    const nilaiJarak = () => {
+      const arr = [...titik.values()];
+      if (arr.length < 2) return 0;
+      return Math.hypot(arr[0].x - arr[1].x, arr[0].y - arr[1].y);
+    };
+    const catatAwal = () => { midSebelum = nilaiTengah(); jarakSebelum = nilaiJarak(); };
+
+    const mulaiGeser = () => {
+      geser = true;
+      peta.dragging.disable();
+      peta.touchZoom.disable();
+      peta.doubleClickZoom.disable();
+      wadah.style.touchAction = 'none';
+      try { if (navigator.vibrate) navigator.vibrate(15); } catch (_) {}
+    };
+    const akhiriGeser = () => {
+      geser = false;
+      wadah.style.touchAction = '';
+      peta.dragging.enable();
+      peta.touchZoom.enable();
+      peta.doubleClickZoom.enable();
+    };
+
+    // Capture: dijalankan sebelum handler peta, sehingga peta tidak ikut bergerak.
+    const onDown = (e) => {
+      const pt = posisi(e);
+      if (geser) {                          // jari tambahan = cubit
+        titik.set(e.pointerId, pt);
+        catatAwal();
+        return;
+      }
+      if (!modeOn || !dalamGambar(pt)) return;   // mode OFF / di luar gambar: peta biasa
+      titik.set(e.pointerId, pt);
+      mulaiGeser();
+      catatAwal();
+    };
+
+    const onMoveGeser = (e) => {
+      if (!geser || !titik.has(e.pointerId)) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      titik.set(e.pointerId, posisi(e));
+      const mid = nilaiTengah();
+      const j = nilaiJarak();
+      const faktor = (titik.size >= 2 && jarakSebelum > 0 && j > 0) ? j / jarakSebelum : 1;
+      const nb = ubahRasterDiLayar(peta, ov, midSebelum, mid, faktor);
+      midSebelum = mid;
+      jarakSebelum = j;
+      if (onSelesaiGeser) onSelesaiGeser(nb);
+    };
+
+    const onUp = (e) => {
+      if (!titik.has(e.pointerId)) return;
+      titik.delete(e.pointerId);
+      if (titik.size === 0) {
+        if (geser) akhiriGeser();
+      } else {
+        catatAwal();
+      }
+    };
+
+    const setAktif = (on) => {
+      modeOn = !!on;
+      if (!modeOn && geser) { titik.clear(); akhiriGeser(); }
+    };
+
+    wadah.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('pointermove', onMoveGeser, true);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+
+    dragAktif = true;
+    dragHandler = {
+      ov,
+      setAktif,
+      cleanup: () => {
+        wadah.removeEventListener('pointerdown', onDown, true);
+        window.removeEventListener('pointermove', onMoveGeser, true);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        if (geser) akhiriGeser();
+      }
+    };
+  }
+
+  function setModeGeserRaster(peta, on) {
+    if (dragHandler && dragHandler.setAktif) dragHandler.setAktif(!!on);
+  }
+
+  function nonaktifkanDragRaster(peta) {
+    if (!dragAktif || !dragHandler) return;
+    dragAktif = false;
+    if (dragHandler.cleanup) dragHandler.cleanup();
+    peta.dragging.enable();
+    dragHandler = null;
+  }
+
+  function pusatkanRasterKeTampilan(peta, id) {
+    if (!peta || !peta.lapisRaster) return null;
+    const ov = peta.lapisRaster.get(id);
+    if (!ov) return null;
+    const centerTarget = peta.getCenter();
+    const b = ov.getBounds();
+    const c = b.getCenter();
+    const dLat = centerTarget.lat - c.lat;
+    const dLon = centerTarget.lng - c.lng;
+    return geserRaster(peta, id, dLat, dLon);
+  }
+
+  function zoomKeBounds(peta, bounds, padding = [40, 40]) {
+    if (!peta || !bounds || !window.L) return false;
+    try {
+      const b = L.latLngBounds(bounds);
+      if (b.isValid()) {
+        peta.fitBounds(b, { padding, maxZoom: 18, animate: true });
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  /* Kalibrasi 2 Titik Ikat (Ground Control Points):
+     Menyesuaikan translasi, rotasi, dan skala seragam tanpa distorsi rasio gambar */
+  function kalibrasiDuaTitikIkat(peta, id, r1, m1, r2, m2) {
+    if (!peta || !peta.lapisRaster) return null;
+    const ov = peta.lapisRaster.get(id);
+    if (!ov) return null;
+
+    const b = ov.getBounds();
+    const sw = b.getSouthWest(), ne = b.getNorthEast();
+
+    // Vektor di raster (r1 -> r2)
+    const dLatR = r2.lat - r1.lat;
+    const dLonR = r2.lng - r1.lng;
+    const distR = Math.hypot(dLatR, dLonR);
+    if (distR <= 1e-9) return null;
+
+    // Vektor di peta target (m1 -> m2)
+    const dLatM = m2.lat - m1.lat;
+    const dLonM = m2.lng - m1.lng;
+    const distM = Math.hypot(dLatM, dLonM);
+    if (distM <= 1e-9) return null;
+
+    // Skala seragam & rotasi tanpa ubah rasio
+    const skala = distM / distR;
+    const angleR = Math.atan2(dLatR, dLonR);
+    const angleM = Math.atan2(dLatM, dLonM);
+    const dAngle = angleM - angleR;
+    const cosA = Math.cos(dAngle), sinA = Math.sin(dAngle);
+
+    function transformTitik(p) {
+      const dx = p.lng - r1.lng;
+      const dy = p.lat - r1.lat;
+      const rx = skala * (dx * cosA - dy * sinA);
+      const ry = skala * (dx * sinA + dy * cosA);
+      return L.latLng(m1.lat + ry, m1.lng + rx);
+    }
+
+    const pSW = transformTitik(sw);
+    const pNE = transformTitik(ne);
+    const pNW = transformTitik(L.latLng(ne.lat, sw.lng));
+    const pSE = transformTitik(L.latLng(sw.lat, ne.lng));
+
+    const minLat = Math.min(pSW.lat, pNE.lat, pNW.lat, pSE.lat);
+    const maxLat = Math.max(pSW.lat, pNE.lat, pNW.lat, pSE.lat);
+    const minLng = Math.min(pSW.lng, pNE.lng, pNW.lng, pSE.lng);
+    const maxLng = Math.max(pSW.lng, pNE.lng, pNW.lng, pSE.lng);
+
+    const newBounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+    ov.setBounds(newBounds);
+    ov.currentBounds = newBounds;
+    return newBounds;
+  }
+
+  /* ------------------- EKSPOR DATA ------------------- */
+  function keGeoJSON(titik) {
+    return JSON.stringify({
+      type: 'FeatureCollection',
+      name: 'Dokumentasi Foto Lapangan dkpoint',
+      crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
+      features: (titik || []).filter(punyaKoordinat).map(t => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [Number(t.lon), Number(t.lat)] },
+        properties: {
+          petugas: t.nama || '', email: t.email || '', room: t.room || '',
+          waktu: t.waktu || '', catatan: t.catatan || '',
+          akurasi_m: t.akurasi == null ? null : Number(t.akurasi),
+          berkas: t.namaBerkas || '', link_drive: t.linkDrive || ''
+        }
+      }))
+    }, null, 1);
+  }
+
+  function keKML(titik) {
+    const daftar = (titik || []).filter(punyaKoordinat);
+    const gaya = {};
+    daftar.forEach(t => { gaya[t.room || 'lain'] = warnaRoom(t.room); });
+
+    const keAABBGGRR = h => {
+      const r = h.slice(1, 3), g = h.slice(3, 5), b = h.slice(5, 7);
+      return 'ff' + b.toLowerCase() + g.toLowerCase() + r.toLowerCase();
+    };
+
+    const idGaya = nama => 'gaya_' + String(nama).replace(/[^\w]/g, '_');
+
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>\n' +
+      '<name>Dokumentasi Foto Lapangan dkpoint</name>\n' +
+      Object.keys(gaya).map(r =>
+        '<Style id="' + idGaya(r) + '"><IconStyle><color>' + keAABBGGRR(gaya[r]) + '</color>' +
+        '<scale>1.1</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>' +
+        '</IconStyle></Style>\n').join('') +
+      daftar.map(t => {
+        const fotoTag = t.thumb
+          ? '<div style="margin-bottom:8px;text-align:center;"><img src="' + t.thumb + '" style="max-width:320px;width:100%;height:auto;border-radius:6px;border:1px solid #ccc;box-shadow:0 1px 3px rgba(0,0,0,0.15);" alt="Foto" /></div>'
+          : '';
+        const driveLink = t.linkDrive
+          ? '<div style="margin-top:6px;"><a href="' + esc(t.linkDrive) + '" target="_blank" rel="noopener" style="color:#1a73e8;font-weight:600;text-decoration:none;">🔗 Buka Berkas Asli di Cloud/Drive</a></div>'
+          : '';
+        const barisBerkas = t.namaBerkas
+          ? '<tr><td style="color:#666;padding:2px 4px 2px 0;">Berkas:</td><td style="padding:2px 0;word-break:break-all;"><b>' + esc(t.namaBerkas) + '</b></td></tr>'
+          : '';
+
+        return '<Placemark>\n' +
+          '  <name>' + esc((t.namaBerkas || t.nama || 'Foto') + ' — ' + (t.waktu || '')) + '</name>\n' +
+          '  <styleUrl>#' + idGaya(t.room || 'lain') + '</styleUrl>\n' +
+          '  <description><![CDATA[\n' +
+          '    <div style="font-family:Roboto,Arial,sans-serif;font-size:12.5px;line-height:1.45;color:#222;max-width:330px;">\n' +
+          '      ' + fotoTag + '\n' +
+          '      <table style="width:100%;border-collapse:collapse;font-size:12px;">\n' +
+          barisBerkas +
+          '        <tr><td style="color:#666;padding:2px 4px 2px 0;">Petugas:</td><td style="padding:2px 0;"><b>' + esc(t.nama || '-') + '</b></td></tr>\n' +
+          '        <tr><td style="color:#666;padding:2px 4px 2px 0;">Room:</td><td style="padding:2px 0;">' + esc(t.room || '-') + '</td></tr>\n' +
+          '        <tr><td style="color:#666;padding:2px 4px 2px 0;">Waktu:</td><td style="padding:2px 0;">' + esc(t.waktu || '-') + '</td></tr>\n' +
+          '        <tr><td style="color:#666;padding:2px 4px 2px 0;">Koordinat:</td><td style="padding:2px 0;">' + Number(t.lat).toFixed(6) + ', ' + Number(t.lon).toFixed(6) + '</td></tr>\n' +
+          '        <tr><td style="color:#666;padding:2px 4px 2px 0;">Akurasi GPS:</td><td style="padding:2px 0;">' + (t.akurasi ? '±' + Math.round(t.akurasi) + ' m' : 'tidak tercatat') + '</td></tr>\n' +
+          (t.catatan && t.catatan !== '-' ? '        <tr><td style="color:#666;padding:2px 4px 2px 0;vertical-align:top;">Catatan:</td><td style="padding:2px 0;font-style:italic;">"' + esc(t.catatan) + '"</td></tr>\n' : '') +
+          '      </table>\n' +
+          '      ' + driveLink + '\n' +
+          '    </div>\n' +
+          '  ]]></description>\n' +
+          '  <Point><coordinates>' + Number(t.lon) + ',' + Number(t.lat) + ',0</coordinates></Point>\n' +
+          '</Placemark>\n';
+      }).join('') +
+      '</Document></kml>';
+  }
+
+  function unduh(namaBerkas, isi, mime) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([isi], { type: mime + ';charset=utf-8' }));
+    a.download = namaBerkas;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  const capTanggal = () => new Date().toISOString().slice(0, 10);
+
+  return {
+    gambar: gambar,
+    warnaRoom: warnaRoom,
+    jumlahBerkoordinat: t => (t || []).filter(punyaKoordinat).length,
+    perbaruiLokasiUser: perbaruiLokasiUser,
+    pusatkanKeUser: pusatkanKeUser,
+    gantiBasemap: gantiBasemap,
+    toggle3D: toggle3D,
+    gyro3D: gyro3D,
+    matikan3D: matikan3D,
+    dapatkanBasemap: dapatkanBasemap,
+    fokusJawa: fokusJawa,
+    parseKML: parseKML,
+    paneLapisan: paneLapisan,
+    pasangRaster: pasangRaster,
+    setOpasitasRaster: setOpasitasRaster,
+    hapusRaster: hapusRaster,
+    geserRaster: geserRaster,
+    skalaRaster: skalaRaster,
+    aktifkanDragRaster: aktifkanDragRaster,
+    setModeGeserRaster: setModeGeserRaster,
+    nonaktifkanDragRaster: nonaktifkanDragRaster,
+    pusatkanRasterKeTampilan: pusatkanRasterKeTampilan,
+    zoomKeBounds: zoomKeBounds,
+    kalibrasiDuaTitikIkat: kalibrasiDuaTitikIkat,
+    keGeoJSON: keGeoJSON,
+    keKML: keKML,
+    unduhGeoJSON: (titik, label) =>
+      unduh('Dokumentasi_' + (label || 'semua') + '_' + capTanggal() + '.geojson',
+            keGeoJSON(titik), 'application/geo+json'),
+    unduhKML: (titik, label) =>
+      unduh('Dokumentasi_' + (label || 'semua') + '_' + capTanggal() + '.kml',
+            keKML(titik), 'application/vnd.google-earth.kml+xml')
+  };
+})();

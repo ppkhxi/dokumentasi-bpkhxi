@@ -2,12 +2,15 @@
  * Login memakai akun MEGA yang sama dengan di HP. Tidak ada server: browser berbicara
  * langsung ke MEGA. Struktur data (dibuat oleh aplikasi HP):
  *   DKPOINT_DOKUMENTASI / <ROOM> / <PETUGAS> / ROOM_USER_NNN_LAT_LON.jpg
- *                                             / _indeks.json   (ditulis HP: no, koordinat, catatan, waktu, thumbnail)
- *                                             / _edit.json     (ditulis space: koreksi no, koordinat, catatan)
- *   DKPOINT_DOKUMENTASI / _peta / *.kml        (ditulis space; sinkron ke HP menyusul)
+ *                                             / _indeks.json   (no, koordinat, catatan, waktu, thumbnail; diperbarui HP & space)
+ *   DKPOINT_DOKUMENTASI / _peta / *.kml        (lapisan vektor, ditulis space)
+ *                               / raster_*.jpg|png + raster_*.json  (lapisan raster + posisi/bounds, ditulis space)
+ * Edit tabel di space MENIMPA berkas foto (EXIF GPS + deskripsi, dan nama berkas) serta _indeks.json.
  */
 (function () {
   'use strict';
+  // Pembacaan GeoPDF mencoba mengurai bagian PDF yang bukan zlib; galatnya tidak berpengaruh pada hasil.
+  window.addEventListener('unhandledrejection', e => { if (/compressed data/i.test(String(e.reason && e.reason.message))) e.preventDefault(); });
   const FOLDER_MASTER = 'DKPOINT_DOKUMENTASI';
   const KUNCI_SESI = 'space_sesi_v1';
   const $ = id => document.getElementById(id);
@@ -17,7 +20,7 @@
     storage: null, demo: false, master: null,
     rows: [], folders: new Map(),            // folders: kunci "ROOM/PETUGAS" -> {node, edit:{}}
     f: { room: '', petugas: '', q: '' }, urut: { k: 'ts', turun: true },
-    tab: 'tabel', sedangEdit: null, kml: [], blobFoto: new Map()
+    tab: 'tabel', sedangEdit: null, kml: [], raster: [], geser: null, blobFoto: new Map()
   };
 
   /* ---------------- util ---------------- */
@@ -133,10 +136,8 @@
       const jpg = anak.filter(n => !n.directory && /\.jpe?g$/i.test(n.name));
       if (!jpg.length) return;
       const nodeIdx = anak.find(n => !n.directory && n.name === '_indeks.json');
-      const nodeEdit = anak.find(n => !n.directory && n.name === '_edit.json');
-      let idx = {}, edit = {};
+      let idx = {}; const edit = {};
       if (nodeIdx) { try { (await bacaJson(nodeIdx)).foto.forEach(x => idx[x.f] = x); } catch (_) {} }
-      if (nodeEdit) { try { edit = (await bacaJson(nodeEdit)).e || {}; } catch (_) {} }
       S.folders.set(u.room + '/' + u.petugas, { node: u.node, edit });
       jpg.forEach(n => {
         const i = idx[n.name], p = uraiNama(n.name), e = edit[n.name] || {};
@@ -239,25 +240,54 @@
     else if (aksi === 'simpan') await simpanEdit(r, tr);
   };
 
+  /* Nama berkas baru: ROOM_USER_NNN_LAT_LON.jpg (pola yang sama dengan unggahan HP). */
+  function namaBerkasBaru(nama, no, lat, lon) {
+    if (nama.includes('__')) return nama;                       // format lama: nama dibiarkan
+    const b = nama.replace(/\.jpe?g$/i, '').split('_'); let awalan;
+    const adaKoord = b.length >= 5 && isFinite(parseFloat(b[b.length - 2])) && isFinite(parseFloat(b[b.length - 1]));
+    if (adaKoord) awalan = b.slice(0, b.length - 3).join('_');
+    else if (b.length >= 3 && /^\d+$/.test(b[b.length - 1])) awalan = b.slice(0, b.length - 1).join('_');
+    else return nama;
+    const nn = String(no == null ? 1 : no).padStart(3, '0');
+    const k = lat != null && lon != null ? '_' + Number(lat).toFixed(5) + '_' + Number(lon).toFixed(5) : '';
+    return awalan + '_' + nn + k + '.jpg';
+  }
+  async function unggahNode(folder, nama, bytes) {
+    const aksi = folder.upload({ name: nama, size: bytes.byteLength }, bytes);
+    return new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); });
+  }
+
   async function simpanEdit(r, tr) {
     const val = f => tr.querySelector(`[data-f="${f}"]`).value.trim();
     const num = (t, lo, hi) => { if (t === '') return null; const v = Number(t.replace(',', '.')); return isFinite(v) && v >= lo && v <= hi ? v : NaN; };
     const no = num(val('no'), 0, 99999), lat = num(val('lat'), -90, 90), lon = num(val('lon'), -180, 180), cat = val('catatan').slice(0, 250);
     if ([no, lat, lon].some(Number.isNaN)) { status('Nilai tidak valid. Nomor harus angka; latitude -90..90; longitude -180..180.', true); return; }
-    const e = {};
-    if (no !== r.asli.no) e.no = no;
-    if (lat !== r.asli.lat) e.lat = lat;
-    if (lon !== r.asli.lon) e.lon = lon;
-    if (cat !== (r.asli.catatan || '')) e.c = cat;
-    const fol = S.folders.get(r.folder);
-    status('Menyimpan…');
+    if ((lat == null) !== (lon == null)) { status('Isi latitude dan longitude bersama-sama, atau kosongkan keduanya.', true); return; }
+    if (no === r.no && lat === r.lat && lon === r.lon && cat === (r.catatan || '')) { S.sedangEdit = null; renderTabel(); return; }
+    if (!S.demo && !confirm('Perubahan ini MENIMPA berkas foto asli di MEGA (EXIF dan nama berkas) dan tidak bisa dikembalikan.\n\nCatatan: tulisan watermark di dalam gambar tidak ikut berubah.\n\nLanjutkan?')) return;
+    status('Menyimpan ke foto di MEGA…');
     try {
-      const baru = Object.assign({}, fol.edit);
-      if (Object.keys(e).length) baru[r.f] = e; else delete baru[r.f];
-      if (!S.demo) await tulisJson(fol.node, '_edit.json', { v: 1, e: baru, oleh: 'spacedkpoint', ts: Date.now() });
-      fol.edit = baru;
-      r.no = no; r.lat = lat; r.lon = lon; r.catatan = cat; r.diedit = Object.keys(e).length > 0;
-      S.sedangEdit = null; renderTabel(); status('Tersimpan.');
+      const nama = namaBerkasBaru(r.f, no, lat, lon);
+      if (!S.demo) {
+        const fol = S.folders.get(r.folder).node;
+        if (nama !== r.f && (fol.children || []).some(n => n.name === nama)) throw new Error('Sudah ada berkas bernama ' + nama + ' di folder ini.');
+        let bytes = new Uint8Array(await r.node.downloadBuffer());
+        if (lat != null && lon != null) bytes = window.ExifGps.sematkan(bytes, { lat, lon, ts: r.ts || Date.now(), deskripsi: cat || 'Dokumentasi dkpoint' });
+        const nodeBaru = await unggahNode(fol, nama, bytes);          // unggah dulu, baru hapus yang lama
+        try { await r.node.delete(true); } catch (_) {}
+        // perbarui _indeks.json di folder petugas
+        const nodeIdx = (fol.children || []).find(n => !n.directory && n.name === '_indeks.json');
+        let daftar = []; if (nodeIdx) { try { daftar = (await bacaJson(nodeIdx)).foto || []; } catch (_) {} }
+        const lama = daftar.find(x => x.f === r.f) || { ts: r.ts, nm: r.petugas, th: r.th || '' };
+        daftar = daftar.filter(x => x.f !== r.f && x.f !== nama);
+        daftar.push(Object.assign({}, lama, { f: nama, no, lat, lon, c: cat }));
+        await tulisJson(fol, '_indeks.json', { v: 1, foto: daftar });
+        r.node = nodeBaru;
+      }
+      r.f = nama; r.key = r.folder + '/' + nama;
+      r.no = no; r.lat = lat; r.lon = lon; r.catatan = cat;
+      S.blobFoto.delete(r.key);
+      S.sedangEdit = null; renderTabel(); status('Tersimpan di berkas foto.');
     } catch (err) { status('Gagal menyimpan ke MEGA: ' + (err.message || err), true); }
   }
 
@@ -321,6 +351,8 @@
         else if (r.checked) { peta.removeLayer(dasarSat); dasarOsm.addTo(peta); dasarOsm.bringToBack(); }
       });
       lapisFoto = L.featureGroup().addTo(peta);
+      peta.lapisRaster = new Map();                 // dipakai fungsi raster di peta.js
+      pasangRodaRaster();
     }
     setTimeout(() => peta.invalidateSize(), 50);
     gambarTitikFoto();
@@ -366,6 +398,7 @@
       const berkas = folder ? (folder.children || []).filter(n => !n.directory && /\.kml$/i.test(n.name)) : [];
       berkas.forEach((n, i) => S.kml.push({ nama: n.name, node: n, layer: null, aktif: false, warna: WARNA[i % WARNA.length], opa: 1 }));
     }
+    await muatDaftarRaster();
     daftarLapisan();
   }
 
@@ -375,7 +408,15 @@
     ul.innerHTML = foto + S.kml.map((k, i) => `<li data-i="${i}"><div class="baris">
       <label title="${esc(k.nama)}"><input type="checkbox" data-a="aktif" ${k.aktif ? 'checked' : ''}> <span style="color:${k.warna}">●</span> ${esc(k.nama)}</label>
       <button class="mini" data-a="zoom" title="Perbesar ke lapisan">⌖</button><button class="mini" data-a="hapus" title="Hapus">✕</button></div>
-      <input type="range" data-a="opa" min="0.1" max="1" step="0.1" value="${k.opa}" title="Transparansi"></li>`).join('');
+      <input type="range" data-a="opa" min="0.1" max="1" step="0.1" value="${k.opa}" title="Transparansi"></li>`).join('') +
+      S.raster.map((r, i) => `<li data-r="${i}"><div class="baris">
+      <label title="${esc(r.nama)}"><input type="checkbox" data-a="raktif" ${r.aktif ? 'checked' : ''}> 🗺 ${esc(r.nama)}</label>
+      <button class="mini" data-a="rzoom" title="Perbesar ke raster">⌖</button><button class="mini" data-a="rhapus" title="Hapus">✕</button></div>
+      <input type="range" data-a="ropa" min="0.1" max="1" step="0.05" value="${r.opa}" title="Transparansi">
+      <div class="baris" style="margin-top:6px;flex-wrap:wrap">
+        <button class="mini ${S.geser === r.id ? 'utama' : ''}" data-a="rgeser" title="Seret raster untuk memindahkan; roda mouse untuk memperbesar/memperkecil (rasio tetap)">Shift${S.geser === r.id ? ' (aktif)' : ''}</button>
+        ${S.geser === r.id ? '<button class="mini" data-a="rminus">−</button><button class="mini" data-a="rplus">+</button>' : ''}
+        ${r.kotor ? '<button class="mini utama" data-a="rsimpan">Simpan posisi</button>' : ''}</div></li>`).join('');
     const cb = $('cbFoto'); if (cb) cb.onchange = () => cb.checked ? peta.addLayer(lapisFoto) : peta.removeLayer(lapisFoto);
   }
 
@@ -422,6 +463,154 @@
       const k = { nama: berkas.name, node, layer, aktif: true, warna: WARNA[S.kml.length % WARNA.length], opa: 1 };
       S.kml.push(k); layer.addTo(peta); peta.fitBounds(layer.getBounds().pad(.1)); daftarLapisan(); status('Lapisan ditambahkan.');
     } catch (err) { status('Gagal menambah KML: ' + (err.message || err), true); }
+  };
+
+  /* ---------------- raster (JPG / PNG / PDF, georeferensi) ---------------- */
+  const bKeArray = b => [[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]];
+  async function folderPeta() {
+    let f = (S.master.children || []).find(n => n.directory && n.name === '_peta');
+    if (!f) f = await S.storage.mkdir({ name: '_peta', target: S.master });
+    return f;
+  }
+  const rasterId = id => S.raster.find(r => r.id === id);
+
+  async function muatDaftarRaster() {
+    S.raster = [];
+    if (S.demo) {
+      const c = document.createElement('canvas'); c.width = 600; c.height = 400; const g = c.getContext('2d');
+      g.fillStyle = '#e9d8a6'; g.fillRect(0, 0, 600, 400); g.strokeStyle = '#7f5539'; g.lineWidth = 3;
+      for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo(i * 100, 0); g.lineTo(i * 100, 400); g.stroke(); }
+      for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(0, i * 100); g.lineTo(600, i * 100); g.stroke(); }
+      g.fillStyle = '#7f5539'; g.font = '40px sans-serif'; g.fillText('RASTER CONTOH', 150, 210);
+      S.raster.push({ id: 'raster_demo', nama: 'contoh-raster.png', bounds: [[-7.86, 110.30], [-7.74, 110.50]], opa: 0.75, aktif: true, url: c.toDataURL('image/png'), folder: null, kotor: false });
+      PETA.pasangRaster(peta, 'raster_demo', S.raster[0].url, S.raster[0].bounds, 0.75);
+      return;
+    }
+    const folder = S.master && (S.master.children || []).find(n => n.directory && n.name === '_peta');
+    if (!folder) return;
+    const js = (folder.children || []).filter(n => !n.directory && /^raster_.*\.json$/i.test(n.name));
+    await pool(js, 3, async n => {
+      try {
+        const m = await bacaJson(n);
+        const img = (folder.children || []).find(x => x.name === m.img);
+        if (img && m.bounds) S.raster.push({ id: n.name.replace(/\.json$/i, ''), nama: m.nama || m.img, bounds: m.bounds, opa: m.opasitas || 0.75, aktif: false, w: m.w, h: m.h, nodeImg: img, folder, url: null, kotor: false });
+      } catch (_) {}
+    });
+    S.raster.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  async function tulisJsonRaster(r) {
+    await tulisJson(r.folder, r.id + '.json', { v: 1, nama: r.nama, img: r.nodeImg.name, bounds: r.bounds, opasitas: r.opa, w: r.w, h: r.h, ts: Date.now() });
+  }
+
+  async function pasangLayerRaster(r) {
+    if (!r.url) {
+      status('Mengunduh ' + r.nama + '…');
+      const buf = await r.nodeImg.downloadBuffer();
+      r.url = URL.createObjectURL(new Blob([buf], { type: /\.png$/i.test(r.nodeImg.name) ? 'image/png' : 'image/jpeg' }));
+      status('');
+    }
+    PETA.pasangRaster(peta, r.id, r.url, r.bounds, r.opa);
+  }
+  function lepasLayerRaster(r) {
+    const ov = peta.lapisRaster.get(r.id);
+    if (ov) r.bounds = bKeArray(ov.getBounds());
+    if (S.geser === r.id) hentikanGeser();
+    PETA.hapusRaster(peta, r.id);
+  }
+  function hentikanGeser() { S.geser = null; try { PETA.nonaktifkanDragRaster(peta); } catch (_) {} }
+
+  // Roda mouse = perbesar/perkecil raster (rasio tetap) selama mode Shift aktif dan kursor di atas raster.
+  function pasangRodaRaster() {
+    peta.getContainer().addEventListener('wheel', e => {
+      if (!S.geser) return;
+      const ov = peta.lapisRaster.get(S.geser); if (!ov) return;
+      if (!ov.getBounds().contains(peta.mouseEventToLatLng(e))) return;
+      e.preventDefault(); e.stopPropagation();
+      PETA.skalaRaster(peta, S.geser, e.deltaY < 0 ? 1.06 : 1 / 1.06);
+      const r = rasterId(S.geser); if (r && !r.kotor) { r.kotor = true; daftarLapisan(); }
+    }, { passive: false, capture: true });
+  }
+
+  $('daftarLapisan').addEventListener('input', e => {
+    if (e.target.dataset.a !== 'ropa') return;
+    const r = S.raster[+e.target.closest('li[data-r]').dataset.r]; r.opa = +e.target.value;
+    PETA.setOpasitasRaster(peta, r.id, r.opa);
+    if (r.folder && !r.kotor) { r.kotor = true; daftarLapisan(); }
+  });
+  $('daftarLapisan').addEventListener('change', async e => {
+    if (e.target.dataset.a !== 'raktif') return;
+    const r = S.raster[+e.target.closest('li[data-r]').dataset.r]; r.aktif = e.target.checked;
+    try { if (r.aktif) await pasangLayerRaster(r); else lepasLayerRaster(r); }
+    catch (err) { r.aktif = false; e.target.checked = false; status('Raster tidak bisa dimuat: ' + (err.message || err), true); }
+    daftarLapisan();
+  });
+  $('daftarLapisan').addEventListener('click', async e => {
+    const a = e.target.dataset.a; if (!a || a[0] !== 'r') return;
+    const li = e.target.closest('li[data-r]'); if (!li) return; const r = S.raster[+li.dataset.r];
+    if (a === 'rzoom') {
+      if (!r.aktif) { r.aktif = true; try { await pasangLayerRaster(r); } catch (err) { r.aktif = false; status('Raster tidak bisa dimuat: ' + (err.message || err), true); return; } }
+      const ov = peta.lapisRaster.get(r.id); if (ov) peta.fitBounds(ov.getBounds().pad(.1)); daftarLapisan();
+    } else if (a === 'rgeser') {
+      if (S.geser === r.id) { hentikanGeser(); }
+      else {
+        if (!r.aktif) { r.aktif = true; try { await pasangLayerRaster(r); } catch (err) { r.aktif = false; status('Raster tidak bisa dimuat: ' + (err.message || err), true); return; } }
+        hentikanGeser(); S.geser = r.id;
+        PETA.aktifkanDragRaster(peta, r.id, () => { if (!r.kotor) { r.kotor = true; daftarLapisan(); } });
+        PETA.setModeGeserRaster(peta, true);
+        status('Mode Shift aktif: seret raster untuk memindahkan, roda mouse atau tombol +/− untuk skala. Di luar raster peta bergerak biasa.');
+      }
+      daftarLapisan();
+    } else if (a === 'rplus' || a === 'rminus') {
+      PETA.skalaRaster(peta, r.id, a === 'rplus' ? 1.1 : 1 / 1.1); if (!r.kotor) { r.kotor = true; daftarLapisan(); }
+    } else if (a === 'rsimpan') {
+      const ov = peta.lapisRaster.get(r.id); if (ov) r.bounds = bKeArray(ov.getBounds());
+      try { if (r.folder && !S.demo) { status('Menyimpan posisi…'); await tulisJsonRaster(r); } r.kotor = false; status('Posisi raster tersimpan.'); daftarLapisan(); }
+      catch (err) { status('Gagal menyimpan posisi: ' + (err.message || err), true); }
+    } else if (a === 'rhapus') {
+      if (!confirm('Hapus raster ' + r.nama + ' dari MEGA? (masuk Tempat Sampah MEGA)')) return;
+      try {
+        lepasLayerRaster(r);
+        if (r.folder && !S.demo) { try { await r.nodeImg.delete(); } catch (_) {} const nj = (r.folder.children || []).find(n => n.name === r.id + '.json'); if (nj) { try { await nj.delete(); } catch (_) {} } }
+        S.raster.splice(+li.dataset.r, 1); daftarLapisan(); status('Raster dihapus.');
+      } catch (err) { status('Gagal menghapus: ' + (err.message || err), true); }
+    }
+  });
+
+  $('fileRaster').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (!/\.(jpe?g|png|pdf)$/i.test(f.name)) { status('Pilih berkas JPG, PNG, atau PDF.', true); return; }
+    try {
+      status('Memproses ' + f.name + '…');
+      const hasil = await kompresGambarRaster(f);
+      const R = hasil.ratio || (hasil.width / hasil.height);
+      let bounds = null, info = '';
+      if (/\.pdf$/i.test(f.name)) {
+        const geo = await ekstrakGeoPdf(f);
+        if (geo && geo.bounds) { bounds = geo.bounds; info = ' (sesuai georeferensi GeoPDF' + (geo.epsg ? ' EPSG:' + geo.epsg : '') + ')'; }
+      }
+      if (!bounds) {                                     // tanpa georeferensi: tempatkan di tengah tampilan, rasio utuh
+        const c = peta.getCenter(), v = peta.getBounds();
+        const dLat = Math.min(Math.abs(v.getNorth() - v.getSouth()) * 0.5, 0.2);
+        const dLon = (dLat * R) / Math.max(0.15, Math.cos(c.lat * Math.PI / 180));
+        bounds = [[c.lat - dLat / 2, c.lng - dLon / 2], [c.lat + dLat / 2, c.lng + dLon / 2]];
+        info = ' (diletakkan di tengah peta; atur dengan Shift)';
+      }
+      const id = 'raster_' + Date.now();
+      const png = /^data:image\/png/.test(hasil.dataUrl);
+      const nama = f.name.replace(/\.[^.]+$/, '') + (png ? '.png' : '.jpg');
+      const r = { id, nama, bounds, opa: 0.75, aktif: true, w: hasil.width, h: hasil.height, url: hasil.dataUrl, folder: null, kotor: false };
+      if (!S.demo) {
+        status('Mengunggah raster ke MEGA… (' + hasil.ukuranKB + ' KB)');
+        r.folder = await folderPeta();
+        r.nodeImg = await unggahNode(r.folder, id + (png ? '.png' : '.jpg'), window.ExifGps.dataUrlKeUint8Array(hasil.dataUrl));
+        await tulisJsonRaster(r);
+      }
+      S.raster.push(r);
+      PETA.pasangRaster(peta, id, r.url, bounds, r.opa);
+      PETA.zoomKeBounds(peta, bounds, [40, 40]);
+      daftarLapisan(); status('Raster "' + nama + '" ditambahkan' + info + '.');
+    } catch (err) { status('Gagal menambah raster: ' + (err.message || err), true); }
   };
 
   /* ---------------- mode demo (tanpa MEGA) ---------------- */
