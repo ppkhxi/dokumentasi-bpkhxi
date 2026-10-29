@@ -83,3 +83,5 @@ tr.diedit-baris td{background:#1b231c}
 #lightbox dt{color:var(--redup)}#lightbox dd{margin:0;word-break:break-word}
 .tombol{display:inline-block;background:var(--hijau2);color:#fff;text-decoration:none;padding:7px 14px;border-radius:8px;font-weight:600}
 @media(max-width:800px){#lightbox .isi{grid-template-columns:1fr;overflow:auto}}
+
+.lencana{background:var(--hijau2);color:#fff;border-radius:6px;padding:0 6px;font-size:11px;font-weight:600}

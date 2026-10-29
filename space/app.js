@@ -20,7 +20,8 @@
     storage: null, demo: false, master: null,
     rows: [], folders: new Map(),            // folders: kunci "ROOM/PETUGAS" -> {node, edit:{}}
     f: { room: '', petugas: '', q: '' }, urut: { k: 'ts', turun: true },
-    tab: 'tabel', sedangEdit: null, kml: [], raster: [], geser: null, blobFoto: new Map()
+    tab: 'tabel', sedangEdit: null, kml: [], raster: [], geser: null, blobFoto: new Map(),
+    idxCache: new Map(), lengkap: new Map(), baruKey: new Set(), memuat: false, terakhir: null
   };
 
   /* ---------------- util ---------------- */
@@ -110,9 +111,12 @@
     return { lat, lon, no };
   }
 
-  async function muatData(paksa) {
-    status('Membaca folder MEGA…');
+  async function muatData(paksa, diam) {
+    if (S.memuat) return;
+    S.memuat = true;
+    if (!diam) status('Membaca folder MEGA…');
     try {
+      const sebelum = new Set(S.rows.map(r => r.key));
       if (S.demo) { demoData(); }
       else {
         if (paksa) { try { await S.storage.reload(true); } catch (_) { await S.storage.reload(); } }
@@ -120,11 +124,23 @@
         if (!S.master) { S.rows = []; status('Folder ' + FOLDER_MASTER + ' belum ada di akun ini. Unggah foto dari HP dulu.'); isiFilter(); render(); return; }
         await bacaFolder();
       }
+      let baru = 0;
+      if (diam && sebelum.size) S.rows.forEach(r => { if (!sebelum.has(r.key)) { S.baruKey.add(r.key); r.baru = true; baru++; } });
+      S.terakhir = Date.now();
+      $('terakhir').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' });
       isiFilter(); render();
-      status(S.rows.length + ' foto dimuat.');
+      if (!diam) status(S.rows.length + ' foto dimuat dari ' + new Set(S.rows.map(r => r.petugas)).size + ' petugas.');
+      else if (baru) status(baru + ' foto baru dari anggota.');
       if (S.tab === 'peta') pastikanPeta();
     } catch (e) { status('Gagal membaca MEGA: ' + (e.message || e), true); }
+    finally { S.memuat = false; }
   }
+
+  // Segarkan otomatis: anggota yang mengunggah muncul di sini tanpa menarik data.
+  setInterval(() => { if (!S.demo && S.storage && !document.hidden && !S.sedangEdit && !$('app').hidden) muatData(true, true); }, 90000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !S.demo && S.storage && !S.sedangEdit && S.terakhir && Date.now() - S.terakhir > 45000) muatData(true, true);
+  });
 
   async function bacaFolder() {
     const rows = []; S.folders = new Map();
@@ -138,8 +154,12 @@
       const jpg = anak.filter(n => !n.directory && /\.jpe?g$/i.test(n.name));
       if (!jpg.length) return;
       const nodeIdx = anak.find(n => !n.directory && n.name === '_indeks.json');
-      let idx = {}; const edit = {};
-      if (nodeIdx) { try { (await bacaJson(nodeIdx)).foto.forEach(x => idx[x.f] = x); } catch (_) {} }
+      let idx = {}; const edit = {}; const kf = u.room + '/' + u.petugas;
+      if (nodeIdx) {
+        const c = S.idxCache.get(kf);
+        if (c && c.id === nodeIdx.nodeId) idx = c.idx;                       // indeks tidak berubah: pakai cache
+        else { try { (await bacaJson(nodeIdx)).foto.forEach(x => idx[x.f] = x); S.idxCache.set(kf, { id: nodeIdx.nodeId, idx }); } catch (_) {} }
+      }
       S.folders.set(u.room + '/' + u.petugas, { node: u.node, edit });
       jpg.forEach(n => {
         const i = idx[n.name], p = uraiNama(n.name), e = edit[n.name] || {};
@@ -152,10 +172,96 @@
           ts: (i && i.ts) || (n.timestamp ? n.timestamp * 1000 : 0), th: i ? i.th : '', node: n,
           diedit: Object.keys(e).length > 0, asli
         });
+        const row = rows[rows.length - 1];
+        const L = S.lengkap.get(row.key); if (L && !row.th) Object.assign(row, L);   // hasil pelengkapan yang belum tertulis ke indeks
+        if (S.baruKey.has(row.key)) row.baru = true;
       });
     });
     S.rows = rows;
   }
+
+  /* ---------------- pelengkapan foto tanpa indeks (APK lama) ---------------- */
+  // Membaca teks EXIF (ImageDescription, DateTime) dari JPEG.
+  function bacaExifTeks(u8) {
+    const hasil = {};
+    try {
+      if (u8[0] !== 0xFF || u8[1] !== 0xD8) return hasil;
+      const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); let pos = 2;
+      while (pos + 4 < u8.length && u8[pos] === 0xFF) {
+        const mk = u8[pos + 1], len = dv.getUint16(pos + 2);
+        if (mk === 0xDA) break;
+        if (mk === 0xE1 && u8[pos + 4] === 0x45 && u8[pos + 5] === 0x78) {
+          const t = pos + 10, le = u8[t] === 0x49, ifd = dv.getUint32(t + 4, le), n = dv.getUint16(t + ifd, le);
+          for (let i = 0; i < n; i++) {
+            const e = t + ifd + 2 + i * 12, tag = dv.getUint16(e, le), tipe = dv.getUint16(e + 2, le), cnt = dv.getUint32(e + 4, le);
+            if (tipe !== 2 || (tag !== 0x010E && tag !== 0x0132)) continue;
+            const off = cnt <= 4 ? e + 8 : t + dv.getUint32(e + 8, le);
+            const teks = new TextDecoder('utf-8').decode(u8.subarray(off, off + Math.max(0, cnt - 1)));
+            if (tag === 0x010E) hasil.desc = teks; else hasil.dt = teks;
+          }
+          break;
+        }
+        pos += 2 + len;
+      }
+    } catch (_) {}
+    return hasil;
+  }
+  function tsDariExif(dt) {
+    const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(dt || ''); if (!m) return 0;
+    const t = Date.parse(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+07:00`); return isFinite(t) ? t : 0;   // jam perangkat (WIB)
+  }
+  async function bikinThumb(u8) {
+    const bmp = await createImageBitmap(new Blob([u8], { type: 'image/jpeg' }));
+    const k = Math.min(1, 240 / Math.max(bmp.width, bmp.height)); const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    return c.toDataURL('image/jpeg', 0.6);
+  }
+
+  const antreLengkap = []; let lengkapJalan = 0; const sedangLengkap = new Set(); const tertundaIndeks = new Map(); let timerIndeks = null, timerRender = null;
+  function antreLengkapi(r) {
+    if (S.demo || !r.node || r.th || sedangLengkap.has(r.key)) return;
+    sedangLengkap.add(r.key); antreLengkap.push(r); jalankanLengkap();
+  }
+  async function jalankanLengkap() {
+    while (lengkapJalan < 3 && antreLengkap.length) {
+      const r = antreLengkap.shift(); lengkapJalan++;
+      (async () => {
+        try {
+          const u8 = new Uint8Array(await r.node.downloadBuffer());
+          const ex = bacaExifTeks(u8), th = await bikinThumb(u8);
+          const desc = ex.desc && ex.desc !== 'Dokumentasi dkpoint' ? ex.desc : '';
+          const upd = { th }; if (!r.catatan && desc) upd.catatan = desc; const t = tsDariExif(ex.dt); if (t) upd.ts = t;
+          Object.assign(r, upd); S.lengkap.set(r.key, upd);
+          const kf = r.folder; if (!tertundaIndeks.has(kf)) tertundaIndeks.set(kf, []);
+          tertundaIndeks.get(kf).push({ f: r.f, no: r.no, lat: r.lat, lon: r.lon, ts: r.ts, c: r.catatan || '', nm: r.petugas, th });
+          clearTimeout(timerIndeks); timerIndeks = setTimeout(tulisIndeksLengkap, 8000);
+          clearTimeout(timerRender); timerRender = setTimeout(() => { if (!S.sedangEdit && (S.tab === 'tabel' || S.tab === 'galeri')) render(); }, 500);
+        } catch (_) { /* dicoba lagi pada pemuatan berikutnya */ }
+        finally { lengkapJalan--; sedangLengkap.delete(r.key); jalankanLengkap(); }
+      })();
+    }
+  }
+  // Simpan hasil pelengkapan ke _indeks.json supaya perangkat lain (dan HP) tidak mengulang unduhan.
+  async function tulisIndeksLengkap() {
+    for (const [kf, entri] of Array.from(tertundaIndeks)) {
+      tertundaIndeks.delete(kf);
+      try {
+        const fol = S.folders.get(kf); if (!fol) continue;
+        const nodeIdx = (fol.node.children || []).find(n => !n.directory && n.name === '_indeks.json');
+        let daftar = []; if (nodeIdx) daftar = (await bacaJson(nodeIdx)).foto || [];
+        const ada = new Set(daftar.map(x => x.f));
+        entri.forEach(e => { if (!ada.has(e.f)) daftar.push(e); });          // tidak menimpa entri milik HP
+        await tulisJson(fol.node, '_indeks.json', { v: 1, foto: daftar });
+        S.idxCache.delete(kf);
+      } catch (e) { console.warn('Indeks hasil pelengkapan gagal ditulis:', e); }
+    }
+  }
+  const pengamat = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(en => {
+    if (!en.isIntersecting) return; pengamat.unobserve(en.target);
+    const r = S.rows.find(x => x.key === en.target.dataset.lazy); if (r) antreLengkapi(r);
+  }), { rootMargin: '200px' }) : null;
+  function amatiLazy() { if (pengamat) document.querySelectorAll('[data-lazy]').forEach(el => pengamat.observe(el)); }
 
   /* ---------------- filter, urut, tampilan ---------------- */
   function isiFilter() {
@@ -219,13 +325,14 @@
           <td><button data-aksi="simpan" class="utama">Simpan</button> <button data-aksi="batal">Batal</button></td></tr>`;
       }
       const d = r.diedit ? ' class="diedit"' : '';
-      return `<tr data-key="${esc(r.key)}"><td${d}>${esc(r.no == null ? '' : r.no)}</td><td>${esc(r.room)}</td><td>${esc(r.petugas)}</td>
+      return `<tr data-key="${esc(r.key)}"><td${d}>${r.baru ? '<span class="lencana">baru</span> ' : ''}${esc(r.no == null ? '' : r.no)}</td><td>${esc(r.room)}</td><td>${esc(r.petugas)}</td>
         <td>${angka(r.lat)}</td><td>${angka(r.lon)}</td><td>${esc(waktu(r.ts))}</td>
         <td class="catatan">${esc(r.catatan)}</td>
-        <td>${r.th ? `<img class="th" data-aksi="foto" src="${r.th}" alt="">` : `<button data-aksi="foto">Lihat</button>`}</td>
+        <td>${r.th ? `<img class="th" data-aksi="foto" src="${r.th}" alt="">` : `<button data-aksi="foto" data-lazy="${esc(r.key)}">Lihat</button>`}</td>
         <td><button data-aksi="edit">Edit</button></td></tr>`;
     }).join('') || '<tr><td colspan="9" class="kecil">Belum ada data.</td></tr>';
     if (data.length > 1500) status('Menampilkan 1500 baris pertama; persempit dengan filter.');
+    amatiLazy();
   }
   $('tabel').querySelector('thead').onclick = e => {
     const th = e.target.closest('th[data-k]'); if (!th) return;
@@ -313,9 +420,10 @@
   /* ---------------- galeri & foto ---------------- */
   function renderGaleri() {
     const data = tersaring().slice(0, 600);
-    $('grid').innerHTML = data.map(r => `<div class="sel" data-key="${esc(r.key)}">
+    $('grid').innerHTML = data.map(r => `<div class="sel" data-key="${esc(r.key)}" ${r.th ? '' : `data-lazy="${esc(r.key)}"`}>
       <div class="gbr">${r.th ? `<img src="${r.th}" alt="" loading="lazy">` : 'Tanpa thumbnail'}</div>
       <div class="ket"><b>${esc(r.room)} · ${esc(r.no == null ? '–' : r.no)}</b><span>${esc(r.petugas)}</span><span>${esc(r.catatan || '')}</span></div></div>`).join('') || '<p class="kecil">Belum ada foto.</p>';
+    amatiLazy();
   }
   $('grid').onclick = e => { const s = e.target.closest('.sel'); if (!s) return; const r = S.rows.find(x => x.key === s.dataset.key); if (r) bukaFoto(r); };
 
@@ -640,7 +748,7 @@
 
   /* ---------------- mulai ---------------- */
   (async function mulai() {
-    if (/[?&]demo\b/.test(location.search)) { S.demo = true; await bukaApp('Mode demo'); return; }
+    if (/[?&]demo\b/.test(location.search)) { S.demo = true; window.__uji = { bacaExifTeks, tsDariExif, bikinThumb }; await bukaApp('Mode demo'); return; }
     if (await pulihkanSesi()) await bukaApp();
   })();
 })();
