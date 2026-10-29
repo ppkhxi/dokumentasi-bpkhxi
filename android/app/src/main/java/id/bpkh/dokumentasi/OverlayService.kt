@@ -486,7 +486,7 @@ class OverlayService : Service() {
             dp(320), dp(420), tipeOverlay(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            PixelFormat.OPAQUE
+            PixelFormat.TRANSLUCENT
         ).apply {
             // Tepat di tengah layar (kiri-kanan dan atas-bawah), sama di semua perangkat.
             gravity = Gravity.CENTER
