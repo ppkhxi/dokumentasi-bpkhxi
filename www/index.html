@@ -1497,9 +1497,10 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             </p>
           </div>
 
-          <details id="areaMega" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--garis)">
-            <summary style="font-weight:600;font-size:13px;color:var(--hijau);cursor:pointer;list-style:none;text-align:center">
-              &#9729;&#65039; Punya akun MEGA sendiri? (ketua regu / admin)
+          <div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--garis);font-size:12px;font-weight:600;color:var(--t3);text-align:center">Atau masuk dengan akun penyimpanan</div>
+          <details id="areaMega" style="margin-top:10px">
+            <summary style="font-weight:600;font-size:13px;color:var(--hijau);cursor:pointer;list-style:none;padding:10px 12px;border:1px solid var(--garis);border-radius:12px">
+              &#9729;&#65039; Akun MEGA <span style="font-weight:400;color:var(--t3)">&middot; ketua regu / admin</span>
             </summary>
             <p class="catatan-kecil" style="margin:10px 0 12px">Hanya untuk yang membuat room dan menyimpan foto di akun MEGA-nya sendiri.</p>
             <label class="f" for="inMegaEmail" style="margin-top:0">Email MEGA</label>
@@ -1513,6 +1514,12 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
               Belum punya akun? <a href="https://mega.nz/register" target="_blank" rel="noopener" style="color:var(--hijau);font-weight:600">Daftar gratis di MEGA</a>
             </p>
           </details>
+          <div style="margin-top:8px;padding:10px 12px;border:1px solid var(--garis);border-radius:12px;font-size:13px;font-weight:600;color:var(--t3);display:flex;justify-content:space-between;align-items:center;opacity:.7">
+            <span>&#128193; Akun Google (Drive)</span><span style="font-size:11px;font-weight:600;background:var(--garis);border-radius:8px;padding:2px 8px">Segera</span>
+          </div>
+          <div style="margin-top:8px;padding:10px 12px;border:1px solid var(--garis);border-radius:12px;font-size:13px;font-weight:600;color:var(--t3);display:flex;justify-content:space-between;align-items:center;opacity:.7">
+            <span>&#128421;&#65039; Synology NAS (QuickConnect)</span><span style="font-size:11px;font-weight:600;background:var(--garis);border-radius:8px;padding:2px 8px">Segera</span>
+          </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
             Dokumentasi <span id="loginVersi">v3.9.44</span>
@@ -2254,7 +2261,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.85';
+const VERSI = '3.9.86';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
