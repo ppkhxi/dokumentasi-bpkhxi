@@ -11,8 +11,7 @@
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#fff; }
   button { font-family:inherit; -webkit-tap-highlight-color:transparent; color:#fff; }
   .kartu { position:fixed; inset:0; display:flex; flex-direction:column; padding:18px 18px 16px;
-    box-sizing:border-box; background:#000; border-radius:36px; animation: munculKartu .28s cubic-bezier(.2,.8,.2,1); }
-  @keyframes munculKartu { from { opacity:0; transform:scale(.94) translateY(8px); } to { opacity:1; transform:none; } }
+    box-sizing:border-box; background:#000; border-radius:36px; }
   .kepala { display:flex; align-items:center; gap:7px; min-height:26px; }
   .kepala img { width:22px; height:22px; border-radius:6px; object-fit:contain; }
   .kepala b { font-size:17px; font-weight:600; letter-spacing:-.2px; }
@@ -23,7 +22,7 @@
   #opsiMutu { display:flex; gap:12px; }
   #opsiMutu button { background:none; border:0; padding:0; font-size:11px; color:#5b5b5b; }
   #opsiMutu button.pilih { color:#fff; font-weight:600; }
-  .panel { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .25s cubic-bezier(.2,.8,.2,1), opacity .2s; }
+  .panel { display:grid; grid-template-rows:0fr; opacity:0; }
   .panel.buka { grid-template-rows:1fr; opacity:1; }
   .panel > div { overflow:hidden; min-height:0; }
   .sel { display:grid; grid-template-columns:repeat(4,1fr); gap:10px 4px; padding:12px 2px 2px; text-align:center; }
@@ -33,14 +32,12 @@
   #koord { grid-column:1/-1; font-size:9px; color:#7a7a7a; }
   .tengah { display:flex; justify-content:center; padding:7px 0 7px; }
   #panelBtn { background:#1c1c1c; border:0; border-radius:50%; width:20px; height:20px; padding:0; display:flex; align-items:center; justify-content:center; }
-  #panelBtn svg { width:12px; height:12px; stroke:#fff; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; transition:transform .25s; }
+  #panelBtn svg { width:12px; height:12px; stroke:#fff; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
   #panelBtn[aria-expanded="false"] svg { transform:rotate(180deg); }
   .pratinjau { position:relative; flex:1 1 auto; min-height:0; border-radius:18px; overflow:hidden; background:#111; }
   #video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   #tirai { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
-  #tirai.kilat { animation: kilat .18s ease-out; }
-  @keyframes kilat { from { opacity:.85 } to { opacity:0 } }
-  #hitung { position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:72px; font-weight:700;
+    #hitung { position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:72px; font-weight:700;
     text-shadow:0 2px 12px #000a; pointer-events:none; }
   input#catatan { width:100%; box-sizing:border-box; border:0; border-radius:12px; padding:9px 12px;
     background:#151515; color:#fff; font-size:13px; outline:none; }
@@ -50,21 +47,17 @@
   #mikrofon { position:absolute; right:4px; top:50%; transform:translateY(-50%); width:32px; height:32px;
     border-radius:50%; border:0; background:#242424; padding:0; }
   #mikrofon::before { content:''; display:block; width:12px; height:12px; margin:10px auto; border-radius:50%; background:#ef4444; }
-  #mikrofon.aktif::before { border-radius:3px; animation:denyutMik 1s infinite; }
-  @keyframes denyutMik { 50% { opacity:.55; } }
+  #mikrofon.aktif::before { border-radius:3px; }
   .bawah { display:flex; justify-content:space-between; align-items:center; flex:0 0 auto; padding:10px 4px 0; }
   #mini { width:38px; height:38px; border-radius:8px; background:#1c1c1c center/cover no-repeat; border:0; padding:0; }
-  #mini.pop { animation: popMini .45s cubic-bezier(.2,1.4,.4,1); }
-  @keyframes popMini { 0% { transform:scale(.6); } 100% { transform:scale(1); } }
   #ganti { width:36px; height:36px; border-radius:50%; background:#1c1c1c; border:0; padding:0; display:flex; align-items:center; justify-content:center; }
   #ganti svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   #rana { width:56px; height:56px; border-radius:50%; border:3px solid #000; background:#fff; padding:0;
-    box-shadow:0 0 0 2px #fff; transition:transform .12s; }
-  #rana:active { transform:scale(.92); }
+    box-shadow:0 0 0 2px #fff; }
   #rana:disabled { opacity:.5; }
   #cobaLagi { margin-top:10px; background:#fff; color:#111; border:0; border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600; }
   #pesan { position:fixed; left:50%; bottom:150px; transform:translateX(-50%); background:rgba(30,30,30,.92);
-    padding:6px 10px; border-radius:10px; font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none;
+    padding:6px 10px; border-radius:10px; font-size:12px; opacity:0; pointer-events:none;
     max-width:90%; text-align:center; }
   #pesan.tampil { opacity:1; }
   .kamera-native #video { display:none; }
@@ -72,7 +65,6 @@
   .kamera-native #tirai { display:none; }
   .kosong { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
     padding:16px; box-sizing:border-box; font-size:13px; color:#c9d3cb; }
-  @media (prefers-reduced-motion: reduce) { .kartu, #mini.pop { animation:none; } .panel { transition:none; } }
 </style>
 </head>
 <body>
@@ -405,7 +397,6 @@ async function jepretSekarang() {
   sedangSimpan = true;
   $('rana').disabled = true;
   const tirai = $('tirai');
-  tirai.classList.add('kilat'); setTimeout(() => tirai.classList.remove('kilat'), 180);
   if (navigator.vibrate) navigator.vibrate(35);
   try {
     const beku = potongKeRasio(v);
@@ -556,7 +547,6 @@ function terimaGagalNative(teks) {
 function setMini(dataUrl) {
   const m = $('mini');
   m.style.backgroundImage = 'url("' + dataUrl + '")';
-  m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop');
 }
 /* Satu kali pindai saat dibuka: jumlah foto room ini dan foto terbaru (ts terbesar) dari semua room. */
 async function pindaiAwal() {
