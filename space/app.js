@@ -498,6 +498,27 @@
     return fg;
   }
 
+  // GeoJSON (hasil konversi shapefile) -> lapisan Leaflet; atribut .dbf tampil di popup.
+  function geojsonKeLayer(gj, warna) {
+    const gaya = { color: warna, weight: 2, fillColor: warna, fillOpacity: .25, opacity: 1 };
+    const pop = f => {
+      const pr = (f && f.properties) || {}; const kunci = Object.keys(pr).slice(0, 14);
+      return kunci.length ? '<table class="popAtr">' + kunci.map(k => `<tr><td><b>${esc(k)}</b></td><td>${esc(String(pr[k]).slice(0, 120))}</td></tr>`).join('') + '</table>' : '(tanpa atribut)';
+    };
+    return L.geoJSON(gj, {
+      style: () => gaya,
+      pointToLayer: (f, ll) => L.circleMarker(ll, Object.assign({ radius: 5 }, gaya, { fillOpacity: .9 })),
+      onEachFeature: (f, l) => l.bindPopup(pop(f), { maxHeight: 260 })
+    });
+  }
+  function adaKoordLuarRentang(gj) {            // koordinat bukan lat/lon (mis. UTM tanpa .prj)
+    let salah = false;
+    const cek = c => { if (salah) return; if (typeof c[0] === 'number') { if (Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90) salah = true; } else c.forEach(cek); };
+    const fs = gj.type === 'FeatureCollection' ? gj.features : [gj];
+    for (const f of fs) { if (f && f.geometry && f.geometry.coordinates) cek(f.geometry.coordinates); if (salah) break; }
+    return salah;
+  }
+
   async function muatDaftarKml() {
     S.kml = [];
     if (S.demo) {
@@ -505,7 +526,7 @@
       S.kml[0].layer.addTo(peta);
     } else if (S.master) {
       const folder = (S.master.children || []).find(n => n.directory && n.name === '_peta');
-      const berkas = folder ? (folder.children || []).filter(n => !n.directory && /\.kml$/i.test(n.name)) : [];
+      const berkas = folder ? (folder.children || []).filter(n => !n.directory && /\.(kml|geojson)$/i.test(n.name)) : [];
       berkas.forEach((n, i) => S.kml.push({ nama: n.name, node: n, layer: null, aktif: false, warna: WARNA[i % WARNA.length], opa: 1 }));
     }
     await muatDaftarRaster();
@@ -544,7 +565,10 @@
   async function pastikanLayerKml(k) {
     if (k.layer) return;
     status('Mengunduh ' + k.nama + '…');
-    try { k.layer = kmlKeLayer(new TextDecoder().decode(await k.node.downloadBuffer()), k.warna); status(''); }
+    try {
+      const teks = new TextDecoder().decode(await k.node.downloadBuffer());
+      k.layer = /\.geojson$/i.test(k.nama) ? geojsonKeLayer(JSON.parse(teks), k.warna) : kmlKeLayer(teks, k.warna); status('');
+    }
     catch (err) { status('KML tidak bisa dibaca: ' + (err.message || err), true); }
   }
   async function ubahAktif(e) {
@@ -553,6 +577,51 @@
   }
   function aturStyle(k) { if (k.layer) k.layer.eachLayer(l => l.setStyle && l.setStyle({ opacity: k.opa, fillOpacity: k.opa * .25 })); }
   function aturOpa(e) { const k = S.kml[+e.target.closest('li[data-i]').dataset.i]; k.opa = +e.target.value; aturStyle(k); }
+
+  $('fileShp').onchange = async e => {
+    const daftar = Array.from(e.target.files); e.target.value = ''; if (!daftar.length) return;
+    const ext = f => (f.name.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase();
+    try {
+      if (typeof shp === 'undefined') throw new Error('Pustaka shapefile (js/shp.min.js) gagal dimuat.');
+      status('Membaca shapefile…');
+      let hasil, asal;
+      const zip = daftar.find(f => ext(f) === 'zip'), fShp = daftar.find(f => ext(f) === 'shp');
+      if (zip) { hasil = await shp(await zip.arrayBuffer()); asal = zip.name; }
+      else if (fShp) {
+        const dbf = daftar.find(f => ext(f) === 'dbf'), prj = daftar.find(f => ext(f) === 'prj'), cpg = daftar.find(f => ext(f) === 'cpg');
+        const obj = { shp: await fShp.arrayBuffer() };
+        if (dbf) obj.dbf = await dbf.arrayBuffer();
+        if (prj) obj.prj = await prj.text();
+        if (cpg) obj.cpg = await cpg.text();
+        hasil = await shp(obj); asal = fShp.name;
+        if (!prj) status('Tidak ada berkas .prj: koordinat dianggap sudah lat/lon (WGS84).');
+      } else { status('Pilih satu berkas .zip, atau berkas .shp bersama .dbf dan .prj.', true); return; }
+      const kumpulan = (Array.isArray(hasil) ? hasil : [hasil]).filter(g => g && g.features);
+      if (!kumpulan.length) throw new Error('Tidak ada fitur di shapefile ini.');
+      let ditambah = 0, totalFitur = 0, bounds = null;
+      for (const gj of kumpulan) {
+        if (!gj.features.length) continue;
+        if (adaKoordLuarRentang(gj)) throw new Error('Koordinat bukan lat/lon. Sertakan berkas .prj (atau unggah .zip lengkap) supaya bisa diproyeksikan ke WGS84.');
+        const base = (gj.fileName || asal).replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_');
+        const nama = base + '.geojson'; const warna = WARNA[S.kml.length % WARNA.length];
+        const layer = geojsonKeLayer(gj, warna);
+        let node = null;
+        if (!S.demo) {
+          status('Mengunggah ' + nama + ' ke MEGA…');
+          const folder = await folderPeta();
+          const lama = (folder.children || []).find(n => !n.directory && n.name === nama);
+          node = await unggahNode(folder, nama, new TextEncoder().encode(JSON.stringify(gj)));
+          if (lama) { try { await lama.delete(true); } catch (_) {} }       // nama sama: ganti isinya
+        }
+        const sudah = S.kml.findIndex(k => k.nama === nama);
+        if (sudah >= 0) { const k0 = S.kml[sudah]; if (k0.layer) peta.removeLayer(k0.layer); S.kml.splice(sudah, 1); }
+        S.kml.push({ nama, node, layer, aktif: true, warna, opa: 1 }); layer.addTo(peta);
+        bounds = bounds ? bounds.extend(layer.getBounds()) : layer.getBounds(); ditambah++; totalFitur += gj.features.length;
+      }
+      if (bounds && bounds.isValid()) peta.fitBounds(bounds.pad(.1));
+      daftarLapisan(); status(ditambah + ' lapisan shapefile ditambahkan (' + totalFitur + ' fitur).' + (totalFitur > 30000 ? ' Data besar; peta bisa terasa berat.' : ''));
+    } catch (err) { status('Gagal membaca shapefile: ' + (err.message || err), true); }
+  };
 
   $('fileKml').onchange = async e => {
     const berkas = e.target.files[0]; e.target.value = ''; if (!berkas) return;

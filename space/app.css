@@ -85,3 +85,5 @@ tr.diedit-baris td{background:#1b231c}
 @media(max-width:800px){#lightbox .isi{grid-template-columns:1fr;overflow:auto}}
 
 .lencana{background:var(--hijau2);color:#fff;border-radius:6px;padding:0 6px;font-size:11px;font-weight:600}
+
+.popAtr{border-collapse:collapse;font-size:12px}.popAtr td{padding:2px 6px;border-bottom:1px solid #ddd;vertical-align:top;color:#222}

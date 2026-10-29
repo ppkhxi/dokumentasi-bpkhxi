@@ -83,8 +83,9 @@
           </div>
           <ul id="daftarLapisan"></ul>
           <label class="tambah">+ Tambah KML <input id="fileKml" type="file" accept=".kml,application/vnd.google-earth.kml+xml" hidden></label>
+          <label class="tambah" style="margin-top:6px">+ Tambah Shapefile (.zip, atau .shp + .dbf + .prj) <input id="fileShp" type="file" accept=".zip,.shp,.dbf,.prj,.cpg" multiple hidden></label>
           <label class="tambah" style="margin-top:6px">+ Tambah Raster (JPG / PNG / PDF) <input id="fileRaster" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" hidden></label>
-          <p class="kecil">KML dan raster disimpan di folder <code>_peta</code> pada MEGA. Sinkron otomatis ke HP menyusul.</p>
+          <p class="kecil">KML, shapefile (disimpan sebagai GeoJSON), dan raster disimpan di folder <code>_peta</code> pada MEGA. Sinkron otomatis ke HP menyusul.</p>
         </aside>
       </div>
     </section>
@@ -105,6 +106,7 @@
 
 <script src="js/megajs.umd.js"></script>
 <script src="js/leaflet.js"></script>
+<script src="js/shp.min.js"></script>
 <script src="js/exif-gps.js"></script>
 <script src="js/peta.js"></script>
 <script src="raster-impor.js"></script>
