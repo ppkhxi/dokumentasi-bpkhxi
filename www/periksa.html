@@ -51,7 +51,7 @@ async function periksaStore(db,namaStore){
       n++; const v=c.value; ukuran+=ukur(v);
       if(v && typeof v==='object' && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image')){
         foto++;
-        fotoTemuan.push({db:db.name,store:namaStore,key:c.key,nama:v.namaBerkas||v.nama||'',room:v.room||'',ts:v.ts||0});
+        fotoTemuan.push({db:db.name,store:namaStore,key:c.key,nama:v.namaBerkas||v.nama||'',room:v.room||'',ts:v.ts||0,status:v.status||'',tersalin:!!v.salinanHp});
       }
       c.continue();
     };
@@ -98,7 +98,9 @@ async function mulai(){
     $('cache').innerHTML=h||'Kosong';
   }catch(e){ $('cache').textContent='Tidak bisa dibaca'; }
   fotoTemuan.sort((a,b)=>b.ts-a.ts);
-  $('infoFoto').innerHTML='<b>'+fotoTemuan.length+'</b> foto ditemukan di semua database.';
+  const per={};
+  fotoTemuan.forEach(f=>{const t=f.ts?new Date(f.ts).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'(tanpa tanggal)';const k=t+' · '+(f.room||'-')+' · '+(f.status||'-');per[k]=(per[k]||0)+1;});
+  $('infoFoto').innerHTML='<b>'+fotoTemuan.length+'</b> foto ditemukan di semua database.<br><small>Rincian (tanggal · room · status):<br>'+Object.keys(per).map(k=>esc(k)+': <b>'+per[k]+'</b>').join('<br>')+'</small>';
   $('btnZip').disabled=!fotoTemuan.length; $('btnLagi').disabled=!fotoTemuan.length;
   tampil=0; lagi();
 }
