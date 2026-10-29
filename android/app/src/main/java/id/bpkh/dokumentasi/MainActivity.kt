@@ -191,14 +191,36 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface
         fun perbaruiAplikasi(url: String) {
-            kabar("Mengunduh pembaruan…")
+            kabar("Memeriksa pembaruan…")
             Thread {
-                val berkas: File? = try {
-                    val tujuan = File(cacheDir, "apk/dkpoint.apk").apply { parentFile?.mkdirs() }
+                val tujuan = File(cacheDir, "apk/dkpoint.apk").apply { parentFile?.mkdirs() }
+                val terpasang: Long = try {
+                    packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                } catch (_: Exception) { 0L }
+
+                // 1. Periksa versi di server lebih dulu (berkas kecil, bukan APK).
+                val terbaru: Long = try {
+                    JSONObject(unduhTeks(url.substringBeforeLast('/') + "/versi.json")).getLong("versionCode")
+                } catch (_: Exception) { -1L }
+                if (terbaru < 0) {
+                    runOnUiThread { kabar("Tidak bisa memeriksa pembaruan. Periksa sinyal, lalu coba lagi.") }
+                    return@Thread
+                }
+                if (terbaru <= terpasang) {
+                    runOnUiThread { kabar("Aplikasi sudah versi terkini.") }
+                    return@Thread
+                }
+
+                // 2. Pakai salinan yang sudah diunduh bila versinya sama; kalau tidak, unduh.
+                val salinanSama = tujuan.exists() &&
+                    (packageManager.getPackageArchiveInfo(tujuan.path, 0)?.versionCode?.toLong() ?: -1L) == terbaru
+                if (!salinanSama) runOnUiThread { kabar("Mengunduh pembaruan…") }
+                val berkas: File? = if (salinanSama) tujuan else try {
                     val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                         connectTimeout = 15000
                         readTimeout = 60000
                         instanceFollowRedirects = true
+                        useCaches = false
                     }
                     try {
                         conn.inputStream.use { masuk -> tujuan.outputStream().use { masuk.copyTo(it) } }
@@ -262,6 +284,19 @@ class MainActivity : Activity() {
     }
 
     /** Tampilkan kabar singkat di halaman web (fungsi pesan()). */
+    /** Unduh teks kecil (mis. versi.json) tanpa cache. Melempar exception bila gagal. */
+    private fun unduhTeks(alamat: String): String {
+        val conn = (URL(alamat).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10000
+            readTimeout = 10000
+            instanceFollowRedirects = true
+            useCaches = false
+        }
+        try {
+            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } finally { conn.disconnect() }
+    }
+
     private fun kabar(teks: String) {
         runOnUiThread {
             web.evaluateJavascript("if(typeof pesan==='function')pesan(${JSONObject.quote(teks)})", null)

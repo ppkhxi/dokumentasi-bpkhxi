@@ -83,7 +83,8 @@ jobs:
             git reset -q --hard origin/main
             mkdir -p www/dl
             cp "$RUNNER_TEMP/dkpoint.apk" www/dl/dkpoint.apk
-            git add www/dl/dkpoint.apk
+            printf '{"versionCode":%s,"versionName":"%s"}\n' "${NOMOR_BUILD}" "${VERSI_APK}" > www/dl/versi.json
+            git add www/dl/dkpoint.apk www/dl/versi.json
             if git diff --cached --quiet; then echo "APK sudah sama, tidak ada perubahan"; exit 0; fi
             git commit -q -m "apk: dkpoint ${VERSI_APK} (build ${NOMOR_BUILD})"
             if git push -q origin HEAD:main; then echo "APK terkirim"; exit 0; fi
