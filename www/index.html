@@ -871,6 +871,10 @@ td img.thumb-tabel:active{transform:scale(0.92)}
   background:#F2F2F7;border:1px solid var(--garis);border-radius:18px;padding:14px 16px;margin-bottom:14px;display:none;
 }
 #spandukSimulasi.tampil{display:block}
+#spandukCadangan{background:#FFF3E0;border:1px solid #FFB74D;border-radius:18px;padding:14px 16px;margin-bottom:14px;display:none}
+#spandukCadangan.tampil{display:block}
+#spandukCadangan b{font-size:13.5px;display:block;margin-bottom:3px;color:#000}
+#spandukCadangan p{margin:0;font-size:12px;color:var(--teks-2);line-height:1.5}
 #spandukSimulasi b{font-size:13.5px;display:block;margin-bottom:3px;color:#000}
 #spandukSimulasi p{margin:0;font-size:12px;color:var(--teks-2);line-height:1.5}
 
@@ -1523,6 +1527,11 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
       <div id="spandukSimulasi">
         <b>&#128193; Penyimpanan Lokal HP Aktif</b>
         <p>Anda berada di Room Lokal (tanpa akun/undangan). Foto tersimpan aman di memori HP Anda. Untuk mengirim foto ke Cloud, bergabunglah ke Room Undangan atau hubungkan akun MEGA di Setelan.</p>
+      </div>
+      <div id="spandukCadangan">
+        <b>&#9888;&#65039; <span id="jmlBelumAman">0</span> foto hanya ada di HP ini</b>
+        <p>Belum terkirim ke MEGA dan belum dicadangkan. Jika data aplikasi terhapus, foto ini tidak bisa dikembalikan.</p>
+        <button class="tombol" id="btnCadangZip" style="margin-top:8px">Cadangkan sekarang (ZIP)</button>
       </div>
       <div id="spandukPasang">
         <b>&#128241; Pasang sebagai aplikasi</b>
@@ -2237,7 +2246,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.67';
+const VERSI = '3.9.68';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -2332,6 +2341,14 @@ function buka(){
     };
     r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
   });
+}
+/* Salinan cadangan ke Galeri HP (hanya di APK); gagal diam-diam, tidak mengganggu simpan foto. */
+function salinKeGaleriHp(nama, dataUrl){
+  try{
+    const N=window.DokumentasiNative;
+    if(N && N.simpanKeGaleri && dataUrl) return !!N.simpanKeGaleri(nama, String(dataUrl).split(',')[1]||'');
+  }catch(e){}
+  return false;
 }
 async function simpanFoto(rec){
   const d=await buka();
@@ -3012,7 +3029,8 @@ async function jepretGanda(){
         namaBerkas: namaPot,
         dataUrl: urlPot,
         ukuran: bp.size,
-        status: statusAwal
+        status: statusAwal,
+        salinanHp: salinKeGaleriHp(namaPot, urlPot)
       });
       await simpanFoto({
         id: 'F' + (ts + 1) + '_lan',
@@ -3028,7 +3046,8 @@ async function jepretGanda(){
         namaBerkas: namaLan,
         dataUrl: urlLan,
         ukuran: bl.size,
-        status: statusAwal
+        status: statusAwal,
+        salinanHp: salinKeGaleriHp(namaLan, urlLan)
       });
       if(punyaAksesCloud && navigator.onLine){
         setTimeout(()=>sinkron(true), 900);
@@ -3411,7 +3430,8 @@ async function simpanLangsung(hasil){
     await simpanFoto({id:'F'+ts, ts, nama:S.nama || 'Petugas', userId:idUser, noUrut, room:namaRoom, catatan,
       lat:latValid, lon:lonValid, akurasi:akurasiValid,
       namaBerkas,
-      dataUrl:hasil.dataUrl, ukuran:hasil.ukuran, status:statusAwal});
+      dataUrl:hasil.dataUrl, ukuran:hasil.ukuran, status:statusAwal,
+      salinanHp:salinKeGaleriHp(namaBerkas, hasil.dataUrl)});
   }catch(err){
     const penuh = /quota|storage|space/i.test(err.name+' '+err.message);
     dialog('<h3>Foto gagal disimpan</h3><p>'+
@@ -3585,7 +3605,47 @@ async function muatBeranda(){
   $('statTotal').textContent=semua.length;
   $('statPending').textContent=semua.filter(f=>f.status==='pending' || f.status==='gagal').length;
   $('statHariIni').textContent=semua.filter(f=>f.ts>=h0.getTime()).length;
+  const terakhirCadang=Number(localStorage.getItem('dkpoint_cadangan_ts')||0);
+  const belumAman=semua.filter(f=>f.status!=='terkirim' && !f.salinanHp && !f.isCloudOnly && f.dataUrl && f.ts>terakhirCadang);
+  $('jmlBelumAman').textContent=belumAman.length;
+  $('spandukCadangan').classList.toggle('tampil', belumAman.length>0);
 }
+/* Cadangan ZIP semua foto yang hanya ada di HP, per 40 foto; dibuka lewat lembar Bagikan / unduhan. */
+async function cadangkanZip(){
+  const semua=(await ambilSemua()).filter(f=>f.status!=='terkirim' && !f.isCloudOnly && f.dataUrl);
+  if(!semua.length){ pesan('Tidak ada foto yang perlu dicadangkan'); return; }
+  const tombol=$('btnCadangZip'); if(tombol) tombol.disabled=true;
+  try{
+    const per=40, tgl=new Date().toISOString().slice(0,10);
+    const total=Math.ceil(semua.length/per);
+    for(let b=0;b<total;b++){
+      pesan('Menyiapkan cadangan '+(b+1)+' / '+total+'…');
+      const potong=semua.slice(b*per,(b+1)*per).map((f,i)=>{
+        const kodeRoom=(f.room||'LOKAL').trim().replace(/\s+/g,'_').replace(/[^\w-]/g,'').toUpperCase();
+        const idUser=(f.userId||f.nama||'USER').trim().replace(/\s+/g,'_').replace(/[^\w-]/g,'').toUpperCase();
+        const nama=f.namaBerkas||`${kodeRoom}_${idUser}_${String(f.noUrut||(b*per+i+1)).padStart(3,'0')}.jpg`;
+        return {nama, data:dataUrlKeBytes(f.dataUrl), tanggal:new Date(f.ts)};
+      });
+      const zip=buatZip(potong);
+      const nama='dkpoint_cadangan_'+tgl+'_'+(b+1)+'-'+total+'.zip';
+      const berkas=new File([zip], nama, {type:'application/zip'});
+      const ok=await bagikanBerkas([berkas],'Cadangan foto dkpoint');
+      if(!ok){
+        const a=document.createElement('a'); a.href=URL.createObjectURL(zip); a.download=nama;
+        document.body.appendChild(a); a.click(); a.remove();
+        await new Promise(r=>setTimeout(r,1500));
+      }
+    }
+    localStorage.setItem('dkpoint_cadangan_ts', String(Date.now()));
+    pesan('Cadangan selesai ('+semua.length+' foto)');
+    muatBeranda();
+  }catch(e){
+    pesan('Cadangan gagal: '+e.message);
+  }finally{
+    if(tombol) tombol.disabled=false;
+  }
+}
+$('btnCadangZip').onclick=cadangkanZip;
 document.querySelectorAll('.menu-kartu').forEach(b=> b.onclick=()=>ke(b.dataset.menu));
 $('heroRoom').onclick = bukaDialogRoom;
 

@@ -172,6 +172,11 @@ class MainActivity : Activity() {
         /** Berkas yang sedang disiapkan untuk lembar Bagikan bawaan Android. */
         private val antreBagikan = ArrayList<Uri>()
 
+        /** Salinan cadangan foto ke Galeri HP (Pictures/dkpoint). */
+        @JavascriptInterface
+        fun simpanKeGaleri(nama: String, base64: String): Boolean =
+            GaleriHp.simpan(this@MainActivity, nama, Base64.decode(base64, Base64.DEFAULT))
+
         @JavascriptInterface
         fun bagikanMulai() {
             antreBagikan.clear()

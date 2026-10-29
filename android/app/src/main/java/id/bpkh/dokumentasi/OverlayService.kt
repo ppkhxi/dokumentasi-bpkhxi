@@ -617,6 +617,11 @@ class OverlayService : Service() {
     }
 
     inner class JembatanFlyout {
+        /** Salinan cadangan foto ke Galeri HP (Pictures/dkpoint). */
+        @JavascriptInterface
+        fun simpanKeGaleri(nama: String, base64: String): Boolean =
+            GaleriHp.simpan(this@OverlayService, nama, android.util.Base64.decode(base64, android.util.Base64.DEFAULT))
+
         @JavascriptInterface
         fun mulaiSuara() {
             handler.post { mulaiSuaraNative() }

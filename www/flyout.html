@@ -143,6 +143,13 @@ async function hitungFotoRoom(namaRoom) {
     req.onerror = () => rej(req.error);
   });
 }
+function salinKeGaleriHp(nama, dataUrl) {
+  try {
+    const N = window.DokumentasiNative;
+    if (N && N.simpanKeGaleri && dataUrl) return !!N.simpanKeGaleri(nama, String(dataUrl).split(',')[1] || '');
+  } catch (e) {}
+  return false;
+}
 async function simpanFoto(rec) {
   const d = await bukaDB();
   return new Promise((res, rej) => {
@@ -381,7 +388,8 @@ async function simpanDenganRekaman(hasil) {
     await simpanFoto({
       id: 'F' + ts, ts, nama: S.nama || 'Petugas', userId: idUser, noUrut, room: namaRoom, catatan,
       lat: latValid, lon: lonValid, akurasi: akurasiValid, namaBerkas,
-      dataUrl: hasil.dataUrl, ukuran: hasil.ukuran, status: statusAwal
+      dataUrl: hasil.dataUrl, ukuran: hasil.ukuran, status: statusAwal,
+      salinanHp: salinKeGaleriHp(namaBerkas, hasil.dataUrl)
     });
   } catch (err) {
     const penuh = /quota|storage|space/i.test(err.name + ' ' + err.message);
