@@ -29,7 +29,9 @@
   .kolomCatatan input#catatan { padding-right:48px; }
   #mikrofon { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:36px; height:36px;
     border-radius:50%; border:0; background:#2a2f2a; color:#fff; font-size:16px; line-height:36px; padding:0; }
-  #mikrofon.aktif { background:#16a34a; animation:denyutMik 1s infinite; }
+  #mikrofon::before { content:''; display:block; width:14px; height:14px; margin:11px auto; border-radius:50%; background:#ef4444; }
+  #mikrofon.aktif::before { border-radius:3px; animation:denyutMik 1s infinite; }
+  #mikrofon.aktif { background:#2a2f2a; }
   @keyframes denyutMik { 50% { opacity:.55; } }
   .bawah { display:flex; justify-content:center; align-items:center; flex:0 0 auto; padding-top:2px; }
   #rana { width:58px; height:58px; border-radius:50%; border:4px solid #fff; background:#fff;
@@ -62,7 +64,7 @@
   </div>
   <div class="kolomCatatan">
     <input id="catatan" maxlength="250" placeholder="Tulis nomor patok atau catatan..." autocomplete="off">
-    <button id="mikrofon" type="button" aria-label="Catatan dengan suara">&#127908;</button>
+    <button id="mikrofon" type="button" aria-label="Rekam catatan suara"></button>
   </div>
   <div class="bawah"><button id="rana" type="button" aria-label="Ambil foto"></button></div>
 </div>
