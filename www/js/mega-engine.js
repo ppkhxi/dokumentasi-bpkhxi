@@ -386,6 +386,15 @@
       if (_ls) _ls.setItem(KUNCI_STORAGE.ROOM_AKTIF, idAtauNama);
     },
 
+    // Nama folder room yang ada di akun MEGA ini (untuk memulihkan daftar room di perangkat baru/bersih)
+    async daftarRoomDiCloud() {
+      await this.pastikanTerhubung();
+      const master = await this.dapatkanFolderMaster();
+      return (master.children || [])
+        .filter(c => c.directory && c.name && !String(c.name).startsWith('_'))
+        .map(c => String(c.name));
+    },
+
     // HANYA Host yang boleh membuat room
     async buatRoom(namaRoom) {
       const bersih = (namaRoom || '').trim().toUpperCase();

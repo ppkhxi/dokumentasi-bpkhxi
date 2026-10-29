@@ -2065,6 +2065,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           <button class="tombol sekunder" id="btnBukaBuatRoom" style="flex:1">+ Buat Room Baru</button>
           <button class="tombol sekunder" id="btnBukaGabungRoom" style="flex:1">&#128279; Gabung via Link</button>
         </div>
+        <button class="tombol sekunder" id="btnPulihMega" style="margin-top:8px;width:100%;display:none">&#9729;&#65039; Pulihkan room &amp; foto dari MEGA</button>
         <p class="catatan-kecil" style="margin-top:8px">
           Sebagai <b>Host</b>, Anda dapat membuat room dan membagikan link ke tim. Sebagai <b>Anggota</b>, Anda cukup bergabung lewat link undangan.
         </p>
@@ -2246,7 +2247,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.69';
+const VERSI = '3.9.70';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -4749,6 +4750,43 @@ async function tarikDataReguMega(){
   }
 }
 $('btnTarikGaleri').onclick = tarikDataReguMega;
+
+/* Pulihkan daftar room (host) dan foto dari akun MEGA, mis. setelah data aplikasi di HP terhapus. */
+async function pulihkanDariMega(){
+  if(!adaServer()){ pesan('Hubungkan akun MEGA dulu'); return; }
+  const tombol=$('btnPulihMega'); if(tombol) tombol.disabled=true;
+  const roomAwal=S.room;
+  try{
+    pesan('Membaca daftar room di MEGA…');
+    const namaCloud=await MegaEngine.daftarRoomDiCloud();
+    if(!namaCloud.length){ pesan('Tidak ada folder room di akun MEGA ini'); return; }
+    const email=MegaEngine.getEmail();
+    const list=MegaEngine.ambilSemuaRoom();
+    const ada=new Set(list.map(r=>String(r.nama||'').trim().toUpperCase()));
+    let baru=0;
+    namaCloud.forEach((n,i)=>{
+      const k=n.trim().toUpperCase();
+      if(ada.has(k)) return;
+      list.unshift({id:'room_'+Date.now()+'_'+i, nama:k, tipe:'host', hostEmail:email, dibuat:Date.now(), dipulihkan:true});
+      ada.add(k); baru++;
+    });
+    S.rooms=list; simpanRooms();
+    let n=0;
+    for(const nama of namaCloud){
+      n++; pesan('Menarik foto '+nama+' ('+n+'/'+namaCloud.length+')…');
+      S.room=nama.trim().toUpperCase();
+      await tarikDataReguMega();
+    }
+    pesan('Selesai: '+baru+' room dipulihkan, '+namaCloud.length+' room diperiksa');
+  }catch(e){
+    dialog('<h3>Gagal memulihkan</h3><p>'+esc(e.message)+'</p><button class="tombol" onclick="tutupDialog()">Tutup</button>');
+  }finally{
+    S.room=roomAwal; try{ localStorage.setItem('bpkh_room', roomAwal||'LOKAL'); }catch(_){}
+    if(tombol) tombol.disabled=false;
+    try{ segarkanLayar(); if(typeof muatPengaturan==='function') muatPengaturan(); }catch(_){}
+  }
+}
+if($('btnPulihMega')) $('btnPulihMega').onclick=pulihkanDariMega;
 $('btnTarikTabel').onclick = tarikDataReguMega;
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -8257,6 +8295,7 @@ async function muatPengaturan(){
   if($('btnBukaBuatRoom')){
     $('btnBukaBuatRoom').style.display = terhubungMega ? 'inline-block' : 'none';
   }
+  if($('btnPulihMega')) $('btnPulihMega').style.display = terhubungMega ? 'block' : 'none';
 
   terapkanLogo();
 
