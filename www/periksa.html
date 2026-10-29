@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Periksa Penyimpanan dkpoint</title>
+<style>
+body{font:15px/1.5 system-ui,sans-serif;margin:0;padding:16px;background:#f5f5f7;color:#1d1d1f}
+h1{font-size:19px;margin:0 0 4px} h2{font-size:15px;margin:18px 0 6px}
+.k{background:#fff;border-radius:12px;padding:12px 14px;margin:8px 0;box-shadow:0 1px 2px #0002}
+button{font:inherit;padding:10px 14px;border:0;border-radius:10px;background:#0a84ff;color:#fff;margin:4px 6px 4px 0}
+button.abu{background:#8e8e93}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.g img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#ddd}
+small{color:#555} code{background:#eee;padding:1px 4px;border-radius:4px}
+</style></head><body>
+<h1>Periksa penyimpanan dkpoint</h1>
+<small>Halaman ini hanya MEMBACA. Tidak ada yang dihapus atau diubah.</small>
+<div class="k" id="ringkas">Memeriksa…</div>
+<h2>Database di HP ini</h2><div id="db"></div>
+<h2>Cache aplikasi</h2><div class="k" id="cache"></div>
+<h2>Foto yang ditemukan</h2>
+<div class="k"><div id="infoFoto">Menunggu…</div>
+<button id="btnZip" disabled>Unduh semua foto (ZIP)</button>
+<button class="abu" id="btnLagi" disabled>Tampilkan lebih banyak</button>
+<div class="g" id="grid"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const mb=n=>(n/1048576).toFixed(1)+' MB';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function ukur(v){
+  if(v==null) return 0;
+  if(typeof v==='string') return v.length;
+  if(v instanceof Blob) return v.size;
+  if(v instanceof ArrayBuffer) return v.byteLength;
+  if(ArrayBuffer.isView(v)) return v.byteLength;
+  if(Array.isArray(v)) return v.reduce((a,x)=>a+ukur(x),0);
+  if(typeof v==='object') return Object.values(v).reduce((a,x)=>a+ukur(x),0);
+  return 8;
+}
+function bukaDb(nama){
+  return new Promise((ok,gagal)=>{const r=indexedDB.open(nama);r.onsuccess=()=>ok(r.result);r.onerror=()=>gagal(r.error);});
+}
+let fotoTemuan=[]; // {db,store,key,nama,room,ts,dataUrl?}
+async function periksaStore(db,namaStore){
+  return new Promise(res=>{
+    let n=0,ukuran=0,foto=0;
+    const t=db.transaction(namaStore,'readonly');
+    const rq=t.objectStore(namaStore).openCursor();
+    rq.onsuccess=()=>{
+      const c=rq.result;
+      if(!c){ res({n,ukuran,foto}); return; }
+      n++; const v=c.value; ukuran+=ukur(v);
+      if(v && typeof v==='object' && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image')){
+        foto++;
+        fotoTemuan.push({db:db.name,store:namaStore,key:c.key,nama:v.namaBerkas||v.nama||'',room:v.room||'',ts:v.ts||0});
+      }
+      c.continue();
+    };
+    rq.onerror=()=>res({n,ukuran,foto,galat:String(rq.error)});
+  });
+}
+async function ambilFoto(info){
+  const db=await bukaDb(info.db);
+  return new Promise(res=>{
+    const r=db.transaction(info.store,'readonly').objectStore(info.store).get(info.key);
+    r.onsuccess=()=>{db.close();res(r.result);};
+    r.onerror=()=>{db.close();res(null);};
+  });
+}
+function dataUrlByte(u){const b=atob(u.split(',')[1]||''),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+async function mulai(){
+  let teks='';
+  try{
+    const e=await navigator.storage.estimate();
+    teks+='Total terpakai: <b>'+mb(e.usage)+'</b> dari kuota '+mb(e.quota)+'<br>';
+    const d=e.usageDetails||{};
+    for(const k of Object.keys(d)) teks+=esc(k)+': '+mb(d[k])+'<br>';
+    if(navigator.storage.persisted) teks+='Penyimpanan permanen: <b>'+(await navigator.storage.persisted()?'ya':'tidak')+'</b>';
+  }catch(e){teks='Tidak bisa membaca perkiraan penyimpanan.';}
+  $('ringkas').innerHTML=teks;
+  let daftar=[];
+  try{ daftar=indexedDB.databases?await indexedDB.databases():[{name:'bpkh_portal'}]; }catch(e){ daftar=[{name:'bpkh_portal'}]; }
+  if(!daftar.length) $('db').innerHTML='<div class="k">Tidak ada database.</div>';
+  for(const d of daftar){
+    const kotak=document.createElement('div'); kotak.className='k'; $('db').appendChild(kotak);
+    try{
+      const db=await bukaDb(d.name);
+      let h='<b>'+esc(d.name)+'</b> <small>(versi '+db.version+')</small><br>';
+      for(const s of Array.from(db.objectStoreNames)){
+        const r=await periksaStore(db,s);
+        h+='• <code>'+esc(s)+'</code>: '+r.n+' data, ± '+mb(r.ukuran)+(r.foto?', <b>'+r.foto+' foto</b>':'')+'<br>';
+      }
+      db.close(); kotak.innerHTML=h;
+    }catch(e){ kotak.innerHTML='<b>'+esc(d.name)+'</b>: gagal dibaca ('+esc(e&&e.message||e)+')'; }
+  }
+  try{
+    const ks=await caches.keys(); let h='';
+    for(const k of ks){ const c=await caches.open(k); h+=esc(k)+': '+(await c.keys()).length+' berkas<br>'; }
+    $('cache').innerHTML=h||'Kosong';
+  }catch(e){ $('cache').textContent='Tidak bisa dibaca'; }
+  fotoTemuan.sort((a,b)=>b.ts-a.ts);
+  $('infoFoto').innerHTML='<b>'+fotoTemuan.length+'</b> foto ditemukan di semua database.';
+  $('btnZip').disabled=!fotoTemuan.length; $('btnLagi').disabled=!fotoTemuan.length;
+  tampil=0; lagi();
+}
+let tampil=0;
+async function lagi(){
+  const akhir=Math.min(fotoTemuan.length,tampil+30);
+  for(;tampil<akhir;tampil++){
+    const v=await ambilFoto(fotoTemuan[tampil]);
+    if(v&&v.dataUrl){const im=document.createElement('img');im.loading='lazy';im.src=v.dataUrl;im.title=(v.room||'')+' '+(v.namaBerkas||'');$('grid').appendChild(im);}
+  }
+  $('btnLagi').style.display=tampil<fotoTemuan.length?'':'none';
+}
+$('btnLagi').onclick=lagi;
+/* ZIP tanpa kompresi (JPEG sudah terkompresi) */
+const T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc(b){let c=~0;for(let i=0;i<b.length;i++)c=T[(c^b[i])&255]^(c>>>8);return ~c>>>0;}
+function u16(n){return new Uint8Array([n&255,(n>>8)&255]);}
+function u32(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>>24)&255]);}
+$('btnZip').onclick=async()=>{
+  $('btnZip').disabled=true;
+  const bagian=[],pusat=[];let pos=0;const enc=new TextEncoder();
+  for(let i=0;i<fotoTemuan.length;i++){
+    $('infoFoto').innerHTML='Menyiapkan ZIP… '+(i+1)+' / '+fotoTemuan.length;
+    const v=await ambilFoto(fotoTemuan[i]); if(!v||!v.dataUrl) continue;
+    const data=dataUrlByte(v.dataUrl);
+    let nama=(v.namaBerkas||('foto_'+(v.noUrut||i+1)+'.jpg')).replace(/[^\w.\-]/g,'_');
+    nama=String(i+1).padStart(4,'0')+'_'+(v.room?String(v.room).replace(/[^\w\-]/g,'_')+'_':'')+nama;
+    const nb=enc.encode(nama),c=crc(data);
+    const lh=[u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(c),u32(data.length),u32(data.length),u16(nb.length),u16(0),nb];
+    lh.forEach(x=>bagian.push(x)); bagian.push(data);
+    const hl=lh.reduce((a,x)=>a+x.length,0);
+    pusat.push([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(c),u32(data.length),u32(data.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(pos),nb]);
+    pos+=hl+data.length;
+  }
+  let psz=0;pusat.forEach(p=>p.forEach(x=>{bagian.push(x);psz+=x.length;}));
+  [u32(0x06054b50),u16(0),u16(0),u16(pusat.length),u16(pusat.length),u32(psz),u32(pos),u16(0)].forEach(x=>bagian.push(x));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(bagian,{type:'application/zip'}));
+  a.download='dkpoint_cadangan_'+new Date().toISOString().slice(0,10)+'.zip';a.click();
+  $('infoFoto').innerHTML='<b>'+fotoTemuan.length+'</b> foto. ZIP selesai dibuat.';
+  $('btnZip').disabled=false;
+};
+mulai();
+</script></body></html>

@@ -2,7 +2,7 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v3.9.65';
+const VERSI = 'dkpoint-v3.9.66';
 const CACHE_TILES = 'dkpoint-tiles-v1';
 const MAKS_TILE = 800;   // batas jumlah tile tersimpan (yang paling lama dibuang)
 
@@ -19,6 +19,7 @@ const BERKAS = [
   './admin.html',
   './flyout.html',
   './privasi.html',
+  './periksa.html',
   './peta.js',
   './js/security.js',
   './js/exif-gps.js',
@@ -97,8 +98,10 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(req)
         .then(res => {
-          const salinan = res.clone();
-          caches.open(VERSI).then(c => c.put('./index.html', salinan));
+          if (res.ok && (url.pathname === '/' || url.pathname === '/index.html')) {
+            const salinan = res.clone();
+            caches.open(VERSI).then(c => c.put('./index.html', salinan));
+          }
           return res;
         })
         .catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
