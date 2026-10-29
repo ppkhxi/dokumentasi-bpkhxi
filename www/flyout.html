@@ -566,11 +566,6 @@ $('panelBtn').onclick = () => {
   const buka = !$('panel').classList.contains('buka');
   $('panel').classList.toggle('buka', buka);
   $('panelBtn').setAttribute('aria-expanded', buka);
-  /* Seperti referensi: kartu memanjang saat panel dibuka, viewfinder tetap sama besar. */
-  if (KAMERA_ASLI && DokumentasiNative.aturTinggi) {
-    const extra = Math.round($('panel').firstElementChild.scrollHeight);
-    try { DokumentasiNative.aturTinggi(buka ? TINGGI_DASAR + extra : TINGGI_DASAR); } catch (_) {}
-  }
   const t0 = Date.now();
   const iv = setInterval(() => { kirimPosisiPratinjau(); if (Date.now() - t0 > 450) clearInterval(iv); }, 40);
 };
