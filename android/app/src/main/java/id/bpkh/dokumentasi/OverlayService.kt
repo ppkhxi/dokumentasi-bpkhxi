@@ -450,7 +450,7 @@ class OverlayService : Service() {
             }
         }
         val wv = WebView(this)
-        wv.setBackgroundColor(Color.parseColor("#0E100E"))
+        wv.setBackgroundColor(Color.TRANSPARENT)
         wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -473,6 +473,12 @@ class OverlayService : Service() {
             }
         }
         val kt = FrameLayout(this).apply {
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(v: View, o: android.graphics.Outline) {
+                    o.setRoundRect(0, 0, v.width, v.height, dp(36).toFloat())
+                }
+            }
             addView(wv, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             addView(pv, FrameLayout.LayoutParams(dp(300), dp(300)).apply { leftMargin = dp(10); topMargin = dp(60) })
         }
