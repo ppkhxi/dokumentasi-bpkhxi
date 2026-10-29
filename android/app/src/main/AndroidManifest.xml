@@ -19,6 +19,14 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Android 11+: tanpa ini aplikasi tidak bisa melihat layanan pengenal suara (Google), sehingga
+         SpeechRecognizer.isRecognitionAvailable() bernilai false walau izin mikrofon sudah aktif. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DokumentasiApp"
         android:allowBackup="true"

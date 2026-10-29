@@ -503,7 +503,7 @@ $('mikrofon').onclick = () => {
   suaraAwal = $('catatan').value;
   pesan('Memulai mikrofon…');
   batalSuaraTimer();
-  suaraTimer = setTimeout(() => suaraGagal('Mikrofon tidak merespons. Cek izin Mikrofon DKPoint di Pengaturan.'), 4000);
+  suaraTimer = setTimeout(() => suaraGagal('Mikrofon tidak merespons. Cek izin Mikrofon DKPoint di Pengaturan dan pastikan aplikasi Google aktif.'), 8000);
   try { DokumentasiNative.mulaiSuara(); } catch (_) { suaraGagal('Catatan suara tidak bisa dimulai'); }
 };
 function suaraMulai() { batalSuaraTimer(); $('mikrofon').classList.add('aktif'); pesan('Silakan bicara...'); }

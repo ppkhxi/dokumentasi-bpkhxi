@@ -301,7 +301,7 @@ class OverlayService : Service() {
             return
         }
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            kirimJs("suaraGagal(${JSONObject.quote("Pengenal suara tidak tersedia di HP ini.")})")
+            kirimJs("suaraGagal(${JSONObject.quote("Pengenal suara tidak tersedia. Pastikan aplikasi Google terpasang dan aktif (Setelan > Aplikasi > Google), lalu coba lagi.")})")
             return
         }
         selesaiPengenal()
@@ -327,6 +327,10 @@ class OverlayService : Service() {
                 val teks = when (error) {
                     SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Suara tidak terdengar, coba lagi."
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Izin mikrofon belum ada."
+                    SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
+                        "Butuh internet, atau unduh paket suara offline Bahasa Indonesia (Setelan Google > Suara > Pengenalan suara offline). Kode $error."
+                    SpeechRecognizer.ERROR_AUDIO -> "Mikrofon tidak bisa dipakai (sedang dipakai aplikasi lain?). Kode $error."
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Pengenal suara masih sibuk, tunggu sebentar lalu coba lagi."
                     else -> "Catatan suara gagal (kode $error)."
                 }
                 kirimJs("suaraGagal(${JSONObject.quote(teks)})")
