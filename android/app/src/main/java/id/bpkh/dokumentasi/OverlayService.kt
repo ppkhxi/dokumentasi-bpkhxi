@@ -304,6 +304,9 @@ class OverlayService : Service() {
             kirimJs("suaraGagal(${JSONObject.quote("Pengenal suara tidak tersedia. Pastikan aplikasi Google terpasang dan aktif (Setelan > Aplikasi > Google), lalu coba lagi.")})")
             return
         }
+        /* Pasang ulang tipe layanan: kalau layanan lahir sebelum izin mikrofon diberikan, tipe "microphone" belum ada
+           dan Android membisukan mikrofon untuk aplikasi di latar. */
+        try { buatNotifikasi() } catch (e: Exception) { }
         selesaiPengenal()
         val p = SpeechRecognizer.createSpeechRecognizer(this)
         pengenal = p
@@ -330,6 +333,7 @@ class OverlayService : Service() {
                     SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
                         "Butuh internet, atau unduh paket suara offline Bahasa Indonesia (Setelan Google > Suara > Pengenalan suara offline). Kode $error."
                     SpeechRecognizer.ERROR_AUDIO -> "Mikrofon tidak bisa dipakai (sedang dipakai aplikasi lain?). Kode $error."
+                    11, 12, 13 -> "Paket bahasa Indonesia belum tersedia. Buka Setelan > Sistem > Bahasa > Pengetikan suara Google, unduh Bahasa Indonesia. Kode $error."
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Pengenal suara masih sibuk, tunggu sebentar lalu coba lagi."
                     else -> "Catatan suara gagal (kode $error)."
                 }
@@ -341,7 +345,6 @@ class OverlayService : Service() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         })
     }
 
