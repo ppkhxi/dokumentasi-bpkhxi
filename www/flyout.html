@@ -403,7 +403,26 @@ let posisiTerakhir = (() => {
   try { const v = JSON.parse(localStorage.getItem('posisi_terakhir') || 'null'); return v && v.lat != null ? v : null; }
   catch (_) { return null; }
 })();
+// Lokasi dari aplikasi (native) dipakai bila ada; WebView tidak dipakai agar tidak menimpa data.
+function terimaLokasiNative(lat, lon, akurasi, segar) {
+  galatGps = '';
+  if (segar) {
+    S.posisi = { lat: lat, lon: lon, alt: null, akurasi: akurasi };
+    posisiTerakhir = { lat: lat, lon: lon, t: Date.now() };
+  } else {
+    S.posisi = null;
+    posisiTerakhir = { lat: lat, lon: lon, t: Date.now() };
+  }
+  try { localStorage.setItem('posisi_terakhir', JSON.stringify(posisiTerakhir)); } catch (_) {}
+  perbaruiInfo();
+}
+function terimaGalatLokasi(teks) {
+  galatGps = teks;
+  S.posisi = null;
+  perbaruiInfo();
+}
 function mulaiGps() {
+  if (KAMERA_ASLI) return;
   if (!navigator.geolocation) { galatGps = 'lokasi tidak didukung'; perbaruiInfo(); return; }
   navigator.geolocation.watchPosition(p => {
     galatGps = '';

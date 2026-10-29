@@ -17,6 +17,9 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Bundle
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -150,7 +153,8 @@ class OverlayService : Service() {
         // Kamera dipakai dari layanan latar: Android 10+ perlu tipe "camera" agar tidak diblokir.
         // Tipe "microphone" hanya dipasang bila izin mikrofon sudah ada (Android 14+ mewajibkannya).
         val tipe = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var t = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            var t = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            if (punyaIzin(Manifest.permission.CAMERA)) t = t or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && punyaIzinMikrofon()) {
                 t = t or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             }
@@ -162,6 +166,10 @@ class OverlayService : Service() {
     /** Tombol bulat di tepi kanan layar (seperti tombol aksesibilitas). Bisa digeser naik-turun. */
     @SuppressLint("ClickableViewAccessibility")
     private fun pasangBubble() {
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            stopSelf()
+            return
+        }
         val ukuran = dp(56)
         val tinggiLayar = resources.displayMetrics.heightPixels
         val simpan = getSharedPreferences("pil_kamera", MODE_PRIVATE)
@@ -266,6 +274,9 @@ class OverlayService : Service() {
     /** Catatan dengan suara: pengenal bawaan Android, bahasa Indonesia (id-ID). */
     private var pengenal: SpeechRecognizer? = null
 
+    private fun punyaIzin(izin: String): Boolean =
+        ContextCompat.checkSelfPermission(this, izin) == PackageManager.PERMISSION_GRANTED
+
     private fun punyaIzinMikrofon(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
@@ -327,9 +338,49 @@ class OverlayService : Service() {
         })
     }
 
+    /** Lokasi dari HP (LocationManager), dikirim ke flyout. Lebih andal daripada WebView. */
+    private var lokasiMgr: LocationManager? = null
+    private val pendengarLokasi = LocationListener { loc -> kirimLokasi(loc) }
+
+    private fun kirimLokasi(loc: Location) {
+        val segar = System.currentTimeMillis() - loc.time < 120_000L
+        kirimJs("terimaLokasiNative(${loc.latitude}, ${loc.longitude}, ${loc.accuracy.toInt()}, $segar)")
+    }
+
+    private fun mulaiLokasiNative() {
+        if (!punyaIzin(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            kirimJs("terimaGalatLokasi(${JSONObject.quote("izin lokasi belum ada")})")
+            return
+        }
+        val mgr = getSystemService(LocationManager::class.java) ?: return
+        lokasiMgr = mgr
+        try {
+            mgr.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { kirimLokasi(it) }
+            mgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.let { kirimLokasi(it) }
+            val adaProvider = mgr.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                mgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            if (!adaProvider) {
+                kirimJs("terimaGalatLokasi(${JSONObject.quote("Lokasi HP mati. Aktifkan Lokasi.")})")
+                return
+            }
+            if (mgr.isProviderEnabled(LocationManager.GPS_PROVIDER))
+                mgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 0f, pendengarLokasi, Looper.getMainLooper())
+            if (mgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+                mgr.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 0f, pendengarLokasi, Looper.getMainLooper())
+        } catch (_: SecurityException) {
+            kirimJs("terimaGalatLokasi(${JSONObject.quote("izin lokasi belum ada")})")
+        }
+    }
+
+    private fun hentikanLokasiNative() {
+        try { lokasiMgr?.removeUpdates(pendengarLokasi) } catch (_: Exception) {}
+        lokasiMgr = null
+    }
+
     private fun tutupSemua() {
         keadaan = 0
         selesaiPengenal()
+        hentikanLokasiNative()
         hentikanKamera()
         val wv = flyout
         val k = kontainer
@@ -403,6 +454,7 @@ class OverlayService : Service() {
         kontainer = kt
         preview = pv
         wv.loadUrl(URL_FLYOUT)
+        mulaiLokasiNative()
         pemilikSiklus.atur(Lifecycle.State.RESUMED)
         nyalakanKamera()
     }
