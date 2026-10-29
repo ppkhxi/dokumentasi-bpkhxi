@@ -18,7 +18,8 @@
   const KUNCI_STORAGE = {
     AUTH: 'dkpoint_mega_auth',
     ROOMS: 'dkpoint_mega_rooms',
-    ROOM_AKTIF: 'dkpoint_mega_room_aktif'
+    ROOM_AKTIF: 'dkpoint_mega_room_aktif',
+    REGISTRI: 'dkpoint_rooms_registri'
   };
 
   const _ls = window.localStorage || (typeof localStorage !== 'undefined' ? localStorage : null);
@@ -324,18 +325,50 @@
     // PENGELOLAAN ROOM & HAK AKSES
     // -------------------------------------------------------------
 
-    ambilSemuaRoom() {
+    /* Daftar room = room aktif + REGISTRI permanen perangkat. Room yang pernah diterima perangkat ini
+       tidak hilang karena login berganti nama / keluar; hanya hilang bila pengguna menghapus atau keluar dari room. */
+    _bacaRegistri() {
       try {
-        if (!_ls) return [];
-        const raw = _ls.getItem(KUNCI_STORAGE.ROOMS);
-        return raw ? JSON.parse(raw) : [];
-      } catch(e) {
-        return [];
-      }
+        const raw = _ls && _ls.getItem(KUNCI_STORAGE.REGISTRI);
+        const r = raw ? JSON.parse(raw) : [];
+        return Array.isArray(r) ? r : [];
+      } catch (e) { return []; }
+    },
+
+    ambilSemuaRoom() {
+      let list = [];
+      try {
+        const raw = _ls ? _ls.getItem(KUNCI_STORAGE.ROOMS) : null;
+        const j = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(j)) list = j;
+      } catch (e) { list = []; }
+      const ada = new Set(list.map(r => String(r.nama || '').trim().toUpperCase()));
+      this._bacaRegistri().forEach(r => {
+        const k = String(r.nama || '').trim().toUpperCase();
+        if (k && !ada.has(k)) { list.push(r); ada.add(k); }
+      });
+      return list;
     },
 
     simpanSemuaRoom(rooms) {
-      if (_ls) _ls.setItem(KUNCI_STORAGE.ROOMS, JSON.stringify(rooms));
+      if (!_ls) return;
+      _ls.setItem(KUNCI_STORAGE.ROOMS, JSON.stringify(rooms));
+      // Catat ke registri (gabungan, tidak pernah mengurangi)
+      const reg = this._bacaRegistri();
+      const idx = new Map(reg.map(r => [String(r.nama || '').trim().toUpperCase(), r]));
+      (rooms || []).forEach(r => {
+        const k = String(r.nama || '').trim().toUpperCase();
+        if (!k || r.id === 'room_lokal') return;
+        idx.set(k, r);
+      });
+      _ls.setItem(KUNCI_STORAGE.REGISTRI, JSON.stringify(Array.from(idx.values())));
+    },
+
+    _lupakanDiRegistri(idAtauNama) {
+      if (!_ls) return;
+      const t = String(idAtauNama || '').trim().toUpperCase();
+      const reg = this._bacaRegistri().filter(r => r.id !== idAtauNama && String(r.nama || '').trim().toUpperCase() !== t);
+      _ls.setItem(KUNCI_STORAGE.REGISTRI, JSON.stringify(reg));
     },
 
     getRoomAktif() {
@@ -477,6 +510,8 @@
 
       list = list.filter(r => r.id !== idAtauNama && r.nama !== idAtauNama);
       this.simpanSemuaRoom(list);
+      this._lupakanDiRegistri(target.nama);
+      this._lupakanDiRegistri(idAtauNama);
       const aktif = this.getRoomAktif();
       if (aktif && (aktif.id === idAtauNama || aktif.nama === idAtauNama)) {
         this.setRoomAktif(list.length > 0 ? list[0].id : '');

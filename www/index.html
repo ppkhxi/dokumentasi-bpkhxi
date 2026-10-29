@@ -2246,7 +2246,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.68';
+const VERSI = '3.9.69';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -8871,14 +8871,7 @@ document.addEventListener('visibilitychange', ()=>{
   if(typeof MegaEngine !== 'undefined'){
     S.rooms = MegaEngine.ambilSemuaRoom();
     let adaMigrasi = false;
-    // Bersihkan room dummy warisan jika masih PPTPKH KEDIRI
-    S.rooms = S.rooms.map(r => {
-      if(r.nama === 'PPTPKH KEDIRI' && (!r.hostEmail || r.tipe === 'host')){
-        adaMigrasi = true;
-        return { id:'room_lokal', nama:'LOKAL', tipe:'local', hostEmail:'', dibuat:r.dibuat||Date.now() };
-      }
-      return r;
-    });
+    // (migrasi room dummy 'PPTPKH KEDIRI' dihapus: nama itu bisa saja room asli petugas)
     if(!S.rooms.length){
       S.rooms = [{ id:'room_lokal', nama:'LOKAL', tipe:'local', hostEmail:'', dibuat:Date.now() }];
       adaMigrasi = true;
@@ -8891,15 +8884,11 @@ document.addEventListener('visibilitychange', ()=>{
 
   await terimaUndangan(q);
 
-  if(localStorage.getItem('bpkh_room') === 'PPTPKH KEDIRI'){
-    localStorage.setItem('bpkh_room', 'LOKAL');
-  }
-
   const nama = localStorage.getItem('bpkh_nama'), room = localStorage.getItem('bpkh_room'), userId = localStorage.getItem('bpkh_userId');
   if(nama){
     S.nama = nama;
     S.userId = userId || nama.replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USR01';
-    S.room = (room && room !== 'PPTPKH KEDIRI') ? room : (S.rooms[0] ? S.rooms[0].nama : 'LOKAL');
+    S.room = room ? room : (S.rooms[0] ? S.rooms[0].nama : 'LOKAL');
     mulaiGPS();
     history.replaceState({layar:LAYAR_UTAMA},'');
     ke(LAYAR_UTAMA,false);
