@@ -342,7 +342,27 @@ class OverlayService : Service() {
     private var lokasiMgr: LocationManager? = null
     private val pendengarLokasi = LocationListener { loc -> kirimLokasi(loc) }
 
+    private fun simpanLokasiTerakhir(loc: Location) {
+        getSharedPreferences("lokasi_terakhir", MODE_PRIVATE).edit()
+            .putString("lat", loc.latitude.toString())
+            .putString("lon", loc.longitude.toString())
+            .putLong("waktu", loc.time)
+            .apply()
+    }
+
+    private fun bacaLokasiTerakhir(): Location? {
+        val pref = getSharedPreferences("lokasi_terakhir", MODE_PRIVATE)
+        val lat = pref.getString("lat", null)?.toDoubleOrNull() ?: return null
+        val lon = pref.getString("lon", null)?.toDoubleOrNull() ?: return null
+        return Location("tersimpan").apply {
+            latitude = lat
+            longitude = lon
+            time = pref.getLong("waktu", 0L)
+        }
+    }
+
     private fun kirimLokasi(loc: Location) {
+        simpanLokasiTerakhir(loc)
         val segar = System.currentTimeMillis() - loc.time < 120_000L
         kirimJs("terimaLokasiNative(${loc.latitude}, ${loc.longitude}, ${loc.accuracy.toInt()}, $segar)")
     }
@@ -357,6 +377,10 @@ class OverlayService : Service() {
         try {
             mgr.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { kirimLokasi(it) }
             mgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.let { kirimLokasi(it) }
+            if (mgr.getLastKnownLocation(LocationManager.GPS_PROVIDER) == null &&
+                mgr.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) == null) {
+                bacaLokasiTerakhir()?.let { kirimLokasi(it) }   // cadangan: lokasi terakhir dari aplikasi ini
+            }
             val adaProvider = mgr.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 mgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
             if (!adaProvider) {

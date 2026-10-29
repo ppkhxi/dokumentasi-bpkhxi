@@ -2536,6 +2536,7 @@ function mulaiGPS(){
       if (akurasi <= 35 || !terakhirGpsBagus) {
         terakhirGpsBagus = { lat, lon, akurasi, waktu: Date.now() };
         S.posisi = { lat, lon, akurasi, tersimpan: false };
+        try { localStorage.setItem('posisi_terakhir', JSON.stringify({ lat, lon, t: Date.now() })); } catch(_) {}
       } else if (akurasi > 50 && terakhirGpsBagus && (Date.now() - terakhirGpsBagus.waktu < 45000)) {
         // Jika akurasi tiba-tiba melorot drastis (>50m) akibat kanopi/hutan lebat,
         // pertahankan Last Known Good Fix agar posisi tidak melompat liar
