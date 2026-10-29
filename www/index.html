@@ -2247,7 +2247,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.70';
+const VERSI = '3.9.71';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -8899,6 +8899,40 @@ document.addEventListener('visibilitychange', ()=>{
   }
 });
 
+/* Mengumpulkan kembali room yang pernah ada di perangkat ini: salinan per-petugas (dkpoint_rooms_*)
+   dan nama room pada foto yang tersimpan. Hanya MENAMBAH, tidak pernah menghapus. */
+async function pulihkanRoomLama(){
+  if(typeof MegaEngine === 'undefined') return 0;
+  const list = MegaEngine.ambilSemuaRoom();
+  const ada = new Set(list.map(r => String(r.nama||'').trim().toUpperCase()));
+  let tambah = 0;
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(!k || !k.startsWith('dkpoint_rooms_') || k === 'dkpoint_rooms_registri') continue;
+    let arr = [];
+    try{ arr = JSON.parse(localStorage.getItem(k) || '[]'); }catch(e){}
+    if(!Array.isArray(arr)) continue;
+    arr.forEach(r => {
+      const n = String((r && r.nama) || '').trim().toUpperCase();
+      if(!n || n === 'LOKAL' || r.id === 'room_lokal' || ada.has(n)) return;
+      list.push(r); ada.add(n); tambah++;
+    });
+  }
+  try{
+    const fotos = await ambilSemua();
+    const sesi = MegaEngine.punyaSesi();
+    fotos.forEach(f => {
+      const n = String(f.room||'').trim().toUpperCase();
+      if(!n || n === 'LOKAL' || ada.has(n)) return;
+      list.push({ id:'room_'+Date.now()+'_'+tambah, nama:n, tipe: sesi ? 'host' : 'local',
+                  hostEmail: sesi ? MegaEngine.getEmail() : '', dibuat: Date.now(), dipulihkan:true });
+      ada.add(n); tambah++;
+    });
+  }catch(e){}
+  if(tambah){ MegaEngine.simpanSemuaRoom(list); S.rooms = list; }
+  return tambah;
+}
+
 (async function mulai(){
   const q = new URLSearchParams(location.search);
   perbaruiKoneksi();
@@ -8916,6 +8950,7 @@ document.addEventListener('visibilitychange', ()=>{
       adaMigrasi = true;
     }
     if(adaMigrasi) MegaEngine.simpanSemuaRoom(S.rooms);
+    try{ await pulihkanRoomLama(); }catch(e){ console.warn('Pemulihan room lama gagal', e); }
   }
   terapkanLogo();
   inisialisasiKontrolZoom();
