@@ -73,6 +73,7 @@ class OverlayService : Service() {
     private var lpFlyout: WindowManager.LayoutParams? = null
     private var preview: PreviewView? = null
     private var camProvider: ProcessCameraProvider? = null
+    private var kameraDepan = false
     private var imageCapture: ImageCapture? = null
     private val pekerja = Executors.newSingleThreadExecutor()
     /** Siklus hidup untuk CameraX; kamera hidup selama pemilik ini aktif. */
@@ -437,9 +438,16 @@ class OverlayService : Service() {
     /** Flyout: kamera asli (CameraX) di bawah, antarmuka web di atasnya. Dimuat sekali per kali dibuka. */
     @SuppressLint("SetJavaScriptEnabled")
     private fun siapkanFlyout() {
+        kameraDepan = false
         val pv = PreviewView(this).apply {
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             scaleType = PreviewView.ScaleType.FILL_CENTER
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(v: View, o: android.graphics.Outline) {
+                    o.setRoundRect(0, 0, v.width, v.height, dp(16).toFloat())
+                }
+            }
         }
         val wv = WebView(this)
         wv.setBackgroundColor(Color.parseColor("#0E100E"))
@@ -512,7 +520,7 @@ class OverlayService : Service() {
                 val cap = ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
                 imageCapture = cap
                 prov.unbindAll()
-                prov.bindToLifecycle(pemilikSiklus, CameraSelector.DEFAULT_BACK_CAMERA, prev, cap)
+                prov.bindToLifecycle(pemilikSiklus, if (kameraDepan) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA, prev, cap)
             } catch (e: Exception) {
                 kabar("Kamera tidak bisa dibuka: " + (e.javaClass.simpleName))
             }
@@ -644,6 +652,14 @@ class OverlayService : Service() {
         @JavascriptInterface
         fun fokusKetik(aktif: Boolean) {
             handler.post { aturFokusKetik(aktif) }
+        }
+
+        /** Ganti kamera belakang/depan; mengembalikan true bila sekarang kamera depan. */
+        @JavascriptInterface
+        fun gantiKamera(): Boolean {
+            kameraDepan = !kameraDepan
+            handler.post { nyalakanKamera() }
+            return kameraDepan
         }
 
         @JavascriptInterface

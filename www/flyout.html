@@ -9,37 +9,54 @@
   :root { color-scheme: dark; }
   html, body { margin:0; height:100%; background:#0e100e; overflow:hidden;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:#fff; }
-  .kartu { position:fixed; inset:0; display:flex; flex-direction:column; gap:8px; padding:8px;
-    box-sizing:border-box; background:rgba(14,16,14,.94); border-radius:22px; }
-  .kepala { display:flex; align-items:center; gap:8px; min-height:30px; }
-  .kepala img { width:22px; height:22px; border-radius:6px; object-fit:contain; }
+  button { font-family:inherit; -webkit-tap-highlight-color:transparent; }
+  .kartu { position:fixed; inset:0; display:flex; flex-direction:column; gap:8px; padding:10px;
+    box-sizing:border-box; background:#121412; border-radius:26px; }
+  .kepala { display:flex; align-items:center; gap:9px; min-height:34px; }
+  .kepala img { width:26px; height:26px; border-radius:8px; object-fit:contain; background:#fff1; }
   .kepala .info { flex:1; min-width:0; font-size:11px; line-height:1.25; }
-  .kepala .info b { display:block; font-size:12px; }
-  .kepala .info span { color:#b8c4bb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
-  #tutup { background:#2a2f2a; color:#fff; border:0; border-radius:50%; width:30px; height:30px; font-size:14px; }
-  .pratinjau { position:relative; flex:1 1 auto; min-height:0; border-radius:14px; overflow:hidden; background:#000; }
+  .kepala .info b { display:block; font-size:13px; }
+  .kepala .info span { color:#9fb0a4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .tbl { background:#232823; color:#fff; border:0; border-radius:50%; width:32px; height:32px; padding:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .tbl svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; transition:transform .2s; }
+  #panelBtn[aria-expanded="true"] svg { transform:rotate(180deg); }
+  .panel { display:none; background:#1b1f1b; border-radius:16px; padding:9px 10px; font-size:12px; }
+  .panel.buka { display:block; }
+  .panel .baris { display:flex; align-items:center; gap:8px; }
+  .panel .baris + .baris { margin-top:8px; }
+  .panel label { width:58px; color:#9fb0a4; flex:0 0 auto; }
+  .opsi { display:flex; gap:5px; flex:1; }
+  .opsi button { flex:1; border:0; border-radius:10px; padding:7px 0; background:#262c26; color:#d6e0d9; font-size:12px; }
+  .opsi button.pilih { background:#fff; color:#111; font-weight:700; }
+  .pratinjau { position:relative; flex:1 1 auto; min-height:0; border-radius:16px; overflow:hidden; background:#000; }
   #video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   #tirai { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
   #tirai.kilat { animation: kilat .18s ease-out; }
   @keyframes kilat { from { opacity:.85 } to { opacity:0 } }
-  input#catatan { width:100%; box-sizing:border-box; border:0; border-radius:12px; padding:9px 11px;
+  #hitung { position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:72px; font-weight:700;
+    text-shadow:0 2px 12px #000a; pointer-events:none; }
+  input#catatan { width:100%; box-sizing:border-box; border:0; border-radius:14px; padding:10px 12px;
     background:#1f241f; color:#fff; font-size:14px; outline:none; }
   input#catatan::placeholder { color:#7d8a80; }
   .kolomCatatan { position:relative; }
-  .kolomCatatan input#catatan { padding-right:48px; }
+  .kolomCatatan input#catatan { padding-right:50px; }
   #mikrofon { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:36px; height:36px;
     border-radius:50%; border:0; background:#2a2f2a; color:#fff; font-size:16px; line-height:36px; padding:0; }
   #mikrofon::before { content:''; display:block; width:14px; height:14px; margin:11px auto; border-radius:50%; background:#ef4444; }
   #mikrofon.aktif::before { border-radius:3px; animation:denyutMik 1s infinite; }
   #mikrofon.aktif { background:#2a2f2a; }
   @keyframes denyutMik { 50% { opacity:.55; } }
-  .bawah { display:flex; justify-content:center; align-items:center; flex:0 0 auto; padding-top:2px; }
-  #rana { width:58px; height:58px; border-radius:50%; border:4px solid #fff; background:#fff;
-    padding:0; box-shadow:0 0 0 3px rgba(255,255,255,.25); }
-  #rana:active { transform:scale(.94); }
+  .bawah { display:flex; justify-content:space-between; align-items:center; flex:0 0 auto; padding:2px 6px 0; }
+  #mini { width:46px; height:46px; border-radius:14px; background:#232823 center/cover no-repeat; border:2px solid #2f352f; padding:0; }
+  #ganti { width:46px; height:46px; border-radius:50%; background:#232823; border:0; padding:0; display:flex; align-items:center; justify-content:center; }
+  #ganti svg { width:22px; height:22px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  #rana { width:62px; height:62px; border-radius:50%; border:4px solid #121412; background:#fff;
+    padding:0; box-shadow:0 0 0 3px #fff; }
+  #rana:active { transform:scale(.93); }
   #rana:disabled { opacity:.5; }
   #cobaLagi { margin-top:10px; background:#fff; color:#111; border:0; border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600; }
-  #pesan { position:fixed; left:50%; bottom:86px; transform:translateX(-50%); background:rgba(0,0,0,.85);
+  #pesan { position:fixed; left:50%; bottom:92px; transform:translateX(-50%); background:rgba(0,0,0,.85);
     padding:6px 10px; border-radius:10px; font-size:12px; opacity:0; transition:opacity .2s; pointer-events:none;
     max-width:90%; text-align:center; }
   #pesan.tampil { opacity:1; }
@@ -55,18 +72,30 @@
   <div class="kepala">
     <img src="icons/logo-dokumentasi.png" alt="">
     <div class="info"><b>Dokumentasi</b><span id="info">—</span></div>
-    <button id="tutup" type="button" aria-label="Tutup">&#10005;</button>
+    <button id="panelBtn" class="tbl" type="button" aria-label="Pengaturan cepat" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+    <button id="tutup" class="tbl" type="button" aria-label="Tutup">&#10005;</button>
+  </div>
+  <div class="panel" id="panel">
+    <div class="baris"><label>Timer</label><div class="opsi" id="opsiTimer">
+      <button data-v="0" class="pilih">Mati</button><button data-v="3">3 dtk</button><button data-v="5">5 dtk</button><button data-v="10">10 dtk</button></div></div>
+    <div class="baris"><label>Kualitas</label><div class="opsi" id="opsiMutu">
+      <button data-v="300">Hemat</button><button data-v="500">Normal</button><button data-v="900">Tinggi</button></div></div>
   </div>
   <div class="pratinjau">
     <video id="video" playsinline muted autoplay></video>
     <div id="tirai"></div>
+    <div id="hitung"></div>
     <div id="kosong" class="kosong" style="display:none"><div><div id="kosongTeks"></div><button id="cobaLagi" type="button">Coba lagi</button></div></div>
   </div>
   <div class="kolomCatatan">
     <input id="catatan" maxlength="250" placeholder="Tulis nomor patok atau catatan..." autocomplete="off">
     <button id="mikrofon" type="button" aria-label="Rekam catatan suara"></button>
   </div>
-  <div class="bawah"><button id="rana" type="button" aria-label="Ambil foto"></button></div>
+  <div class="bawah">
+    <button id="mini" type="button" aria-label="Foto terakhir"></button>
+    <button id="rana" type="button" aria-label="Ambil foto"></button>
+    <button id="ganti" type="button" aria-label="Ganti kamera"><svg viewBox="0 0 24 24"><path d="M20 7h-3l-2-2H9L7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><path d="M9 13a3 3 0 0 1 5-2l1 1M15 14a3 3 0 0 1-5 2l-1-1"/></svg></button>
+  </div>
 </div>
 <div id="pesan" role="status" aria-live="polite"></div>
 
@@ -333,7 +362,20 @@ async function prosesFoto(sumber, wAsli, hAsli) {
 }
 
 let sedangSimpan = false;
-async function jepret() {
+let timerDetik = 0, sedangHitung = false;
+function jepret() {
+  if (sedangSimpan || sedangHitung) return;
+  if (!timerDetik) return jepretSekarang();
+  sedangHitung = true;
+  let n = timerDetik; const h = $('hitung');
+  h.style.display = 'flex'; h.textContent = n; pesan('Foto dalam ' + n + ' detik');
+  const t = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(t); h.style.display = 'none'; sedangHitung = false; jepretSekarang(); }
+    else { h.textContent = n; pesan('Foto dalam ' + n + ' detik'); }
+  }, 1000);
+}
+async function jepretSekarang() {
   if (KAMERA_ASLI) {
     if (sedangSimpan) return;
     sedangSimpan = true;
@@ -355,7 +397,7 @@ async function jepret() {
     const hasil = await prosesFoto(beku, beku.width, beku.height);
     await simpanDenganRekaman(hasil);
     $('catatan').value = '';
-    pesan('Foto tersimpan');
+    pesan('Foto tersimpan'); muatMiniatur();
   } catch (err) {
     console.error('Gagal kamera cepat:', err);
     pesan('Gagal memproses foto: ' + err.message);
@@ -467,7 +509,7 @@ function terimaFotoNative(dataUrl) {
       const hasil = await prosesFoto(img, img.naturalWidth, img.naturalHeight);
       await simpanDenganRekaman(hasil);
       $('catatan').value = '';
-      pesan('Foto tersimpan');
+      pesan('Foto tersimpan'); muatMiniatur();
     } catch (err) {
       pesan('Gagal memproses foto: ' + err.message);
     } finally {
@@ -484,6 +526,41 @@ function terimaGagalNative(teks) {
   pesan(teks);
 }
 
+/* ---------- Foto terakhir (miniatur) ---------- */
+async function muatMiniatur() {
+  try {
+    const d = await bukaDB();
+    const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor(null, 'prev');
+    req.onsuccess = () => {
+      const c = req.result;
+      if (c && c.value && c.value.dataUrl) $('mini').style.backgroundImage = 'url("' + c.value.dataUrl + '")';
+    };
+  } catch (_) {}
+}
+$('mini').onclick = () => pesan('Foto terakhir. Lihat semua di Galeri aplikasi');
+
+/* ---------- Panel pengaturan cepat ---------- */
+function tandaiOpsi(grup, nilai) {
+  grup.querySelectorAll('button').forEach(b => b.classList.toggle('pilih', b.dataset.v === String(nilai)));
+}
+$('panelBtn').onclick = () => {
+  const buka = !$('panel').classList.contains('buka');
+  $('panel').classList.toggle('buka', buka);
+  $('panelBtn').setAttribute('aria-expanded', buka);
+  setTimeout(kirimPosisiPratinjau, 60);
+  setTimeout(kirimPosisiPratinjau, 300);
+};
+$('opsiTimer').onclick = e => { const b = e.target.closest('button'); if (!b) return; timerDetik = +b.dataset.v; tandaiOpsi($('opsiTimer'), timerDetik); };
+$('opsiMutu').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.targetKB = +b.dataset.v; tandaiOpsi($('opsiMutu'), S.targetKB);
+  try { localStorage.setItem('bpkh_target', String(S.targetKB)); } catch (_) {}
+};
+$('ganti').onclick = () => {
+  if (!(window.DokumentasiNative && DokumentasiNative.gantiKamera)) { pesan('Ganti kamera hanya tersedia di aplikasi'); return; }
+  try { const depan = DokumentasiNative.gantiKamera(); pesan(depan ? 'Kamera depan' : 'Kamera belakang'); } catch (_) {}
+};
+
 /* ---------- Tutup ---------- */
 function tutupKamera() {
   hentikanKamera();
@@ -497,6 +574,8 @@ $('tutup').onclick = tutupKamera;
 $('cobaLagi').onclick = () => { bukaKamera.sudahUlang = false; bukaKamera(); };
 
 muatPengaturan();
+tandaiOpsi($('opsiMutu'), S.targetKB);
+muatMiniatur();
 perbaruiInfo();
 mulaiGps();
 bukaKamera();
