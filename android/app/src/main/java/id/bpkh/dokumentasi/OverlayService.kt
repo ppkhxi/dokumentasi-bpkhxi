@@ -474,8 +474,11 @@ class OverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.OPAQUE
         ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            // Tepat di tengah layar (kiri-kanan dan atas-bawah), sama di semua perangkat.
+            gravity = Gravity.CENTER
+            x = 0
             y = 0
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
         }
         // Ketuk di luar flyout = tutup (kamera berhenti, kembali ke pil).
         kt.setOnTouchListener { _, e ->
