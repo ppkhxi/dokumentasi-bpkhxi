@@ -1782,26 +1782,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <button id="btnLembar"></button>
       </div>
 
-      <!-- Floating Action Bar saat ada baris dipilih -->
-      <div id="barAksiTabel" class="bar-aksi-tabel sembunyi">
-        <div class="info-pilih">
-          <span>Terpilih</span>
-          <span class="badge-hitung" id="tabelJmlTerpilih">0</span>
-        </div>
-        <div class="grup-tombol-aksi">
-          <button type="button" class="btn-aksi-tabel primer" id="btnAksiPdfTabel" title="Unduh PDF baris terpilih">
-            <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
-            PDF
-          </button>
-          <button type="button" class="btn-aksi-tabel bahaya" id="btnAksiHapusTabel" title="Hapus foto terpilih">
-            <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Hapus
-          </button>
-          <button type="button" class="btn-aksi-tabel" id="btnAksiBatalTabel" title="Batalkan pilihan" style="padding:6px 9px">
-            ✕
-          </button>
-        </div>
-      </div>
+      <div id="barAksiTabel" class="bar-aksi-tabel sembunyi" hidden><span id="tabelJmlTerpilih"></span><button id="btnAksiPdfTabel"></button><button id="btnAksiHapusTabel"></button><button id="btnAksiBatalTabel"></button></div>
 
       <div id="isiTabel"></div>
     </section>
@@ -2256,7 +2237,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.63';
+const VERSI = '3.9.64';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -3174,15 +3155,8 @@ function tampilHasilGanda(daftar){
 $('gBagikan').onclick = async ()=>{
   if(!G.hasil.length) return;
   const files = G.hasil.map(h=> new File([h.blob], h.nama, {type:h.blob.type}));
-  if(navigator.canShare && navigator.canShare({files})){
-    try{
-      await navigator.share({files, title:'Dokumentasi '+(S.room||'dkpoint'),
-        text:'Dokumentasi lapangan '+S.kantor});
-    }catch(e){ if(e.name!=='AbortError') pesan('Lembar bagikan gagal dibuka'); }
-  }else{
-    pesan('Perangkat ini tidak mendukung Bagikan berkas — memakai unduhan');
-    unduhGanda();
-  }
+  const ok = await bagikanBerkas(files, 'Dokumentasi lapangan '+(S.kantor||''));
+  if(!ok && !(window.DokumentasiNative && DokumentasiNative.bagikanBuka) && !(navigator.canShare && navigator.canShare({files}))) unduhGanda();
 };
 $('gUnduh').onclick = unduhGanda;
 /* Diberi jeda: Android memblokir unduhan beruntun kalau ditembakkan sekaligus. */
@@ -3700,8 +3674,7 @@ function gambarAksiGaleri(data){
     '<span class="jml">'+n+' dipilih</span>'+
     '<button class="tombol-mini" id="btnSemua">'+(semua?'Kosongkan':'Pilih semua')+'</button>'+
     '<button class="tombol-mini" id="btnUploadPilih" style="background:#0284c7;color:#fff;border-color:#0284c7"'+(n?'':' disabled')+'>☁️ Unggah ke Cloud</button>'+
-    '<button class="tombol-mini" id="btnBagiWaPilih"'+(n?'':' disabled')+'>Bagikan ke WA</button>'+
-    '<button class="tombol-mini" id="btnBagiDrivePilih"'+(n?'':' disabled')+'>Drive</button>'+
+    '<button class="tombol-mini" id="btnBagiPilih"'+(n?'':' disabled')+'>Bagikan</button>'+
     '<button class="tombol-mini utama" id="btnUnduhPilihan"'+(n?'':' disabled')+'>Unduh</button>'+
     '<button class="tombol-mini bahaya" id="btnHapusPilihan"'+(n?'':' disabled')+'>Hapus</button>'+
     '<button class="tombol-mini" id="btnBatalPilih">Batal</button>';
@@ -3717,8 +3690,7 @@ function gambarAksiGaleri(data){
   };
   $('btnBatalPilih').onclick=()=>{ S.modePilih=false; S.terpilih.clear(); muatGaleri(false); };
   $('btnUnduhPilihan').onclick=unduhPilihan;
-  $('btnBagiWaPilih').onclick=()=>bagiPilihan('WA');
-  $('btnBagiDrivePilih').onclick=()=>bagiPilihan('Drive');
+  $('btnBagiPilih').onclick=()=>bagiPilihan();
   $('btnUploadPilih').onclick=()=>{
     const n = S.terpilih.size;
     if(!n) return;
@@ -3793,7 +3765,30 @@ async function hapusPilihan(){
 }
 
 /* Membuka lembar Bagikan Android (WhatsApp, Google Drive, dll. muncul di dalamnya). */
+function berkasKeBase64(blob){
+  return new Promise((ok,gagal)=>{
+    const r=new FileReader();
+    r.onload=()=>ok(String(r.result).split(',')[1]||'');
+    r.onerror=()=>gagal(r.error);
+    r.readAsDataURL(blob);
+  });
+}
 async function bagikanBerkas(files, teks){
+  const N=window.DokumentasiNative;
+  /* Di aplikasi Android: lembar Bagikan bawaan HP (WA, Drive, Quick Share, dll.) */
+  if(N && N.bagikanBuka){
+    try{
+      N.bagikanMulai();
+      for(const f of files){
+        const b64=await berkasKeBase64(f);
+        if(!N.bagikanTambah(f.name, f.type||'application/octet-stream', b64)) throw new Error('berkas '+f.name+' gagal disiapkan');
+      }
+      return !!N.bagikanBuka(files.length===1?(files[0].type||'application/octet-stream'):'*/*', teks||'');
+    }catch(e){
+      pesan('Gagal membuka Bagikan: '+e.message);
+      return false;
+    }
+  }
   if(!(navigator.canShare && navigator.canShare({files}))){
     pesan('Perangkat ini tidak mendukung Bagikan berkas');
     return false;
@@ -3806,7 +3801,7 @@ async function bagikanBerkas(files, teks){
     return false;
   }
 }
-async function bagiPilihan(tujuan){
+async function bagiPilihan(){
   const semua=await ambilSemua();
   const pilih=semua.filter(f=>S.terpilih.has(f.id));
   if(!pilih.length) return;
@@ -3819,7 +3814,7 @@ async function bagiPilihan(tujuan){
       const nama=f.namaBerkas||`${kodeRoom}_${idUser}_${noUrutStr}.jpg`;
       return new File([dataUrlKeBytes(f.dataUrl)], nama, {type:'image/jpeg'});
     });
-    const teks='Dokumentasi lapangan'+(S.kantor?' - '+S.kantor:'')+(tujuan==='WA'?' (kirim ke WhatsApp)':' (simpan ke Google Drive)');
+    const teks='Dokumentasi lapangan'+(S.kantor?' - '+S.kantor:'');
     if(await bagikanBerkas(files, teks)){
       pesan(pilih.length+' foto dibuka di Bagikan');
     }
@@ -4368,20 +4363,13 @@ async function muatTabel(resetLimit = false){
   // Tampilan kartu ringkas vertikal tanpa scroll horizontal (mobile-first & anti-lag)
   box.innerHTML = 
     '<div class="wadah-kartu-tabel">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-radius:12px;border:1px solid var(--garis);box-shadow:var(--shadow-xs);margin-bottom:2px">' +
-        '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;font-size:13px;font-weight:600;color:var(--teks)">' +
-          '<input type="checkbox" id="chkSemuaTabel" ' + (semuaDipilih ? 'checked' : '') + ' style="width:17px;height:17px;cursor:pointer">' +
-          '<span>Pilih Semua (' + data.length + ' foto)</span>' +
-        '</label>' +
-        '<span style="font-size:12px;color:var(--teks-2);font-weight:500">' + (S_tabel.terpilih.size > 0 ? '<b>' + S_tabel.terpilih.size + '</b> terpilih' : 'Ketuk kartu untuk memilih') + '</span>' +
-      '</div>' +
+      '<div style="padding:2px 4px 6px;font-size:12px;color:var(--teks-2);font-weight:600">' + data.length + ' foto</div>' +
       tampil.map((f, i) => {
         const terpilih = S_tabel.terpilih.has(f.id);
         const teksCatatan = f.catatan && f.catatan.trim() ? esc(f.catatan) : '<i style="color:var(--teks-3);font-weight:400">— Belum ada catatan —</i>';
         const koordStr = f.lat != null ? (f.lat.toFixed(5) + ', ' + f.lon.toFixed(5)) : 'Tanpa koordinat';
-        return '<div class="kartu-rekap-item ' + (terpilih ? 'terpilih' : '') + '" data-id="' + f.id + '" style="cursor:pointer">' +
+        return '<div class="kartu-rekap-item ' + (terpilih ? 'terpilih' : '') + '" data-id="' + f.id + '">' +
           '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 68px">' +
-            '<input type="checkbox" class="chk-baris-tabel" data-id="' + f.id + '" ' + (terpilih ? 'checked' : '') + ' style="width:17px;height:17px;cursor:pointer;margin-top:2px">' +
             '<img src="' + f.dataUrl + '" class="kartu-rekap-thumb" alt="Foto" data-id="' + f.id + '" loading="lazy" decoding="async" title="Ketuk untuk melihat detail foto">' +
           '</div>' +
           '<div class="kartu-rekap-body">' +
@@ -4397,7 +4385,6 @@ async function muatTabel(resetLimit = false){
               '<span style="display:inline-flex;align-items:center;gap:3px">📍 ' + koordStr + '</span>' +
               '<div style="display:inline-flex;align-items:center;gap:6px">' +
                 '<span>🕒 ' + fmtWaktu(f.ts) + '</span>' +
-                '<button type="button" class="btn-edit-tgl-kartu" data-id="' + f.id + '" title="Ubah Tanggal/Waktu Foto" style="background:rgba(0,0,0,0.06);border:1px solid var(--garis);border-radius:6px;padding:1px 6px;cursor:pointer;font-size:11px;line-height:1.4">✏️</button>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -4406,7 +4393,7 @@ async function muatTabel(resetLimit = false){
     '</div>' +
     (sisa > 0 ? '<div style="text-align:center;padding:12px 0 20px"><button class="tombol sekunder" id="btnMuatLebihTabel" style="border-radius:12px;font-weight:600;padding:9px 20px">Muat Lebih Banyak ('+sisa+' foto lagi)</button></div>' : '') +
     '<p class="catatan-kecil" style="padding:8px 4px 4px;display:flex;align-items:center;justify-content:space-between">' +
-      '<span>💡 Ketuk kartu untuk pilih cetak/hapus &bull; Ketuk foto untuk detail &bull; Ikon ✏️ untuk ubah tanggal</span>' +
+      '<span>💡 Ketuk foto untuk melihat detail</span>' +
       '<span>' + data.length + ' foto</span>' +
     '</p>';
 
@@ -4417,73 +4404,12 @@ async function muatTabel(resetLimit = false){
     };
   }
 
-  // Checkbox master tanpa full rebuild
-  const chkSemua = $('chkSemuaTabel');
-  if(chkSemua){
-    chkSemua.onchange = e => {
-      e.stopPropagation();
-      const pilihSemua = chkSemua.checked;
-      if(pilihSemua){
-        data.forEach(f => S_tabel.terpilih.add(f.id));
-      } else {
-        S_tabel.terpilih.clear();
-      }
-      box.querySelectorAll('.kartu-rekap-item').forEach(k => {
-        k.classList.toggle('terpilih', pilihSemua);
-        const chk = k.querySelector('.chk-baris-tabel');
-        if(chk) chk.checked = pilihSemua;
-      });
-      perbaruiBarAksiTabel(data.length);
-    };
-  }
-
-  // Interaksi baris kartu
+  // Ketuk foto -> detail
   box.querySelectorAll('.kartu-rekap-item').forEach(kartu => {
-    const rawId = kartu.dataset.id;
-    const numId = Number(rawId);
-    const id = isNaN(numId) ? rawId : numId;
-    const chk = kartu.querySelector('.chk-baris-tabel');
+    const numId = Number(kartu.dataset.id);
+    const id = isNaN(numId) ? kartu.dataset.id : numId;
     const img = kartu.querySelector('img.kartu-rekap-thumb');
-    const btnEditTgl = kartu.querySelector('.btn-edit-tgl-kartu');
-
-    if(img){
-      img.onclick = e => {
-        e.stopPropagation();
-        bukaDetail(id);
-      };
-    }
-
-    if(btnEditTgl){
-      btnEditTgl.onclick = e => {
-        e.stopPropagation();
-        bukaDialogUbahWaktu(id);
-      };
-    }
-
-    if(chk){
-      chk.onclick = e => {
-        e.stopPropagation();
-        if(chk.checked) S_tabel.terpilih.add(id);
-        else S_tabel.terpilih.delete(id);
-        kartu.classList.toggle('terpilih', chk.checked);
-        perbaruiBarAksiTabel(data.length);
-      };
-    }
-
-    kartu.onclick = e => {
-      if(e.target.tagName === 'INPUT' || e.target.tagName === 'IMG' || (e.target.closest && e.target.closest('.btn-edit-tgl-kartu'))) return;
-      const sekarang = S_tabel.terpilih.has(id);
-      if(sekarang){
-        S_tabel.terpilih.delete(id);
-        if(chk) chk.checked = false;
-        kartu.classList.remove('terpilih');
-      } else {
-        S_tabel.terpilih.add(id);
-        if(chk) chk.checked = true;
-        kartu.classList.add('terpilih');
-      }
-      perbaruiBarAksiTabel(data.length);
-    };
+    if(img) img.onclick = e => { e.stopPropagation(); bukaDetail(id); };
   });
 
   perbaruiBarAksiTabel(data.length);
@@ -4978,7 +4904,7 @@ $('btnLembar').onclick = async ()=>{
       '<button class="tombol" id="btnLembarPdf" style="margin-top:0">&#128196; PDF</button>' +
       '<button class="tombol sekunder" id="btnLembarDocx" style="margin-top:0">&#128209; DOCX</button>' +
     '</div>' +
-    '<button class="tombol sekunder" id="btnBagiLembar" style="margin-top:8px">Bagikan PDF ke WA / Drive</button>' +
+    '<button class="tombol sekunder" id="btnBagiLembar" style="margin-top:8px">Bagikan PDF</button>' +
     '<button class="tombol abu" onclick="tutupDialog()">Batal</button>'
   );
 

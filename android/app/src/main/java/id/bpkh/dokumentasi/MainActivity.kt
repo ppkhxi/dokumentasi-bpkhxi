@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Base64
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
@@ -168,6 +169,53 @@ class MainActivity : Activity() {
     }
 
     inner class JembatanApp {
+        /** Berkas yang sedang disiapkan untuk lembar Bagikan bawaan Android. */
+        private val antreBagikan = ArrayList<Uri>()
+
+        @JavascriptInterface
+        fun bagikanMulai() {
+            antreBagikan.clear()
+            val dir = File(cacheDir, "bagikan")
+            dir.deleteRecursively()
+            dir.mkdirs()
+        }
+
+        @JavascriptInterface
+        fun bagikanTambah(nama: String, mime: String, base64: String): Boolean {
+            return try {
+                val dir = File(cacheDir, "bagikan").apply { mkdirs() }
+                val aman = nama.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                val berkas = File(dir, aman)
+                berkas.writeBytes(Base64.decode(base64, Base64.DEFAULT))
+                antreBagikan.add(FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", berkas))
+                true
+            } catch (e: Exception) { false }
+        }
+
+        /** Buka lembar Bagikan Android (WhatsApp, Drive, Quick Share, dll.). */
+        @JavascriptInterface
+        fun bagikanBuka(mime: String, teks: String): Boolean {
+            if (antreBagikan.isEmpty()) return false
+            val uris = ArrayList(antreBagikan)
+            runOnUiThread {
+                val intent = if (uris.size == 1) {
+                    Intent(Intent.ACTION_SEND).apply {
+                        putExtra(Intent.EXTRA_STREAM, uris[0])
+                    }
+                } else {
+                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                    }
+                }
+                intent.type = if (uris.size == 1) mime else "*/*"
+                intent.putExtra(Intent.EXTRA_TEXT, teks)
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val pilih = Intent.createChooser(intent, "Bagikan")
+                pilih.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                try { startActivity(pilih) } catch (e: Exception) { }
+            }
+            return true
+        }
         @JavascriptInterface
         fun setBubble(aktif: Boolean) {
             runOnUiThread { atur(aktif) }
