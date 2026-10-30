@@ -1,0 +1,10 @@
+# Konfigurasi Cloudflare Pages untuk Pusat Kendali.
+# Secret (token, ACCESS_*) tetap diisi di dashboard: Settings → Variables and Secrets.
+name = "pusat-kendali"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-01"
+
+# Bucket privat untuk file aplikasi yang bisa diunduh dari halaman (APK, dll).
+[[r2_buckets]]
+binding = "UNDUHAN"
+bucket_name = "pusat-kendali-unduhan"

@@ -252,9 +252,85 @@ function render(d) {
         ? el("section", { "aria-label": "Perlu dicek" }, el("ul", { class: "perhatian" }, perlu.map((x) => el("li", {}, el("span", { class: "dot " + (x.tingkat === "gagal" ? "bad" : "warn") }), el("b", {}, x.bagian), x.pesan))))
         : el("p", { class: "muted", style: "margin:0" }, "Tidak ada yang perlu ditindaklanjuti di proyek ini.")),
     el("div", { class: "grid", style: "margin-top:16px" }, bagianGithub(d.github), bagianSupabase(d.supabase), bagianCloudflare(d.cloudflare), bagianPenyimpanan(d.penyimpanan)),
+    el("section", { class: "p aplikasi", id: "bagian-aplikasi", "aria-labelledby": "bagian-aplikasi-j", style: "margin-top:16px" },
+      el("div", { class: "ph" },
+        el("div", { class: "letter", style: "background:var(--ink)", "aria-hidden": "true" }, "E"),
+        el("h3", { id: "bagian-aplikasi-j" }, "Aplikasi"),
+        el("span", { class: "acct" }, "file privat · hanya akun Anda"),
+        el("div", { class: "btns" },
+          el("label", { class: "btn pri", style: "background:var(--ink)", for: "pilih-file" }, "Unggah file"),
+          el("input", { type: "file", id: "pilih-file", hidden: true, accept: ".apk,.aab,.zip,.exe,.msi,.dmg,.ipa,.pdf" }))),
+      el("div", { class: "pb", id: "isi-aplikasi" }, el("p", { class: "muted", style: "margin:0" }, "Memuat daftar file…"))),
   );
+  muatAplikasi(d.id);
+  $("#pilih-file").addEventListener("change", (e) => unggah(d.id, e.target.files[0]));
   $("#waktu-ambil").textContent = `Data per ${waktu(d.diambil)} WIB`;
   document.title = `${d.nama} · Pusat Kendali`;
+}
+
+// ---------- E: Aplikasi (file privat di R2) ----------
+
+const namaAman = (n) => n.normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+/, "").slice(0, 120);
+let konfirmasiHapus = null; // nama file yang menunggu konfirmasi
+
+async function muatAplikasi(id) {
+  const kotak = $("#isi-aplikasi");
+  if (!kotak) return;
+  let d;
+  try {
+    d = await ambil(`/api/unduhan/${encodeURIComponent(id)}`);
+  } catch (e) {
+    kotak.replaceChildren(el("p", { class: "note" }, `Daftar file gagal dimuat: ${e.message}`));
+    return;
+  }
+  if (proyekAktif() !== id) return;
+  if (d.status === "belum-diatur") {
+    kotak.replaceChildren(kosong("Penyimpanan aplikasi belum diatur", "Buat bucket R2 pusat-kendali-unduhan dan hubungkan sebagai binding UNDUHAN di proyek Pages ini."));
+    return;
+  }
+  if (!d.file.length) {
+    kotak.replaceChildren(kosong("Belum ada file aplikasi", "Klik Unggah file untuk menyimpan APK atau installer proyek ini. File hanya bisa diunduh setelah login."));
+    return;
+  }
+  const url = (n) => `/api/unduhan/${encodeURIComponent(id)}/${encodeURIComponent(n)}`;
+  kotak.replaceChildren(el("div", { class: "tw" }, el("table", { "aria-label": "File aplikasi" },
+    el("thead", {}, el("tr", {}, el("th", {}, "File"), el("th", {}, "Ukuran"), el("th", {}, "Diunggah"), el("th", {}, "Oleh"), el("th", {}, ""))),
+    el("tbody", {}, d.file.map((f) => el("tr", {},
+      el("td", { class: "mono" }, f.nama), el("td", {}, ukuran(f.ukuran)), el("td", {}, waktu(f.diunggah)), el("td", { class: "muted" }, f.oleh || "–"),
+      el("td", {}, el("div", { class: "row" },
+        el("a", { class: "btn", href: url(f.nama), download: f.nama }, "Unduh"),
+        konfirmasiHapus === f.nama
+          ? [el("button", { class: "btn hapus-ya", type: "button", "data-nama": f.nama }, `Ya, hapus ${f.nama}`), el("button", { class: "btn hapus-batal", type: "button" }, "Batal")]
+          : el("button", { class: "btn hapus", type: "button", "data-nama": f.nama }, "Hapus")))))))));
+  kotak.onclick = async (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.classList.contains("hapus")) { konfirmasiHapus = t.dataset.nama; muatAplikasi(id); }
+    else if (t.classList.contains("hapus-batal")) { konfirmasiHapus = null; muatAplikasi(id); }
+    else if (t.classList.contains("hapus-ya")) {
+      t.disabled = true;
+      const res = await fetch(url(t.dataset.nama), { method: "DELETE" });
+      konfirmasiHapus = null;
+      if (!res.ok) kotak.prepend(el("p", { class: "note" }, `Gagal menghapus: ${(await res.json().catch(() => ({}))).error || res.status}`));
+      else muatAplikasi(id);
+    }
+  };
+}
+
+async function unggah(id, file) {
+  if (!file) return;
+  const kotak = $("#isi-aplikasi");
+  const nama = namaAman(file.name);
+  kotak.prepend(el("p", { class: "note info", id: "status-unggah" }, `Mengunggah ${nama} (${ukuran(file.size)})…`));
+  const res = await fetch(`/api/unduhan/${encodeURIComponent(id)}/${encodeURIComponent(nama)}`, { method: "PUT", body: file, headers: { "content-type": file.type || "application/octet-stream" } });
+  const info = await res.json().catch(() => ({}));
+  $("#pilih-file").value = "";
+  if (!res.ok) {
+    $("#status-unggah").textContent = `Gagal mengunggah ${nama}: ${info.error || res.status}`;
+    $("#status-unggah").className = "note";
+    return;
+  }
+  muatAplikasi(id);
 }
 
 // ---------- Pemilih proyek & pemuatan ----------
