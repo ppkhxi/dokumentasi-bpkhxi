@@ -8,6 +8,7 @@ Aplikasi kamera lapangan (PWA) dan APK Android untuk dokumentasi berwatermark: l
 - `functions/api/` — Cloudflare Pages Functions: `telemetri.js`, `admin.js`
 - `db/schema.sql` — skema database D1 (binding `DB`)
 - `android/` — proyek APK Android (dibangun otomatis lewat `.github/workflows/android.yml`)
+- `pusat-kendali/` — halaman pemantau akun pendukung (GitHub, Supabase, Cloudflare, penyimpanan) per proyek; lihat `pusat-kendali/README.md`
 
 ## Deploy
 
