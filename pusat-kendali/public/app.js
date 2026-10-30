@@ -260,7 +260,15 @@ function render(d) {
 // ---------- Pemilih proyek & pemuatan ----------
 
 let daftar = [];
-let ringkasan = {}; // id -> jumlah hal yang perlu dicek, untuk titik di tab
+let ringkasan = {}; // id -> {teks, nada} untuk titik dan keterangan di tab
+
+// Keterangan tab: jumlah yang perlu dicek, atau "menunggu akses" bila belum ada bagian yang tersambung.
+function statusTab(d) {
+  const n = d.perhatian.length;
+  if (n) return { teks: `${n} perlu dicek`, nada: "warn" };
+  const tersambung = ["github", "supabase", "cloudflare"].some((k) => d[k].status === "ok") || d.penyimpanan.r2.status === "ok";
+  return tersambung ? { teks: "aman", nada: "ok" } : { teks: "menunggu akses", nada: "" };
+}
 
 function proyekAktif() {
   const id = location.hash.slice(1);
@@ -270,11 +278,10 @@ function proyekAktif() {
 function gambarTab() {
   const aktif = proyekAktif();
   $("#pilih-proyek").replaceChildren(...daftar.map((p) => {
-    const n = ringkasan[p.id];
-    const ket = n == null ? "belum dimuat" : n ? `${n} perlu dicek` : "aman";
+    const st = ringkasan[p.id] || { teks: "belum dimuat", nada: "" };
     return el("a", { class: "sw", href: `#${p.id}`, "aria-current": p.id === aktif ? "page" : null },
-      el("span", { class: "dot " + (n == null ? "" : n ? "warn" : "ok") }),
-      el("span", {}, el("b", {}, p.nama), el("small", {}, ket)));
+      el("span", { class: "dot " + st.nada }),
+      el("span", {}, el("b", {}, p.nama), el("small", {}, st.teks)));
   }));
 }
 
@@ -293,7 +300,7 @@ async function muatProyek(segar = false) {
   try {
     const d = await ambil(`/api/proyek/${encodeURIComponent(id)}${segar ? "?segar=1" : ""}`);
     if (proyekAktif() !== id) return;
-    ringkasan[id] = d.perhatian.length;
+    ringkasan[id] = statusTab(d);
     render(d);
     gambarTab();
   } catch (e) {
@@ -307,8 +314,16 @@ async function mulai() {
   try {
     const d = await ambil("/api/proyek");
     daftar = d.proyek;
-    if (d.email) $("#pengguna").textContent = `Masuk sebagai ${d.email}`;
+    if (d.email) {
+      $("#pengguna").textContent = d.email;
+      $("#pengguna").title = `Masuk sebagai ${d.email}`;
+      $("#pengguna").hidden = false;
+    }
     await muatProyek();
+    // Ringkasan proyek lain dimuat di latar, supaya titik status di setiap tab terisi.
+    for (const p of daftar.filter((x) => x.id !== proyekAktif())) {
+      ambil(`/api/proyek/${encodeURIComponent(p.id)}`).then((d) => { ringkasan[p.id] = statusTab(d); gambarTab(); }).catch(() => {});
+    }
   } catch (e) {
     $("#isi").replaceChildren(el("p", { class: "galat" }, `Gagal memuat: ${e.message}`));
   }
