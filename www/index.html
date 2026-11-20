@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.87</span>
+            Dokumentasi <span id="loginVersi">v3.9.88</span>
           </div>
         </div>
       </div>
@@ -2270,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.87';
+const VERSI = '3.9.88';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -5478,6 +5478,9 @@ async function muatPeta(){
     // Non-blocking: peta tampil dulu, lapisan room menyusul begitu terunduh.
     if (typeof tarikSpasialRoom === 'function') tarikSpasialRoom(true);
 
+    // Gambar status ceklist (hijau=sudah, merah=belum) bila daftar ceklist punya geometri
+    if (typeof muatStatusCeklistPeta === 'function') muatStatusCeklistPeta();
+
     // Jika baru selesai capture dari peta, otomatis fokuskan ke titik foto baru
     if (petaAktif && S.fokusFotoBaru) {
       petaAktif.flyTo([S.fokusFotoBaru.lat, S.fokusFotoBaru.lon], 17, { animate: true, duration: 1.2 });
@@ -6747,6 +6750,7 @@ async function muatCeklist(){
   const prog = await ambilCeklist(idProgCeklist());
   const mySelesai = new Set(((prog && prog.selesai) || []).map(s => Number(s.no)));
   wrap.innerHTML = renderCeklist(def, agg, info, mySelesai);
+  if (petaAktif && typeof muatStatusCeklistPeta === 'function') muatStatusCeklistPeta();
 }
 
 function renderCeklist(def, agg, info, mySelesai){
@@ -6786,17 +6790,40 @@ function renderCeklist(def, agg, info, mySelesai){
 }
 
 function formCeklistBaru(judul, teks){
+  const adaGeo = window._ceklistImport && window._ceklistImport.length;
   return '<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-bottom:10px">' +
     '<b style="font-size:14px">Buat / Edit Ceklist Lokasi</b>' +
     '<p class="catatan-kecil" style="margin:4px 0 8px">Satu baris = satu lokasi. Nomor otomatis. Anggota room akan menandai lokasi yang sudah dikerjakan.</p>' +
+    '<button class="tombol sekunder" onclick="window.pilihKMLuntukCeklist()" style="margin:0 0 10px">📍 Ambil daftar dari lapisan KML (poligon/titik)</button>' +
+    (adaGeo ? '<p class="catatan-kecil" style="color:#15803D;margin:0 0 8px">✅ ' + window._ceklistImport.length + ' fitur spasial siap — akan tampil di Sebaran Peta (hijau=sudah, merah=belum).</p>' : '') +
     '<label class="f" style="margin-top:0">Judul</label>' +
     '<input id="inJudulCeklist" class="f" placeholder="Contoh: Survei Patok Blok A" value="' + esc(judul || '') + '">' +
     '<label class="f">Daftar lokasi (1 baris = 1 lokasi)</label>' +
     '<textarea id="inItemsCeklist" class="f" rows="8" placeholder="Patok BPKH 001 - Dusun Ciasih&#10;Patok BPKH 002 - Tepi Sungai">' + esc(teks || '') + '</textarea>' +
     '<button class="tombol" onclick="window.simpanDefCeklist()" style="margin-top:8px">💾 Simpan & Bagikan ke Room</button>' +
-    (teks ? '<button class="tombol abu" onclick="muatCeklist()" style="margin-top:6px">Batal</button>' : '') +
+    (teks ? '<button class="tombol abu" onclick="window._ceklistImport=null; muatCeklist()" style="margin-top:6px">Batal</button>' : '') +
   '</div>';
 }
+
+window.pilihKMLuntukCeklist = async () => {
+  const kmls = await ambilSemuaKML();
+  if (!kmls.length) { pesan('Belum ada lapisan KML. Tambah dulu di Peta → Kelola Lapisan.'); return; }
+  const opsi = kmls.map(k => '<button class="tombol sekunder" style="margin:4px 0;text-align:left;width:100%" onclick="window.ambilCeklistDariKML(\'' + k.id + '\')">🗂️ ' + esc(k.nama) + '</button>').join('');
+  dialog('<h3>Pilih Lapisan KML</h3><p class="catatan-kecil" style="margin:0 0 8px">Tiap fitur (poligon/garis/titik) menjadi satu item ceklist dengan nomor.</p>' + opsi + '<button class="tombol abu" onclick="tutupDialog()" style="margin-top:6px">Batal</button>');
+};
+
+window.ambilCeklistDariKML = async (id) => {
+  const kmls = await ambilSemuaKML();
+  const k = kmls.find(x => x.id === id);
+  if (!k) return;
+  const fitur = PETA.ekstrakFiturKML(k.kmlText);
+  if (!fitur.length) { pesan('Tidak ada fitur yang terbaca di KML ini'); return; }
+  window._ceklistImport = fitur;
+  tutupDialog();
+  const wrap = $('panelCeklist');
+  if (wrap) wrap.innerHTML = formCeklistBaru(k.nama, fitur.map(f => f.nama).join('\n'));
+  pesan(fitur.length + ' fitur diambil dari "' + k.nama + '"');
+};
 
 window.toggleCeklistItem = async (no, checked) => {
   const room = (S.room || 'LOKAL').trim().toUpperCase();
@@ -6810,6 +6837,7 @@ window.toggleCeklistItem = async (no, checked) => {
   prog.perluSync = true;
   await simpanCeklist(prog);
   muatCeklist();
+  if (typeof muatStatusCeklistPeta === 'function') muatStatusCeklistPeta();
   const info = infoRoomSpasial();
   if (navigator.onLine && info.cloud) {
     try {
@@ -6823,8 +6851,14 @@ window.simpanDefCeklist = async () => {
   const el1 = $('inJudulCeklist'), el2 = $('inItemsCeklist');
   const judul = ((el1 && el1.value) || '').trim() || 'Ceklist Lokasi';
   const teks = (el2 && el2.value) || '';
-  const items = teks.split('\n').map(s => s.trim()).filter(Boolean).map((nama, i) => ({ no: i + 1, nama }));
+  const impor = window._ceklistImport || null;   // fitur spasial dari KML (urut per baris)
+  const items = teks.split('\n').map(s => s.trim()).filter(Boolean).map((nama, i) => {
+    const o = { no: i + 1, nama };
+    if (impor && impor[i] && impor[i].latlngs) { o.tipe = impor[i].tipe; o.latlngs = impor[i].latlngs; }  // bawa geometri
+    return o;
+  });
   if (!items.length) { pesan('Daftar lokasi masih kosong'); return; }
+  window._ceklistImport = null;
   const room = (S.room || 'LOKAL').trim().toUpperCase();
   await simpanCeklist({ id: idDefCeklist(), room, judul, items, diperbarui: Date.now() });
   pesan('Menyimpan ceklist…');
@@ -6841,6 +6875,23 @@ window.editCeklist = async () => {
   const wrap = $('panelCeklist');
   if (wrap) wrap.innerHTML = formCeklistBaru((def && def.judul) || '', ((def && def.items) || []).map(it => it.nama).join('\n'));
 };
+
+// Gambar status ceklist (hijau=sudah, merah=belum) di Sebaran Peta bila item punya geometri
+async function muatStatusCeklistPeta(){
+  try {
+    if (!petaAktif || !PETA.gambarStatusCeklist) return;
+    const room = (S.room || 'LOKAL').trim().toUpperCase();
+    const def = await ambilCeklist('def_' + room);
+    const berGeo = def && def.items && def.items.filter(it => it && it.latlngs);
+    if (!berGeo || !berGeo.length) { PETA.hapusStatusCeklist(petaAktif); return; }
+    const doneSet = new Set();
+    const cache = await ambilCeklist('agg_' + room);
+    if (cache && cache.anggota) cache.anggota.forEach(a => (a.selesai || []).forEach(s => doneSet.add(Number(s.no))));
+    const prog = await ambilCeklist('prog_' + room);
+    if (prog) (prog.selesai || []).forEach(s => doneSet.add(Number(s.no)));
+    PETA.gambarStatusCeklist(petaAktif, berGeo, doneSet);
+  } catch(e){ console.warn('muatStatusCeklistPeta:', e); }
+}
 
 // Dorong progres ceklist yang belum tersinkron saat kembali online (dipanggil dari sinkron)
 async function dorongCeklistTertunda(){

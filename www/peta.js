@@ -630,6 +630,59 @@ const PETA = (function () {
     }).filter(Boolean);
   }
 
+  /* Ekstrak fitur dari KML sebagai daftar sederhana {nama, tipe, latlngs}
+     untuk dijadikan item ceklist (poligon/garis/titik). */
+  function ekstrakFiturKML(kmlString) {
+    if (!kmlString) return [];
+    let xml;
+    try { xml = new DOMParser().parseFromString(kmlString, 'text/xml'); } catch (e) { return []; }
+    const out = [];
+    xml.querySelectorAll('Placemark').forEach(pm => {
+      const nama = (((pm.querySelector('name') || {}).textContent) || '').trim() || 'Objek';
+      const poly = pm.querySelector('Polygon outerBoundaryIs coordinates');
+      const line = pm.querySelector('LineString coordinates');
+      const pt = pm.querySelector('Point coordinates');
+      if (poly) { const ll = parseKoordinatKML(poly.textContent); if (ll.length >= 3) out.push({ nama, tipe: 'polygon', latlngs: ll }); }
+      else if (line) { const ll = parseKoordinatKML(line.textContent); if (ll.length >= 2) out.push({ nama, tipe: 'line', latlngs: ll }); }
+      else if (pt) { const ll = parseKoordinatKML(pt.textContent); if (ll.length >= 1) out.push({ nama, tipe: 'point', latlngs: ll[0] }); }
+    });
+    return out;
+  }
+
+  /* Gambar lapisan STATUS CEKLIST: tiap fitur diwarnai hijau (sudah diceklist)
+     atau merah (belum), dengan nomor. items = [{no, nama, tipe, latlngs}]. */
+  function gambarStatusCeklist(peta, items, doneSet) {
+    if (!peta || !window.L) return null;
+    if (!peta.lapisCeklist) peta.lapisCeklist = L.layerGroup().addTo(peta);
+    peta.lapisCeklist.clearLayers();
+    doneSet = doneSet || new Set();
+    const semuaLL = [];
+    (items || []).forEach(it => {
+      if (!it || !it.latlngs) return;
+      const done = doneSet.has(Number(it.no));
+      const warna = done ? '#16A34A' : '#DC2626';
+      let layer = null, pusat = null;
+      try {
+        if (it.tipe === 'polygon') { layer = L.polygon(it.latlngs, { color: warna, weight: 2, fillColor: warna, fillOpacity: 0.3, smoothFactor: 2.5 }); pusat = layer.getBounds().getCenter(); }
+        else if (it.tipe === 'line') { layer = L.polyline(it.latlngs, { color: warna, weight: 4, opacity: 0.9, smoothFactor: 2.5 }); pusat = layer.getBounds().getCenter(); }
+        else { const p = Array.isArray(it.latlngs[0]) ? it.latlngs[0] : it.latlngs; layer = L.circleMarker(p, { radius: 9, color: '#fff', weight: 2, fillColor: warna, fillOpacity: 0.95 }); pusat = L.latLng(p[0], p[1]); }
+      } catch (e) { return; }
+      if (!layer) return;
+      layer.bindPopup('<b>No. ' + it.no + '</b><br>' + esc(it.nama || '') + '<br>' + (done ? '✅ Sudah diceklist' : '⭕ Belum dikerjakan'), { className: 'popup-kml-card' });
+      layer.addTo(peta.lapisCeklist);
+      if (pusat) {
+        L.marker(pusat, { icon: L.divIcon({ className: 'label-ceklist-no', html: '<div style="background:' + warna + ';color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)">' + it.no + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(peta.lapisCeklist);
+        semuaLL.push(pusat);
+      }
+    });
+    peta.lapisCeklist._adaIsi = semuaLL.length > 0;
+    return peta.lapisCeklist;
+  }
+
+  function hapusStatusCeklist(peta) {
+    if (peta && peta.lapisCeklist) peta.lapisCeklist.clearLayers();
+  }
+
   function parseKML(kmlString, warnaDefault = '#2E7D32', labelCol = 'name', tampilkanLabel = true, opsi = {}) {
     if (!window.L) return null;
     const parser = new DOMParser();
@@ -1126,6 +1179,9 @@ const PETA = (function () {
     dapatkanBasemap: dapatkanBasemap,
     fokusJawa: fokusJawa,
     parseKML: parseKML,
+    ekstrakFiturKML: ekstrakFiturKML,
+    gambarStatusCeklist: gambarStatusCeklist,
+    hapusStatusCeklist: hapusStatusCeklist,
     paneLapisan: paneLapisan,
     pasangRaster: pasangRaster,
     setOpasitasRaster: setOpasitasRaster,

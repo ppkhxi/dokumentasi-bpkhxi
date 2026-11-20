@@ -786,7 +786,11 @@
       const payload = {
         v: 1, judul: (def && def.judul) || 'Ceklist Lokasi',
         diperbarui: Date.now(), oleh: this.getEmail() || 'host',
-        items: ((def && def.items) || []).map((it, i) => ({ no: it.no != null ? it.no : i + 1, nama: String(it.nama || '').slice(0, 200) }))
+        items: ((def && def.items) || []).map((it, i) => {
+          const o = { no: it.no != null ? it.no : i + 1, nama: String(it.nama || '').slice(0, 200) };
+          if (it.tipe && it.latlngs) { o.tipe = it.tipe; o.latlngs = it.latlngs; }  // geometri untuk status di peta
+          return o;
+        })
       };
       const bytes = new TextEncoder().encode(JSON.stringify(payload));
       const lama = (folderRoom.children || []).find(x => !x.directory && x.name === '_ceklist.json');
