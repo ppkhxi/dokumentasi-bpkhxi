@@ -709,6 +709,152 @@
     },
 
     // -------------------------------------------------------------
+    // DATA SPASIAL ROOM (KML dibagikan Host → tampil otomatis di Anggota)
+    // Disimpan sebagai _spasial.json di folder room. Read-only bagi anggota.
+    // -------------------------------------------------------------
+
+    // Resolusi storage untuk sebuah room: sesi sendiri (host) atau tiket undangan (anggota)
+    async _storageRoom(namaRoom) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      const roomAktif = this.ambilSemuaRoom().find(r => (r.nama || '').trim().toUpperCase() === nama) || this.getRoomAktif();
+      if (this.punyaSesi()) { await this.pastikanTerhubung(); return { storage: _storageInstance, roomAktif }; }
+      if (roomAktif && roomAktif.authTicket) { return { storage: await dapatkanStorageHost(roomAktif.authTicket), roomAktif }; }
+      return { storage: null, roomAktif };
+    },
+
+    // Host mengunggah kumpulan lapisan KML ke folder room (teks KML kecil, 1 berkas)
+    async unggahSpasial(namaRoom, daftarLapisan) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      if (!nama) throw new Error('Nama room kosong');
+      const { storage } = await this._storageRoom(nama);
+      if (!storage) throw new Error('Belum terhubung ke Cloud room. Login MEGA / pakai undangan Host.');
+
+      const master = await this.dapatkanFolderMaster(storage);
+      let folderRoom = master.find(nama);
+      if (!folderRoom) folderRoom = await storage.mkdir({ name: nama, target: master });
+      if (!folderRoom) throw new Error('Folder room tidak tersedia di MEGA');
+
+      const bundel = {
+        v: 1,
+        diperbarui: Date.now(),
+        oleh: this.getEmail() || 'host',
+        lapisan: (daftarLapisan || []).map(l => ({
+          id: l.id, nama: l.nama, warna: l.warna || '#2E7D32',
+          labelCol: l.labelCol || 'name', kmlText: l.kmlText || '', ts: l.ts || Date.now()
+        })).filter(l => l.kmlText)
+      };
+      const bytes = new TextEncoder().encode(JSON.stringify(bundel));
+      const lama = (folderRoom.children || []).find(x => !x.directory && x.name === '_spasial.json');
+      const aksi = folderRoom.upload({ name: '_spasial.json', size: bytes.byteLength }, bytes);
+      await withTimeout(new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); }), 60000, 'Unggah spasial timeout');
+      if (lama) { try { await lama.delete(true); } catch (e) {} }
+      return { ok: true, jumlah: bundel.lapisan.length };
+    },
+
+    // Host/Anggota menarik lapisan KML yang dibagikan di room (return array, [] bila kosong)
+    async tarikSpasial(namaRoom) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      if (!nama) return [];
+      const { storage } = await this._storageRoom(nama);
+      if (!storage) return [];
+      const master = await this.dapatkanFolderMaster(storage);
+      const folderRoom = master.find(nama);
+      if (!folderRoom || !folderRoom.children) return [];
+      const berkas = folderRoom.children.find(x => !x.directory && x.name === '_spasial.json');
+      if (!berkas) return [];
+      try {
+        const buf = await withTimeout(berkas.downloadBuffer(), 30000, 'Tarik spasial timeout');
+        const j = JSON.parse(new TextDecoder().decode(buf));
+        return Array.isArray(j.lapisan) ? j.lapisan : [];
+      } catch (e) { console.warn('Gagal menarik spasial room:', e); return []; }
+    },
+
+    // -------------------------------------------------------------
+    // CEKLIST LOKASI ROOM (Host buat daftar, anggota ceklist bersama)
+    // Definisi: _ceklist.json  ·  Progres per-anggota: _ceklist_<USERID>.json
+    // -------------------------------------------------------------
+
+    async unggahCeklistDef(namaRoom, def) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      if (!nama) throw new Error('Nama room kosong');
+      const { storage } = await this._storageRoom(nama);
+      if (!storage) throw new Error('Belum terhubung ke Cloud room.');
+      const master = await this.dapatkanFolderMaster(storage);
+      let folderRoom = master.find(nama);
+      if (!folderRoom) folderRoom = await storage.mkdir({ name: nama, target: master });
+      if (!folderRoom) throw new Error('Folder room tidak tersedia');
+      const payload = {
+        v: 1, judul: (def && def.judul) || 'Ceklist Lokasi',
+        diperbarui: Date.now(), oleh: this.getEmail() || 'host',
+        items: ((def && def.items) || []).map((it, i) => ({ no: it.no != null ? it.no : i + 1, nama: String(it.nama || '').slice(0, 200) }))
+      };
+      const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      const lama = (folderRoom.children || []).find(x => !x.directory && x.name === '_ceklist.json');
+      const aksi = folderRoom.upload({ name: '_ceklist.json', size: bytes.byteLength }, bytes);
+      await withTimeout(new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); }), 60000, 'Unggah ceklist timeout');
+      if (lama) { try { await lama.delete(true); } catch (e) {} }
+      return { ok: true, jumlah: payload.items.length };
+    },
+
+    async tarikCeklistDef(namaRoom) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      if (!nama) return null;
+      const { storage } = await this._storageRoom(nama);
+      if (!storage) return null;
+      const master = await this.dapatkanFolderMaster(storage);
+      const folderRoom = master.find(nama);
+      if (!folderRoom || !folderRoom.children) return null;
+      const berkas = folderRoom.children.find(x => !x.directory && x.name === '_ceklist.json');
+      if (!berkas) return null;
+      try {
+        const buf = await withTimeout(berkas.downloadBuffer(), 30000, 'Tarik ceklist timeout');
+        return JSON.parse(new TextDecoder().decode(buf));
+      } catch (e) { console.warn('tarikCeklistDef:', e); return null; }
+    },
+
+    async simpanProgresCeklist(namaRoom, userId, nama, selesai) {
+      const room = (namaRoom || '').trim().toUpperCase();
+      if (!room) throw new Error('Nama room kosong');
+      const uid = String(userId || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USER';
+      const { storage } = await this._storageRoom(room);
+      if (!storage) throw new Error('Belum terhubung ke Cloud room.');
+      const master = await this.dapatkanFolderMaster(storage);
+      let folderRoom = master.find(room);
+      if (!folderRoom) folderRoom = await storage.mkdir({ name: room, target: master });
+      const payload = {
+        v: 1, userId: uid, nama: nama || uid, diperbarui: Date.now(),
+        selesai: (selesai || []).map(s => ({ no: Number(s.no), ts: s.ts || Date.now() }))
+      };
+      const fn = '_ceklist_' + uid + '.json';
+      const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      const lama = (folderRoom.children || []).find(x => !x.directory && x.name === fn);
+      const aksi = folderRoom.upload({ name: fn, size: bytes.byteLength }, bytes);
+      await withTimeout(new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); }), 60000, 'Unggah progres timeout');
+      if (lama) { try { await lama.delete(true); } catch (e) {} }
+      return { ok: true };
+    },
+
+    async tarikProgresCeklist(namaRoom) {
+      const room = (namaRoom || '').trim().toUpperCase();
+      if (!room) return [];
+      const { storage } = await this._storageRoom(room);
+      if (!storage) return [];
+      const master = await this.dapatkanFolderMaster(storage);
+      const folderRoom = master.find(room);
+      if (!folderRoom || !folderRoom.children) return [];
+      const files = folderRoom.children.filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
+      const hasil = [];
+      for (const f of files) {
+        try {
+          const buf = await withTimeout(f.downloadBuffer(), 30000, 'Tarik progres timeout');
+          const j = JSON.parse(new TextDecoder().decode(buf));
+          if (j && j.userId) hasil.push({ userId: j.userId, nama: j.nama || j.userId, selesai: Array.isArray(j.selesai) ? j.selesai : [] });
+        } catch (e) { /* lewati file rusak */ }
+      }
+      return hasil;
+    },
+
+    // -------------------------------------------------------------
     // FITUR HOST: REKAP TIM & DAFTAR ANGGOTA DARI CLOUD MEGA
     // -------------------------------------------------------------
 

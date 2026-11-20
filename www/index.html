@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.44</span>
+            Dokumentasi <span id="loginVersi">v3.9.87</span>
           </div>
         </div>
       </div>
@@ -1783,23 +1783,32 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <button data-lingkup="room" class="pilih">Room ini</button>
         <button data-lingkup="semua">Semua room</button>
       </div>
-      <button class="tombol" id="btnTarikTabel" style="display:none;margin:0 0 10px;background:#2E7D32">&#128260; Tarik Data Regu dari MEGA</button>
-      <div style="margin-bottom:12px">
-        <button class="tombol" id="btnBukaMenuEkspor" style="margin:0;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:11px 16px;border-radius:14px">
-          <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
-          <span>📤 Ekspor Dokumen & Lembar Foto</span>
-        </button>
-      </div>
-      <!-- Tombol lama disembunyikan untuk menjaga kompatibilitas fungsi -->
-      <div style="display:none">
-        <button id="btnPdf"></button>
-        <button id="btnDocx"></button>
-        <button id="btnLembar"></button>
+      <div id="subTabTabel" class="tab-wadah-lapisan" style="margin-bottom:12px">
+        <button class="tab-btn-lapisan aktif" data-sub="foto" onclick="window.gantiSubTabel('foto')">📋 Rekap Foto</button>
+        <button class="tab-btn-lapisan" data-sub="ceklist" onclick="window.gantiSubTabel('ceklist')">✅ Ceklist Lokasi</button>
       </div>
 
-      <div id="barAksiTabel" class="bar-aksi-tabel sembunyi" hidden><span id="tabelJmlTerpilih"></span><button id="btnAksiPdfTabel"></button><button id="btnAksiHapusTabel"></button><button id="btnAksiBatalTabel"></button></div>
+      <div id="panelRekapFoto">
+        <button class="tombol" id="btnTarikTabel" style="display:none;margin:0 0 10px;background:#2E7D32">&#128260; Tarik Data Regu dari MEGA</button>
+        <div style="margin-bottom:12px">
+          <button class="tombol" id="btnBukaMenuEkspor" style="margin:0;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:11px 16px;border-radius:14px">
+            <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v4h18v-4"/></svg>
+            <span>📤 Ekspor Dokumen & Lembar Foto</span>
+          </button>
+        </div>
+        <!-- Tombol lama disembunyikan untuk menjaga kompatibilitas fungsi -->
+        <div style="display:none">
+          <button id="btnPdf"></button>
+          <button id="btnDocx"></button>
+          <button id="btnLembar"></button>
+        </div>
 
-      <div id="isiTabel"></div>
+        <div id="barAksiTabel" class="bar-aksi-tabel sembunyi" hidden><span id="tabelJmlTerpilih"></span><button id="btnAksiPdfTabel"></button><button id="btnAksiHapusTabel"></button><button id="btnAksiBatalTabel"></button></div>
+
+        <div id="isiTabel"></div>
+      </div>
+
+      <div id="panelCeklist" hidden></div>
     </section>
 
     <!-- PETA SEBARAN (FULL SCREEN) -->
@@ -2261,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.86';
+const VERSI = '3.9.87';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -2347,14 +2356,30 @@ const LAYAR_UTAMA = 'kamera';
 const DBNAMA='bpkh_portal', STORE='foto';
 function buka(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open(DBNAMA,2);
+    const r=indexedDB.open(DBNAMA,3);
     r.onupgradeneeded=()=>{
       const d=r.result;
       if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id'});
       if(!d.objectStoreNames.contains('peta_kml')) d.createObjectStore('peta_kml',{keyPath:'id'});
       if(!d.objectStoreNames.contains('peta_raster')) d.createObjectStore('peta_raster',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('ceklist')) d.createObjectStore('ceklist',{keyPath:'id'});
     };
     r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+async function ambilCeklist(id){
+  const d=await buka();
+  return new Promise((res,rej)=>{
+    const r=d.transaction('ceklist','readonly').objectStore('ceklist').get(id);
+    r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);
+  });
+}
+async function simpanCeklist(rec){
+  const d=await buka();
+  return new Promise((res,rej)=>{
+    const t=d.transaction('ceklist','readwrite');
+    t.objectStore('ceklist').put(rec);
+    t.oncomplete=res; t.onerror=()=>rej(t.error);
   });
 }
 /* Salinan cadangan ke Galeri HP (hanya di APK); gagal diam-diam, tidak mengganggu simpan foto. */
@@ -2569,7 +2594,8 @@ function mulaiGPS(){
       }
       perbaruiMakiorStatus();
     },
-    ()=>{
+    (err)=>{
+      const timeout = err && err.code === 3;   // POSITION_TIMEOUT: fix belum didapat, bukan izin ditolak
       if (terakhirGpsBagus) {
         S.posisi = { lat: terakhirGpsBagus.lat, lon: terakhirGpsBagus.lon, akurasi: terakhirGpsBagus.akurasi, tersimpan: true };
         const chipEl = $('chipGps');
@@ -2578,6 +2604,11 @@ function mulaiGPS(){
           chipEl.classList.add('kunci');
         }
         if($('petaCapInfo')) $('petaCapInfo').textContent = 'GPS: ' + fmtKoord(S.posisi) + ' (±' + S.posisi.akurasi + 'm)';
+      } else if (timeout) {
+        // Belum pernah dapat fix & masih menunggu satelit (blank-spot / GPS dingin)
+        const chipEl = $('chipGps');
+        if(chipEl){ chipEl.classList.remove('kunci'); chipEl.textContent = '\u{1F6F0}️ Mencari satelit GPS…'; }
+        if($('ketPetaGps')) $('ketPetaGps').textContent = 'Mencari satelit GPS…';
       } else {
         const chipEl = $('chipGps');
         if(chipEl){
@@ -2587,6 +2618,11 @@ function mulaiGPS(){
           if(bRetry) bRetry.onclick = (e) => { e.stopPropagation(); pesan('Mencoba meminta izin GPS kembali…'); mulaiGPS(); };
         }
         if($('ketPetaGps')) $('ketPetaGps').textContent = 'GPS tidak aktif';
+      }
+      // Jangan menyerah saat timeout: re-arm watcher supaya GPS terus mencoba mengunci.
+      if (timeout && gpsDiminta && !document.hidden) {
+        if (idGpsWatch !== null) { navigator.geolocation.clearWatch(idGpsWatch); idGpsWatch = null; }
+        setTimeout(() => { if (gpsDiminta && !document.hidden && idGpsWatch === null) mulaiGPS(); }, 4000);
       }
       perbaruiMakiorStatus();
     },
@@ -2607,6 +2643,17 @@ function perbaruiMakiorStatus(){
 
 const fmtKoord = p => p ? p.lat.toFixed(6)+', '+p.lon.toFixed(6) : 'Tidak tersedia';
 const fmtWaktu = ts => new Date(ts).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+/* Penahan koordinat kosong: cegah foto tersimpan tanpa koordinat secara diam-diam.
+   Kalau GPS belum terkunci, petugas diberitahu agar menunggu lock dulu. */
+function adaKoordinatValid(){
+  return !!(S.posisi && S.posisi.lat != null && S.posisi.lon != null &&
+            (!window.DK_SECURITY || DK_SECURITY.validasiKoordinat(S.posisi)));
+}
+function konfirmasiTanpaKoordinat(){
+  if(adaKoordinatValid()) return true;
+  return confirm('⚠️ GPS belum terkunci.\n\nFoto ini akan TERSIMPAN TANPA KOORDINAT. Sebaiknya tunggu beberapa detik sampai titik lokasi (📍) muncul di layar, lalu potret ulang.\n\nTetap simpan tanpa koordinat sekarang?');
+}
 setInterval(()=>{
   // Hemat baterai: jam pratinjau hanya diperbarui saat kamera tampil.
   // (Waktu pada hasil foto dihitung terpisah saat rana ditekan.)
@@ -2986,6 +3033,7 @@ $('gandaRana').onclick = ()=>{
 let gSedangJepret = false;
 async function jepretGanda(){
   if(gSedangJepret) return;
+  if(!konfirmasiTanpaKoordinat()) return;
   gSedangJepret = true;
   $('gandaTirai').classList.add('kilat'); setTimeout(()=>$('gandaTirai').classList.remove('kilat'), 90);
   if(navigator.vibrate) navigator.vibrate(35);
@@ -3413,6 +3461,7 @@ window.fotoSimulasi = async ()=>{
 let sedangSimpan = false;
 async function simpanLangsung(hasil){
   if(sedangSimpan) return;
+  if(!konfirmasiTanpaKoordinat()) return;
   sedangSimpan = true;
   const ts = Date.now();
   const rawCatatan = $('inCatatanKamera') ? $('inCatatanKamera').value.trim() : '';
@@ -3505,6 +3554,7 @@ function bolehUploadSekarang(){ return jamWIB() >= JAM_BUKA_UPLOAD; }
 async function sinkron(diam, paksa){
   if(sedangSinkron) return;
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
+  if(typeof dorongCeklistTertunda === 'function') dorongCeklistTertunda();
   if(!paksa && !bolehUploadSekarang()){
     if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan Kirim Sekarang di menu Antrian untuk mengirim lebih awal.');
     return;
@@ -5398,6 +5448,12 @@ async function muatPeta(){
       PETA.perbaruiLokasiUser(petaAktif, S.posisi);
       if ($('ketPetaGps')) $('ketPetaGps').textContent = '\u{1F4CD} ±' + S.posisi.akurasi + ' m';
     } else if (navigator.geolocation) {
+      // Sementara pusatkan peta ke posisi terakhir tersimpan (hanya untuk tampilan peta,
+      // TIDAK dipakai sebagai koordinat foto) supaya peta tidak terpaku ke Pulau Jawa.
+      try {
+        const sp = JSON.parse(localStorage.getItem('posisi_terakhir') || 'null');
+        if (sp && sp.lat != null && petaAktif && petaAktif.setView) petaAktif.setView([sp.lat, sp.lon], 15);
+      } catch(_){}
       navigator.geolocation.getCurrentPosition(p => {
         S.posisi = { lat: p.coords.latitude, lon: p.coords.longitude, akurasi: Math.round(p.coords.accuracy) };
         if (petaAktif) {
@@ -5417,6 +5473,10 @@ async function muatPeta(){
     // Muat layer KML & Raster yang aktif
     await muatSemuaKMLPadaPeta();
     await muatSemuaRasterPadaPeta();
+
+    // Tarik lapisan spasial yang dibagikan Host room (otomatis muncul di anggota).
+    // Non-blocking: peta tampil dulu, lapisan room menyusul begitu terunduh.
+    if (typeof tarikSpasialRoom === 'function') tarikSpasialRoom(true);
 
     // Jika baru selesai capture dari peta, otomatis fokuskan ke titik foto baru
     if (petaAktif && S.fokusFotoBaru) {
@@ -6215,10 +6275,24 @@ if ($('btnPetaRaster')) $('btnPetaRaster').onclick = () => bukaDialogLapisan('ta
 if ($('btnPetaUrutan')) $('btnPetaUrutan').onclick = () => bukaDialogLapisan('daftar');
 
 /* ---------- PENGELOLAAN LAPISAN TERPADU (1 PINTU INPUT DOKUMEN & URUTAN LAYER) ---------- */
+/* Status room untuk fitur spasial bersama:
+   - host: pembuat room (boleh membagikan lapisan)
+   - cloud: punya akses cloud room (host sesi MEGA, atau anggota via tiket undangan) */
+function infoRoomSpasial(){
+  try {
+    if (typeof MegaEngine === 'undefined') return { host:false, anggota:false, cloud:false };
+    const nama = (S.room || '').trim().toUpperCase();
+    const r = (MegaEngine.ambilSemuaRoom() || []).find(x => (x.nama||'').trim().toUpperCase() === nama);
+    const cloud = typeof MegaEngine.bisaUpload === 'function' ? MegaEngine.bisaUpload(S.room) : false;
+    return { host: !!(r && r.tipe === 'host'), anggota: !!(r && r.tipe === 'member'), cloud: !!cloud, room: r };
+  } catch(e){ return { host:false, anggota:false, cloud:false }; }
+}
+
 async function bukaDialogLapisan(tabAwal = 'daftar') {
   const kmls = await ambilSemuaKML();
   const rasts = await ambilSemuaRaster();
 
+  const infoRoom = infoRoomSpasial();
   let layers = [];
   kmls.forEach(k => {
     layers.push({
@@ -6229,6 +6303,8 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
       zIndex: k.zIndex || 10,
       aktif: k.aktif !== false,
       labelAktif: k.labelAktif !== false,
+      bagiRoom: k.bagiRoom === true,
+      dariRoom: k.dariRoom === true,
       raw: k
     });
   });
@@ -6259,15 +6335,19 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
     if (tab === 'daftar') {
       let listItems = layers.length ? layers.map((l, i) => {
         const isKml = l.tipe === 'KML' || l.tipe === 'Track';
+        const bisaBagi = isKml && !l.dariRoom && infoRoom.host && infoRoom.cloud;
+        const badge = l.dariRoom
+          ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#E8F0FE;color:#1565C0;flex:0 0 auto">☁️ ROOM</span>`
+          : `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#F2F2F7;color:var(--teks-2);flex:0 0 auto">${l.tipe} (Z:${l.zIndex})</span>`;
         return `
-          <div style="padding:8px 10px;background:#fff;border:1px solid var(--garis);border-radius:12px;margin-bottom:7px;display:flex;flex-direction:column;gap:6px">
+          <div style="padding:8px 10px;background:${l.dariRoom ? '#F7FAFF' : '#fff'};border:1px solid ${l.dariRoom ? '#CFE0FB' : 'var(--garis)'};border-radius:12px;margin-bottom:7px;display:flex;flex-direction:column;gap:6px">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;flex:1;min-width:0;cursor:pointer">
                 <input type="checkbox" ${l.aktif ? 'checked' : ''} onchange="window.toggleLapisanAktif('${l.id}', '${l.tipe}', this.checked)">
                 <span style="display:inline-block;width:12px;height:12px;border-radius:3px;flex:0 0 12px;background:${l.warna}"></span>
                 <b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px">${esc(l.nama)}</b>
               </label>
-              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#F2F2F7;color:var(--teks-2);flex:0 0 auto">${l.tipe} (Z:${l.zIndex})</span>
+              ${badge}
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px dashed #f0f0f0;padding-top:7px">
               <div style="display:flex;gap:5px">
@@ -6275,10 +6355,11 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
                 <button class="aksi-layer" onclick="window.geserUrutanLapisan(${i}, 1)" ${i === layers.length - 1 ? 'disabled' : ''} title="Turunkan urutan">↓</button>
               </div>
               <div style="display:flex;gap:5px">
+                ${bisaBagi ? `<button class="aksi-layer ${l.bagiRoom ? 'primer' : ''}" onclick="window.toggleBagiRoom('${l.id}')" title="Bagikan lapisan ini ke anggota room">${l.bagiRoom ? '☁️ Dibagi' : '☁️ Bagi'}</button>` : ''}
                 ${isKml ? `<button class="aksi-layer ${l.labelAktif ? 'ok' : 'mati'}" onclick="window.toggleLapisanLabel('${l.id}')" title="Label objek on/off">🏷️</button>` : ''}
                 ${l.tipe === 'Raster' ? `<button class="aksi-layer ingat" onclick="tutupDialog(); mulaiKalibrasiRaster('${l.id}')" title="Kalibrasi sentuh">🎯</button>` : ''}
                 <button class="aksi-layer primer" onclick="window.zoomKeLapisan('${l.id}', '${l.tipe}')" title="Fokus / zoom">🔍</button>
-                <button class="aksi-layer bahaya" onclick="window.hapusSatuLapisan('${l.id}', '${l.tipe}')" title="Hapus">🗑️</button>
+                ${l.dariRoom ? '' : `<button class="aksi-layer bahaya" onclick="window.hapusSatuLapisan('${l.id}', '${l.tipe}')" title="Hapus">🗑️</button>`}
               </div>
             </div>
           </div>
@@ -6564,6 +6645,215 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
 window.bukaDialogUrutan = () => bukaDialogLapisan('daftar');
 window.bukaDialogKML = () => bukaDialogLapisan('daftar');
 window.bukaDialogRaster = () => bukaDialogLapisan('tambah');
+
+/* ---------- SPASIAL ROOM: Host membagikan, Anggota menerima otomatis ---------- */
+// Kumpulkan semua KML bertanda bagiRoom lalu tulis bundel ke folder room (full replace)
+async function sinkronSpasialKeRoom(){
+  const info = infoRoomSpasial();
+  if (!info.host || !info.cloud) return null;
+  const kmls = await ambilSemuaKML();
+  const bagi = kmls.filter(k => k.bagiRoom === true && !k.dariRoom && !String(k.id).startsWith('track_'));
+  return await MegaEngine.unggahSpasial(S.room, bagi);
+}
+
+// Host: tandai/batal bagikan satu lapisan, lalu sinkronkan ke cloud room
+window.toggleBagiRoom = async (id) => {
+  const kmls = await ambilSemuaKML();
+  const k = kmls.find(x => x.id === id);
+  if (!k) return;
+  k.bagiRoom = !k.bagiRoom;
+  await simpanKML(k);
+  bukaDialogLapisan('daftar');
+  try {
+    pesan(k.bagiRoom ? 'Membagikan lapisan ke room…' : 'Memperbarui lapisan room…');
+    const res = await sinkronSpasialKeRoom();
+    pesan(res ? ('Lapisan room diperbarui (' + res.jumlah + ' lapisan)') : 'Tidak ada room cloud untuk dibagikan');
+  } catch(e){ pesan('Gagal membagikan ke room: ' + (e && e.message || e)); }
+};
+
+// Anggota/Host: tarik lapisan KML yang dibagikan di room → simpan read-only lokal & tampilkan
+async function tarikSpasialRoom(diam){
+  try {
+    if (typeof MegaEngine === 'undefined' || !S.room || !navigator.onLine) return;
+    const info = infoRoomSpasial();
+    if (!info.cloud) return;
+    const roomUp = (S.room || '').trim().toUpperCase();
+    const list = await MegaEngine.tarikSpasial(S.room) || [];
+    const kmls = await ambilSemuaKML();
+    const idCloud = new Set(list.map(l => 'roomkml_' + roomUp + '_' + l.id));
+    // Buang lapisan room lama yang sudah tidak dibagikan lagi
+    for (const k of kmls){
+      if (k.dariRoom && k.roomAsal === roomUp && !idCloud.has(k.id)) await hapusKML(k.id);
+    }
+    // Upsert lapisan dari cloud (read-only), pertahankan preferensi tampil/label lokal
+    for (const l of list){
+      const idLokal = 'roomkml_' + roomUp + '_' + l.id;
+      const lama = kmls.find(x => x.id === idLokal);
+      await simpanKML({
+        id: idLokal,
+        nama: l.nama || 'Lapisan Room',
+        kmlText: l.kmlText || '',
+        warna: l.warna || '#2E7D32',
+        labelCol: l.labelCol || 'name',
+        labelAktif: lama ? lama.labelAktif !== false : true,
+        aktif: lama ? lama.aktif !== false : true,
+        zIndex: lama ? (lama.zIndex || 12) : 12,
+        dariRoom: true,
+        roomAsal: roomUp,
+        ts: l.ts || Date.now()
+      });
+    }
+    if (petaAktif) await muatSemuaKMLPadaPeta();
+    if (!diam && list.length) pesan(list.length + ' lapisan spasial dari room dimuat');
+  } catch(e){ console.warn('tarikSpasialRoom:', e); }
+}
+window.tarikSpasialRoom = tarikSpasialRoom;
+
+/* =================== CEKLIST LOKASI ROOM (kontrol pekerjaan tim) =================== */
+function idDefCeklist(){ return 'def_' + (S.room || 'LOKAL').trim().toUpperCase(); }
+function idProgCeklist(){ return 'prog_' + (S.room || 'LOKAL').trim().toUpperCase(); }
+function uidSaya(){ return String(S.userId || S.nama || 'USER').trim().replace(/\s+/g,'_').replace(/[^\w-]/g,'').toUpperCase() || 'USER'; }
+
+window.gantiSubTabel = (sub) => {
+  document.querySelectorAll('#subTabTabel .tab-btn-lapisan').forEach(b => b.classList.toggle('aktif', b.dataset.sub === sub));
+  const foto = sub !== 'ceklist';
+  if ($('panelRekapFoto')) $('panelRekapFoto').hidden = !foto;
+  if ($('panelCeklist')) $('panelCeklist').hidden = foto;
+  if (!foto) muatCeklist();
+};
+
+async function muatCeklist(){
+  const wrap = $('panelCeklist');
+  if (!wrap) return;
+  const room = (S.room || 'LOKAL').trim().toUpperCase();
+  const info = infoRoomSpasial();
+  wrap.innerHTML = '<p class="catatan-kecil" style="text-align:center;padding:16px 0">Memuat ceklist…</p>';
+
+  let def = await ambilCeklist(idDefCeklist());
+  let agg = [];
+  if (navigator.onLine && info.cloud) {
+    try {
+      const cloudDef = await MegaEngine.tarikCeklistDef(S.room);
+      if (cloudDef && cloudDef.items) {
+        def = { id: idDefCeklist(), room, judul: cloudDef.judul, items: cloudDef.items, oleh: cloudDef.oleh, diperbarui: cloudDef.diperbarui };
+        await simpanCeklist(def);
+      }
+      agg = await MegaEngine.tarikProgresCeklist(S.room) || [];
+      await simpanCeklist({ id: 'agg_' + room, room, anggota: agg, diperbarui: Date.now() });
+    } catch(e){ console.warn('sync ceklist:', e); }
+  }
+  if (!agg.length) { const cache = await ambilCeklist('agg_' + room); if (cache) agg = cache.anggota || []; }
+
+  const prog = await ambilCeklist(idProgCeklist());
+  const mySelesai = new Set(((prog && prog.selesai) || []).map(s => Number(s.no)));
+  wrap.innerHTML = renderCeklist(def, agg, info, mySelesai);
+}
+
+function renderCeklist(def, agg, info, mySelesai){
+  const doneBy = {};
+  (agg || []).forEach(a => (a.selesai || []).forEach(s => { const n = Number(s.no); (doneBy[n] = doneBy[n] || []).push(a.nama || a.userId); }));
+  const namaSaya = S.nama || uidSaya();
+  mySelesai.forEach(n => { doneBy[n] = doneBy[n] || []; if (!doneBy[n].includes(namaSaya)) doneBy[n].push(namaSaya); });
+
+  if (!def || !def.items || !def.items.length){
+    if (info.host && info.cloud) return formCeklistBaru('', '');
+    return '<div style="text-align:center;padding:28px 16px;color:var(--teks-2)"><div style="font-size:40px">✅</div><p>Belum ada ceklist lokasi dari host room ini.</p><p class="catatan-kecil">Host room yang membuat daftar lokasi kegiatan.</p></div>';
+  }
+
+  const total = def.items.length;
+  const selesai = def.items.filter(it => (doneBy[it.no] || []).length).length;
+  const persen = total ? Math.round(selesai / total * 100) : 0;
+
+  const baris = def.items.map(it => {
+    const pelaku = doneBy[it.no] || [];
+    const sudah = pelaku.length > 0;
+    const sayaCentang = mySelesai.has(Number(it.no));
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid ' + (sudah?'#BBF7D0':'var(--garis)') + ';background:' + (sudah?'#F0FDF4':'#fff') + ';border-radius:11px;margin-bottom:6px;cursor:pointer">' +
+      '<input type="checkbox" ' + (sayaCentang?'checked':'') + ' onchange="window.toggleCeklistItem(' + it.no + ', this.checked)" style="width:20px;height:20px;flex:0 0 auto">' +
+      '<span style="flex:0 0 34px;font-weight:800;color:' + (sudah?'#15803D':'var(--teks-2)') + '">' + it.no + '</span>' +
+      '<span style="flex:1;min-width:0;font-size:13px">' + esc(it.nama) + (pelaku.length ? '<br><span style="font-size:10.5px;color:#15803D">✓ ' + esc(pelaku.join(', ')) + '</span>' : '') + '</span>' +
+    '</label>';
+  }).join('');
+
+  const tombolHost = info.host ? '<button class="tombol sekunder" onclick="window.editCeklist()" style="margin:0 0 10px">✏️ Edit Daftar Lokasi</button>' : '';
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+      '<b style="flex:1;font-size:15px">' + esc(def.judul || 'Ceklist Lokasi') + '</b>' +
+      '<span style="font-size:12px;font-weight:700;color:#15803D">' + selesai + '/' + total + ' (' + persen + '%)</span></div>' +
+    '<div style="height:8px;background:#E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:12px"><div style="height:100%;width:' + persen + '%;background:#34C759"></div></div>' +
+    tombolHost +
+    (!info.cloud ? '<p class="catatan-kecil" style="color:var(--oranye);margin:0 0 8px">Mode lokal — centang Anda tersimpan & terkirim ke room saat online.</p>' : '') +
+    '<div>' + baris + '</div>';
+}
+
+function formCeklistBaru(judul, teks){
+  return '<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-bottom:10px">' +
+    '<b style="font-size:14px">Buat / Edit Ceklist Lokasi</b>' +
+    '<p class="catatan-kecil" style="margin:4px 0 8px">Satu baris = satu lokasi. Nomor otomatis. Anggota room akan menandai lokasi yang sudah dikerjakan.</p>' +
+    '<label class="f" style="margin-top:0">Judul</label>' +
+    '<input id="inJudulCeklist" class="f" placeholder="Contoh: Survei Patok Blok A" value="' + esc(judul || '') + '">' +
+    '<label class="f">Daftar lokasi (1 baris = 1 lokasi)</label>' +
+    '<textarea id="inItemsCeklist" class="f" rows="8" placeholder="Patok BPKH 001 - Dusun Ciasih&#10;Patok BPKH 002 - Tepi Sungai">' + esc(teks || '') + '</textarea>' +
+    '<button class="tombol" onclick="window.simpanDefCeklist()" style="margin-top:8px">💾 Simpan & Bagikan ke Room</button>' +
+    (teks ? '<button class="tombol abu" onclick="muatCeklist()" style="margin-top:6px">Batal</button>' : '') +
+  '</div>';
+}
+
+window.toggleCeklistItem = async (no, checked) => {
+  const room = (S.room || 'LOKAL').trim().toUpperCase();
+  let prog = await ambilCeklist(idProgCeklist());
+  if (!prog) prog = { id: idProgCeklist(), room, selesai: [] };
+  const set = new Map((prog.selesai || []).map(s => [Number(s.no), s]));
+  if (checked) { if (!set.has(Number(no))) set.set(Number(no), { no: Number(no), ts: Date.now() }); }
+  else set.delete(Number(no));
+  prog.selesai = Array.from(set.values());
+  prog.diperbarui = Date.now();
+  prog.perluSync = true;
+  await simpanCeklist(prog);
+  muatCeklist();
+  const info = infoRoomSpasial();
+  if (navigator.onLine && info.cloud) {
+    try {
+      await MegaEngine.simpanProgresCeklist(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'), prog.selesai);
+      prog.perluSync = false; await simpanCeklist(prog);
+    } catch(e){ console.warn('kirim progres ceklist:', e); }
+  }
+};
+
+window.simpanDefCeklist = async () => {
+  const el1 = $('inJudulCeklist'), el2 = $('inItemsCeklist');
+  const judul = ((el1 && el1.value) || '').trim() || 'Ceklist Lokasi';
+  const teks = (el2 && el2.value) || '';
+  const items = teks.split('\n').map(s => s.trim()).filter(Boolean).map((nama, i) => ({ no: i + 1, nama }));
+  if (!items.length) { pesan('Daftar lokasi masih kosong'); return; }
+  const room = (S.room || 'LOKAL').trim().toUpperCase();
+  await simpanCeklist({ id: idDefCeklist(), room, judul, items, diperbarui: Date.now() });
+  pesan('Menyimpan ceklist…');
+  const info = infoRoomSpasial();
+  if (info.host && info.cloud) {
+    try { const r = await MegaEngine.unggahCeklistDef(S.room, { judul, items }); pesan('Ceklist dibagikan ke room (' + r.jumlah + ' lokasi)'); }
+    catch(e){ pesan('Tersimpan lokal; gagal unggah ke room: ' + (e.message || e)); }
+  } else { pesan('Ceklist tersimpan lokal'); }
+  muatCeklist();
+};
+
+window.editCeklist = async () => {
+  const def = await ambilCeklist(idDefCeklist());
+  const wrap = $('panelCeklist');
+  if (wrap) wrap.innerHTML = formCeklistBaru((def && def.judul) || '', ((def && def.items) || []).map(it => it.nama).join('\n'));
+};
+
+// Dorong progres ceklist yang belum tersinkron saat kembali online (dipanggil dari sinkron)
+async function dorongCeklistTertunda(){
+  try {
+    const room = (S.room || 'LOKAL').trim().toUpperCase();
+    const prog = await ambilCeklist('prog_' + room);
+    const info = infoRoomSpasial();
+    if (prog && prog.perluSync && navigator.onLine && info.cloud){
+      await MegaEngine.simpanProgresCeklist(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'), prog.selesai || []);
+      prog.perluSync = false; await simpanCeklist(prog);
+    }
+  } catch(e){ console.warn('dorongCeklistTertunda:', e); }
+}
 
 $('btnPetaFilter').onclick = () => {
   S.lingkupPeta = (S.lingkupPeta === 'room' ? 'semua' : 'room');
