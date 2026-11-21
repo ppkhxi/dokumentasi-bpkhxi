@@ -2,9 +2,9 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v3.9.96';
+const VERSI = 'dkpoint-v3.9.97';
 const CACHE_TILES = 'dkpoint-tiles-v2';
-const MAKS_TILE = 150;   // tile tanpa-CORS dihitung Chrome ±7 MB per berkas, jadi dibatasi kecil
+const MAKS_TILE = 1200;   // simpan lebih banyak tile basemap agar area kerja tetap bisa dibuka offline berhari-hari
 
 async function batasiCache(nama, maks) {
   const c = await caches.open(nama);

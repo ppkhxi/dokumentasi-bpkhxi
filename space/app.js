@@ -891,8 +891,9 @@
     const persen = total ? Math.round(doneSet.size / total * 100) : 0;
     const baris = def.items.map(it => {
       const pelaku = doneBy[it.no] || []; const sudah = pelaku.length > 0; const saya = adminSel.has(Number(it.no));
-      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ' + (sudah ? 'rgba(74,222,128,.5)' : 'rgba(255,255,255,.12)') + ';background:' + (sudah ? 'rgba(74,222,128,.10)' : 'rgba(255,255,255,.03)') + ';border-radius:9px;margin-bottom:5px;cursor:pointer">' +
-        '<input type="checkbox" ' + (saya ? 'checked' : '') + ' data-no="' + it.no + '" class="ckAdminItem" style="width:18px;height:18px;flex:0 0 auto">' +
+      const terkunci = sudah && !saya;   // dikerjakan orang lain -> tidak bisa dobel ceklist
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ' + (sudah ? 'rgba(74,222,128,.5)' : 'rgba(255,255,255,.12)') + ';background:' + (sudah ? 'rgba(74,222,128,.10)' : 'rgba(255,255,255,.03)') + ';border-radius:9px;margin-bottom:5px;cursor:' + (terkunci?'not-allowed':'pointer') + '">' +
+        '<input type="checkbox" ' + (sudah ? 'checked' : '') + (terkunci?' disabled':'') + ' data-no="' + it.no + '" class="ckAdminItem" style="width:18px;height:18px;flex:0 0 auto">' +
         '<span style="flex:0 0 30px;font-weight:700;color:' + (sudah ? '#4ade80' : '#9aa') + '">' + it.no + '</span>' +
         '<span style="flex:1;min-width:0">' + esc(it.nama) + (pelaku.length ? '<br><span class="kecil" style="color:#4ade80">✓ ' + esc(pelaku.join(', ')) + '</span>' : '') + '</span></label>';
     }).join('');

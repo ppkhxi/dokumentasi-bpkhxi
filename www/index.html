@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.96</span>
+            Dokumentasi <span id="loginVersi">v3.9.97</span>
           </div>
         </div>
       </div>
@@ -2270,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.96';
+const VERSI = '3.9.97';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -6882,10 +6882,11 @@ function renderCeklist(def, agg, info, mySelesai){
 
   const baris = def.items.map(it => {
     const pelaku = doneBy[it.no] || [];
-    const sudah = pelaku.length > 0;
-    const sayaCentang = mySelesai.has(Number(it.no));
-    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid ' + (sudah?'#BBF7D0':'var(--garis)') + ';background:' + (sudah?'#F0FDF4':'#fff') + ';border-radius:11px;margin-bottom:6px;cursor:pointer">' +
-      '<input type="checkbox" ' + (sayaCentang?'checked':'') + ' onchange="window.toggleCeklistItem(' + it.no + ', this.checked)" style="width:20px;height:20px;flex:0 0 auto">' +
+    const sudah = pelaku.length > 0;                 // dikerjakan siapa pun (status tim)
+    const milikSaya = mySelesai.has(Number(it.no));  // saya yang mengerjakan
+    const terkunci = sudah && !milikSaya;            // dikerjakan orang lain -> tidak bisa dobel
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid ' + (sudah?'#BBF7D0':'var(--garis)') + ';background:' + (sudah?'#F0FDF4':'#fff') + ';border-radius:11px;margin-bottom:6px;cursor:' + (terkunci?'not-allowed':'pointer') + '">' +
+      '<input type="checkbox" ' + (sudah?'checked':'') + (terkunci?' disabled':'') + ' onchange="window.toggleCeklistItem(' + it.no + ', this.checked)" style="width:20px;height:20px;flex:0 0 auto">' +
       '<span style="flex:0 0 34px;font-weight:800;color:' + (sudah?'#15803D':'var(--teks-2)') + '">' + it.no + '</span>' +
       '<span style="flex:1;min-width:0;font-size:13px">' + esc(it.nama) + (pelaku.length ? '<br><span style="font-size:10.5px;color:#15803D">✓ ' + esc(pelaku.join(', ')) + '</span>' : '') + '</span>' +
     '</label>';
