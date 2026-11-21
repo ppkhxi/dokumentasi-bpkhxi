@@ -860,18 +860,61 @@
     if (!S.storage) { wrap.innerHTML = '<p class="kecil">Login MEGA dulu.</p>'; return; }
     const room = roomDipilih();
     if (!room) { wrap.innerHTML = '<p class="kecil">Pilih <b>Room</b> dulu di dropdown atas — ceklist melekat ke room yang dipilih.</p>'; return; }
-    let def = null;
+    wrap.innerHTML = '<p class="kecil">Memuat ceklist…</p>';
+    let def = null, peserta = [];
     try {
       const fr = await folderRoomNode(false);
-      const berkas = fr && (fr.children || []).find(x => !x.directory && x.name === '_ceklist.json');
-      if (berkas) def = JSON.parse(new TextDecoder().decode(await berkas.downloadBuffer()));
+      if (fr) {
+        const berkas = (fr.children || []).find(x => !x.directory && x.name === '_ceklist.json');
+        if (berkas) def = JSON.parse(new TextDecoder().decode(await berkas.downloadBuffer()));
+        const files = (fr.children || []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
+        for (const f of files) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId) peserta.push(j); } catch (_) {} }
+      }
     } catch (_) {}
     window._ckItems = def ? (def.items || []) : [];
+    const adaDef = def && def.items && def.items.length;
+    if (adaDef && !window._ckEdit) renderCekAdminView(wrap, def, room, peserta);
+    else renderCekFormSpace(wrap, def, room, !!adaDef);
+  }
+
+  // Tampilan ADMIN: daftar dgn checkbox (admin ikut menceklist) + progres tim
+  function renderCekAdminView(wrap, def, room, peserta) {
+    const doneBy = {};
+    peserta.forEach(a => (a.selesai || []).forEach(s => { const n = Number(s.no); (doneBy[n] = doneBy[n] || []).push(a.nama || a.userId); }));
+    const admin = peserta.find(a => a.userId === 'ADMIN');
+    const adminSel = new Set(((admin && admin.selesai) || []).map(s => Number(s.no)));
+    const total = def.items.length;
+    const doneSet = new Set(); peserta.forEach(a => (a.selesai || []).forEach(s => doneSet.add(Number(s.no))));
+    const persen = total ? Math.round(doneSet.size / total * 100) : 0;
+    const baris = def.items.map(it => {
+      const pelaku = doneBy[it.no] || []; const sudah = pelaku.length > 0; const saya = adminSel.has(Number(it.no));
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid ' + (sudah ? 'rgba(74,222,128,.5)' : 'rgba(255,255,255,.12)') + ';background:' + (sudah ? 'rgba(74,222,128,.10)' : 'rgba(255,255,255,.03)') + ';border-radius:9px;margin-bottom:5px;cursor:pointer">' +
+        '<input type="checkbox" ' + (saya ? 'checked' : '') + ' data-no="' + it.no + '" class="ckAdminItem" style="width:18px;height:18px;flex:0 0 auto">' +
+        '<span style="flex:0 0 30px;font-weight:700;color:' + (sudah ? '#4ade80' : '#9aa') + '">' + it.no + '</span>' +
+        '<span style="flex:1;min-width:0">' + esc(it.nama) + (pelaku.length ? '<br><span class="kecil" style="color:#4ade80">✓ ' + esc(pelaku.join(', ')) + '</span>' : '') + '</span></label>';
+    }).join('');
+    wrap.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 6px">' +
+        '<h2 style="margin:0">Ceklist — Room ' + esc(room) + '</h2>' +
+        '<button id="ckEdit">✏️ Edit daftar</button></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin:0 0 8px"><b>' + esc(def.judul || 'Ceklist') + '</b>' +
+        '<span class="kecil" style="color:#4ade80;font-weight:700">' + doneSet.size + '/' + total + ' (' + persen + '%)</span></div>' +
+      '<p class="kecil" style="margin:0 0 10px">Centang di sini dicatat sebagai <b>Admin</b> dan ikut muncul hijau di peta HP anggota.</p>' +
+      '<div>' + baris + '</div>' +
+      '<h3 style="margin:16px 0 6px">Progres tim</h3><div id="ckProgres" class="kecil"></div>';
+    $('ckEdit').onclick = () => { window._ckEdit = true; muatCeklistSpace(); };
+    wrap.querySelectorAll('.ckAdminItem').forEach(cb => cb.onchange = () => toggleCeklistAdmin(+cb.dataset.no, cb.checked));
+    const el = $('ckProgres');
+    el.innerHTML = peserta.length ? '<ul>' + peserta.map(a => '<li>' + esc(a.nama || a.userId) + ': ' + (a.selesai || []).length + ' lokasi</li>').join('') + '</ul>' : 'Belum ada progres.';
+  }
+
+  // Form BUAT/EDIT daftar
+  function renderCekFormSpace(wrap, def, room, adaDef) {
     const opsiKml = (S.kml || []).map((k, i) => `<option value="${i}">${esc(k.nama)}</option>`).join('');
     wrap.innerHTML =
       '<h2 style="margin:0 0 4px">Ceklist Lokasi — Room ' + esc(room) + '</h2>' +
-      '<p class="kecil" style="margin:0 0 12px">Daftar ini dibagikan ke anggota <b>room ' + esc(room) + '</b>. Anggota menandai lokasi yang sudah dikerjakan; statusnya muncul di peta HP (hijau=sudah, merah=belum).</p>' +
-      '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px">' +
+      '<p class="kecil" style="margin:0 0 12px">Daftar dibagikan ke anggota <b>room ' + esc(room) + '</b>. Admin & anggota bisa menandai lokasi yang sudah dikerjakan; statusnya muncul di peta HP.</p>' +
+      '<div style="border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px">' +
         '<label class="kecil">Judul</label><br>' +
         '<input id="ckJudul" value="' + esc(def ? def.judul : '') + '" placeholder="Contoh: Survei Patok Blok A" style="width:100%;margin-bottom:8px">' +
         '<div style="display:flex;gap:8px;margin:4px 0 8px;align-items:center;flex-wrap:wrap">' +
@@ -883,8 +926,8 @@
         '<label class="kecil">Daftar lokasi (1 baris = 1 lokasi)</label><br>' +
         '<textarea id="ckItems" rows="10" style="width:100%" placeholder="Patok 001 - Dusun Ciasih&#10;Patok 002 - Tepi Sungai">' + esc(def ? (def.items || []).map(it => it.nama).join('\n') : '') + '</textarea><br>' +
         '<button id="ckSimpan" class="tombol" style="margin-top:8px">Simpan &amp; Bagikan ke anggota</button>' +
-      '</div>' +
-      '<h3 style="margin:18px 0 6px">Progres tim</h3><div id="ckProgres" class="kecil">Memuat…</div>';
+        (adaDef ? ' <button id="ckBatal" style="margin-top:8px">Batal</button>' : '') +
+      '</div>';
     $('ckBtnDariKml').onclick = () => {
       const sel = $('ckDariKml'); const i = +sel.value;
       if (sel.value === '' || !S.kml[i]) { status('Pilih lapisan KML dulu.', true); return; }
@@ -895,7 +938,7 @@
       $('ckInfoGeo').textContent = '✅ ' + fitur.length + ' fitur spasial siap (muncul di peta HP).';
     };
     $('ckSimpan').onclick = simpanCeklistSpace;
-    muatProgresCeklistSpace(def);
+    if ($('ckBatal')) $('ckBatal').onclick = () => { window._ckEdit = false; muatCeklistSpace(); };
   }
 
   async function simpanCeklistSpace() {
@@ -915,23 +958,26 @@
       const fr = await folderRoomNode(true);
       await tulisJson(fr, '_ceklist.json', { v: 1, judul, diperbarui: Date.now(), oleh: ((S.storage && S.storage.email) || 'admin'), items });
       status('Ceklist room ' + room + ' tersimpan & dibagikan (' + items.length + ' lokasi).');
+      window._ckEdit = false;
       muatCeklistSpace();
     } catch (e) { status('Gagal menyimpan: ' + (e.message || e), true); }
   }
 
-  async function muatProgresCeklistSpace(def) {
-    const el = $('ckProgres'); if (!el) return;
+  // Admin menceklist/batal satu lokasi → progres admin (_ceklist_ADMIN.json)
+  async function toggleCeklistAdmin(no, checked) {
+    const room = roomDipilih(); if (!room) return;
     try {
-      const fr = await folderRoomNode(false);
-      const files = (fr ? (fr.children || []) : []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
-      const anggota = [];
-      for (const f of files) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId) anggota.push(j); } catch (_) {} }
-      const total = def && def.items ? def.items.length : 0;
-      const doneSet = new Set(); anggota.forEach(a => (a.selesai || []).forEach(s => doneSet.add(Number(s.no))));
-      const persen = total ? Math.round(doneSet.size / total * 100) : 0;
-      el.innerHTML = '<b>' + doneSet.size + '/' + total + ' lokasi selesai (' + persen + '%)</b> oleh ' + anggota.length + ' anggota.' +
-        (anggota.length ? '<ul>' + anggota.map(a => '<li>' + esc(a.nama || a.userId) + ': ' + (a.selesai || []).length + ' lokasi</li>').join('') + '</ul>' : ' Belum ada progres dari anggota.');
-    } catch (e) { el.textContent = 'Gagal memuat progres.'; }
+      const fr = await folderRoomNode(true);
+      let prog = { v: 1, userId: 'ADMIN', nama: 'Admin', diperbarui: Date.now(), selesai: [] };
+      const lama = (fr.children || []).find(x => !x.directory && x.name === '_ceklist_ADMIN.json');
+      if (lama) { try { prog = JSON.parse(new TextDecoder().decode(await lama.downloadBuffer())); } catch (_) {} }
+      const set = new Map((prog.selesai || []).map(s => [Number(s.no), s]));
+      if (checked) { if (!set.has(Number(no))) set.set(Number(no), { no: Number(no), ts: Date.now() }); } else set.delete(Number(no));
+      prog.userId = 'ADMIN'; prog.nama = 'Admin'; prog.selesai = Array.from(set.values()); prog.diperbarui = Date.now();
+      await tulisJson(fr, '_ceklist_ADMIN.json', prog);
+      status('Centang admin tersimpan.');
+      muatCeklistSpace();
+    } catch (e) { status('Gagal menyimpan centang: ' + (e.message || e), true); }
   }
 
   /* ---------------- mulai ---------------- */
