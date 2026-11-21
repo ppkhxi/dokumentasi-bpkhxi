@@ -884,6 +884,56 @@
       return hasil;
     },
 
+    // Registrasi anggota: ditulis saat login/sync agar admin melihat yang sudah
+    // GABUNG room (via QR/kode) walau belum mengunggah foto. Berkas: _anggota_<UID>.json
+    async daftarkanAnggota(namaRoom, userId, nama) {
+      const room = (namaRoom || '').trim().toUpperCase();
+      if (!room) return;
+      const uid = String(userId || nama || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USER';
+      const { storage } = await this._storageRoom(room);
+      if (!storage) return;
+      const master = await this.dapatkanFolderMaster(storage);
+      let folderRoom = master.find(room);
+      if (!folderRoom) folderRoom = await storage.mkdir({ name: room, target: master });
+      if (!folderRoom) return;
+      const fn = '_anggota_' + uid + '.json';
+      let bergabung = Date.now();
+      const lama = (folderRoom.children || []).find(x => !x.directory && x.name === fn);
+      if (lama) {
+        try {
+          const j = JSON.parse(new TextDecoder().decode(await lama.downloadBuffer()));
+          bergabung = j.bergabung || bergabung;
+          // Hemat kuota: lewati bila nama sama & baru diperbarui < 6 jam lalu
+          if (j.nama === (nama || uid) && (Date.now() - (j.terakhir || 0) < 6 * 3600e3)) return;
+        } catch (_) {}
+      }
+      const payload = { v: 1, userId: uid, nama: nama || uid, bergabung, terakhir: Date.now() };
+      const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      const aksi = folderRoom.upload({ name: fn, size: bytes.byteLength }, bytes);
+      await withTimeout(new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); }), 60000, 'Daftar anggota timeout');
+      if (lama) { try { await lama.delete(true); } catch (_) {} }
+    },
+
+    // Baca anggota yang sudah terdaftar (gabung) di room
+    async tarikDaftarAnggota(namaRoom) {
+      const room = (namaRoom || '').trim().toUpperCase();
+      if (!room) return [];
+      const { storage } = await this._storageRoom(room);
+      if (!storage) return [];
+      const master = await this.dapatkanFolderMaster(storage);
+      const folderRoom = master.find(room);
+      if (!folderRoom || !folderRoom.children) return [];
+      const files = folderRoom.children.filter(x => !x.directory && /^_anggota_.+\.json$/i.test(x.name));
+      const out = [];
+      for (const f of files) {
+        try {
+          const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer()));
+          if (j && j.userId) out.push({ userId: j.userId, nama: j.nama || j.userId, bergabung: j.bergabung, terakhir: j.terakhir });
+        } catch (_) {}
+      }
+      return out;
+    },
+
     // -------------------------------------------------------------
     // FITUR HOST: REKAP TIM & DAFTAR ANGGOTA DARI CLOUD MEGA
     // -------------------------------------------------------------

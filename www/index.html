@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.90</span>
+            Dokumentasi <span id="loginVersi">v3.9.91</span>
           </div>
         </div>
       </div>
@@ -2270,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.90';
+const VERSI = '3.9.91';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
@@ -3555,6 +3555,7 @@ async function sinkron(diam, paksa){
   if(sedangSinkron) return;
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
   if(typeof dorongCeklistTertunda === 'function') dorongCeklistTertunda();
+  if(typeof daftarkanAnggotaKeRoom === 'function') daftarkanAnggotaKeRoom();
   if(!paksa && !bolehUploadSekarang()){
     if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan Kirim Sekarang di menu Antrian untuk mengirim lebih awal.');
     return;
@@ -6721,6 +6722,19 @@ async function tarikSpasialRoom(diam){
 }
 window.tarikSpasialRoom = tarikSpasialRoom;
 
+// Daftarkan diri sebagai anggota room (agar admin melihat yang sudah gabung
+// via QR/kode walau belum unggah foto). Dipanggil saat login & sinkron.
+async function daftarkanAnggotaKeRoom(){
+  try {
+    if (typeof MegaEngine === 'undefined' || !navigator.onLine) return;
+    const room = (S.room || '').trim().toUpperCase();
+    if (!room || room === 'LOKAL') return;
+    if (!MegaEngine.bisaUpload || !MegaEngine.bisaUpload(S.room)) return;
+    await MegaEngine.daftarkanAnggota(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'));
+  } catch(e){ console.warn('daftarkanAnggotaKeRoom:', e); }
+}
+window.daftarkanAnggotaKeRoom = daftarkanAnggotaKeRoom;
+
 /* =================== CEKLIST LOKASI ROOM (kontrol pekerjaan tim) =================== */
 function idDefCeklist(){ return 'def_' + (S.room || 'LOKAL').trim().toUpperCase(); }
 function idProgCeklist(){ return 'prog_' + (S.room || 'LOKAL').trim().toUpperCase(); }
@@ -9346,6 +9360,8 @@ async function pulihkanRoomLama(){
         if(navigator.onLine) setTimeout(()=>sinkron(true), 2500);
       }).catch(()=>{});
     }
+    // Daftarkan diri ke room cloud agar admin melihat anggota yang sudah gabung
+    if(typeof daftarkanAnggotaKeRoom === 'function') setTimeout(daftarkanAnggotaKeRoom, 3500);
   }else{
     if($('inNama') && nama) $('inNama').value = nama;
     if($('inUserId')) $('inUserId').value = hitungInisialPetugas(nama || ($('inNama') ? $('inNama').value : ''));

@@ -869,6 +869,9 @@
         if (berkas) def = JSON.parse(new TextDecoder().decode(await berkas.downloadBuffer()));
         const files = (fr.children || []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
         for (const f of files) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId) peserta.push(j); } catch (_) {} }
+        // Gabungkan anggota yang SUDAH GABUNG (via QR/kode) walau belum ada progres
+        const fa = (fr.children || []).filter(x => !x.directory && /^_anggota_.+\.json$/i.test(x.name));
+        for (const f of fa) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId && !peserta.find(p => p.userId === j.userId)) peserta.push({ userId: j.userId, nama: j.nama || j.userId, selesai: [] }); } catch (_) {} }
       }
     } catch (_) {}
     window._ckItems = def ? (def.items || []) : [];
