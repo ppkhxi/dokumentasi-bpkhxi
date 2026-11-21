@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.94</span>
+            Dokumentasi <span id="loginVersi">v3.9.95</span>
           </div>
         </div>
       </div>
@@ -2270,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.94';
+const VERSI = '3.9.95';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -6407,7 +6407,7 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
           <b style="font-size:14px;color:#007AFF" id="labelPilihDokumen">Ketuk untuk Memilih Berkas</b>
           <div style="font-size:11px;color:var(--teks-2);margin-top:5px;line-height:1.4">Dari <u>File Manager / Dokumen</u> (bukan Galeri Foto)<br>KML · KMZ · GeoJSON · GeoPDF · PDF · JPG · PNG · TIFF</div>
         </div>
-        <input type="file" id="inUploadLayerSatuPintu" accept=".kml,.kmz,.geojson,.pdf,.jpg,.jpeg,.png,.tif,.tiff" style="display:none">
+        <input type="file" id="inUploadLayerSatuPintu" accept="*/*" style="display:none">
 
         <div id="formOpsiLayer" style="display:none;margin-top:12px;background:#f9f9f9;padding:12px;border-radius:12px;border:1px solid var(--garis)">
           <div id="badgeTipeTerpilih" style="display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;background:#007AFF;color:#fff;margin-bottom:8px">Vektor Spasial</div>
@@ -6997,7 +6997,7 @@ async function bukaDialogKML(){
     <p style="font-size:12.5px;color:var(--teks-2);margin:0 0 10px">Tambahkan batas kawasan, peta kerja, atau trayek dalam format KML. Label dan warna dapat diatur mandiri per-layer.</p>
     <div style="background:#f9f9f9;padding:12px;border-radius:12px;border:1px dashed var(--garis);margin-bottom:12px">
       <label class="f" style="margin-top:0">Pilih Berkas KML (.kml)</label>
-      <input type="file" id="inUploadKml" accept=".kml" class="f" style="padding:6px">
+      <input type="file" id="inUploadKml" accept="*/*" class="f" style="padding:6px">
       <label class="f">Nama Layer</label>
       <input id="inNamaKml" class="f" placeholder="Contoh: Batas Kawasan / Blok A">
       <label class="f">Warna Garis / Isian</label>
