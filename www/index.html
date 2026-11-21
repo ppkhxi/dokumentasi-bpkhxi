@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.97</span>
+            Dokumentasi <span id="loginVersi">v3.9.98</span>
           </div>
         </div>
       </div>
@@ -2035,7 +2035,9 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
         <div class="meta-baris"><span>Menunggu upload</span><b id="anPending">0 foto</b></div>
         <div class="meta-baris" style="border-bottom:0"><span>Sudah terkirim</span><b id="anTerkirim">0 foto</b></div>
         <button class="tombol" id="btnSyncManual">Kirim Sekarang</button>
+        <button class="tombol sekunder" id="btnKirimUlangRoom" style="margin-top:8px">🔄 Kirim ulang semua ke room</button>
         <p class="catatan-kecil" id="anKeterangan"></p>
+        <p class="catatan-kecil" style="color:var(--teks-2);margin-top:4px">Pakai "Kirim ulang" bila data yang sudah terkirim ternyata masuk ke akun pribadi, bukan ke room — ini mengirim ulang semua foto room ke akun host/admin.</p>
       </div>
       <div id="isiAntrian"></div>
     </section>
@@ -2270,7 +2272,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.97';
+const VERSI = '3.9.98';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -3677,6 +3679,23 @@ function segarkanLayar(){
 }
 $('btnSync').onclick = ()=>sinkron(false, true);
 $('btnSyncManual').onclick = ()=>sinkron(false, true);
+
+// Kirim ulang semua foto room ke akun host (perbaikan: data lama terlanjur ke akun pribadi)
+async function kirimUlangKeRoom(){
+  const room = (S.room || 'LOKAL').trim().toUpperCase();
+  if (room === 'LOKAL' || typeof MegaEngine === 'undefined' || !MegaEngine.bisaUpload(S.room)) {
+    pesan('Room ini tanpa akses Cloud — tidak ada yang bisa dikirim ulang'); return;
+  }
+  const semua = await ambilSemua();
+  const sasaran = semua.filter(f => (f.room || '').trim().toUpperCase() === room && f.dataUrl);
+  if (!sasaran.length) { pesan('Tidak ada foto lokal room ini untuk dikirim ulang (mungkin sudah dihapus dari HP)'); return; }
+  if (!confirm('Kirim ulang ' + sasaran.length + ' foto room "' + room + '" ke Cloud room/admin?\n\nGunakan ini bila foto sebelumnya terlanjur masuk ke akun pribadi, bukan ke room. Catatan: bisa menimbulkan duplikat untuk foto yang sudah benar.')) return;
+  for (const f of sasaran){ f.status = 'pending'; await simpanFoto(f); }
+  if (typeof muatAntrian === 'function') muatAntrian();
+  pesan('Mengirim ulang ' + sasaran.length + ' foto ke room…');
+  sinkron(false, true);
+}
+if ($('btnKirimUlangRoom')) $('btnKirimUlangRoom').onclick = kirimUlangKeRoom;
 
 /* ---------- Beranda ---------- */
 async function muatBeranda(){
