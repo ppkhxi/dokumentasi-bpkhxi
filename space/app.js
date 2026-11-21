@@ -275,7 +275,11 @@
     const v = S.f.petugas;
     $('fPetugas').innerHTML = '<option value="">Semua petugas</option>' + daftar.map(p => `<option ${p === v ? 'selected' : ''}>${esc(p)}</option>`).join('');
   }
-  $('fRoom').onchange = e => { S.f.room = e.target.value; S.f.petugas = ''; isiPetugas(); render(); };
+  $('fRoom').onchange = e => {
+    S.f.room = e.target.value; S.f.petugas = ''; isiPetugas(); render();
+    if (typeof petaSiap !== 'undefined' && petaSiap && S.tab === 'peta') muatUlangLapisanPeta();
+    if (S.tab === 'ceklist') muatCeklistSpace();
+  };
   $('fPetugas').onchange = e => { S.f.petugas = e.target.value; render(); };
   $('fCari').oninput = e => { S.f.q = e.target.value.trim().toLowerCase(); render(); };
 
@@ -295,7 +299,8 @@
     S.tab = b.dataset.v;
     document.querySelectorAll('#tab button').forEach(x => x.classList.toggle('pilih', x === b));
     ['tabel', 'galeri', 'peta', 'ceklist'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
-    if (S.tab === 'ceklist') muatCeklistSpace(); else render();
+    if (S.tab === 'ceklist') muatCeklistSpace();
+    else { render(); if (S.tab === 'peta' && typeof petaSiap !== 'undefined' && petaSiap) muatUlangLapisanPeta(); }
   });
 
   function render() {
@@ -525,7 +530,8 @@
       S.kml.push({ nama: 'contoh-batas.kml', node: null, layer: kmlKeLayer(DEMO_KML, WARNA[0]), aktif: true, warna: WARNA[0], opa: 1 });
       S.kml[0].layer.addTo(peta);
     } else if (S.master) {
-      const folder = (S.master.children || []).find(n => n.directory && n.name === '_peta');
+      const fr = await folderRoomNode(false);   // PER-ROOM: baca dari <ROOM>/_peta
+      const folder = fr && (fr.children || []).find(n => n.directory && n.name === '_peta');
       const berkas = folder ? (folder.children || []).filter(n => !n.directory && /\.(kml|geojson)$/i.test(n.name)) : [];
       berkas.forEach((n, i) => S.kml.push({ nama: n.name, node: n, layer: null, aktif: false, warna: WARNA[i % WARNA.length], opa: 1 }));
     }
@@ -646,10 +652,26 @@
 
   /* ---------------- raster (JPG / PNG / PDF, georeferensi) ---------------- */
   const bKeArray = b => [[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]];
-  async function folderPeta() {
-    let f = (S.master.children || []).find(n => n.directory && n.name === '_peta');
-    if (!f) f = await S.storage.mkdir({ name: '_peta', target: S.master });
+  // Room yang sedang dipilih di dropdown header (data KML/ceklist melekat ke room ini)
+  function roomDipilih() { return ((S.f && S.f.room) || '').trim().toUpperCase(); }
+  async function folderRoomNode(buatJika) {
+    const room = roomDipilih();
+    if (!room || !S.master) return null;
+    let fr = (S.master.children || []).find(n => n.directory && n.name === room);
+    if (!fr && buatJika) fr = await S.storage.mkdir({ name: room, target: S.master });
+    return fr;
+  }
+  async function folderPeta() {   // PER-ROOM: <ROOM>/_peta (butuh room terpilih)
+    const fr = await folderRoomNode(true);
+    if (!fr) { status('Pilih Room dulu di dropdown atas — data melekat ke room yang dipilih.', true); throw new Error('Room belum dipilih'); }
+    let f = (fr.children || []).find(n => n.directory && n.name === '_peta');
+    if (!f) f = await S.storage.mkdir({ name: '_peta', target: fr });
     return f;
+  }
+  async function muatUlangLapisanPeta() {
+    try { (S.kml || []).forEach(k => { if (k.layer && peta.hasLayer(k.layer)) peta.removeLayer(k.layer); }); } catch (_) {}
+    try { (S.raster || []).forEach(r => { try { PETA.hapusRaster(peta, r.id); } catch (_) {} }); } catch (_) {}
+    await muatDaftarKml();
   }
   const rasterId = id => S.raster.find(r => r.id === id);
 
@@ -665,7 +687,8 @@
       PETA.pasangRaster(peta, 'raster_demo', S.raster[0].url, S.raster[0].bounds, 0.75);
       return;
     }
-    const folder = S.master && (S.master.children || []).find(n => n.directory && n.name === '_peta');
+    const fr = await folderRoomNode(false);   // PER-ROOM: raster dari <ROOM>/_peta
+    const folder = fr && (fr.children || []).find(n => n.directory && n.name === '_peta');
     if (!folder) return;
     const js = (folder.children || []).filter(n => !n.directory && /^raster_.*\.json$/i.test(n.name));
     await pool(js, 3, async n => {
@@ -835,16 +858,19 @@
   async function muatCeklistSpace() {
     const wrap = $('isiCeklist'); if (!wrap) return;
     if (!S.storage) { wrap.innerHTML = '<p class="kecil">Login MEGA dulu.</p>'; return; }
+    const room = roomDipilih();
+    if (!room) { wrap.innerHTML = '<p class="kecil">Pilih <b>Room</b> dulu di dropdown atas — ceklist melekat ke room yang dipilih.</p>'; return; }
     let def = null;
     try {
-      const berkas = S.master && (S.master.children || []).find(x => !x.directory && x.name === '_ceklist.json');
+      const fr = await folderRoomNode(false);
+      const berkas = fr && (fr.children || []).find(x => !x.directory && x.name === '_ceklist.json');
       if (berkas) def = JSON.parse(new TextDecoder().decode(await berkas.downloadBuffer()));
     } catch (_) {}
     window._ckItems = def ? (def.items || []) : [];
     const opsiKml = (S.kml || []).map((k, i) => `<option value="${i}">${esc(k.nama)}</option>`).join('');
     wrap.innerHTML =
-      '<h2 style="margin:0 0 4px">Ceklist Lokasi</h2>' +
-      '<p class="kecil" style="margin:0 0 12px">Daftar ini dibagikan ke semua anggota room. Anggota menandai lokasi yang sudah dikerjakan; statusnya muncul di peta HP (hijau=sudah, merah=belum).</p>' +
+      '<h2 style="margin:0 0 4px">Ceklist Lokasi — Room ' + esc(room) + '</h2>' +
+      '<p class="kecil" style="margin:0 0 12px">Daftar ini dibagikan ke anggota <b>room ' + esc(room) + '</b>. Anggota menandai lokasi yang sudah dikerjakan; statusnya muncul di peta HP (hijau=sudah, merah=belum).</p>' +
       '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px">' +
         '<label class="kecil">Judul</label><br>' +
         '<input id="ckJudul" value="' + esc(def ? def.judul : '') + '" placeholder="Contoh: Survei Patok Blok A" style="width:100%;margin-bottom:8px">' +
@@ -873,7 +899,8 @@
   }
 
   async function simpanCeklistSpace() {
-    if (!S.master) { status('Folder master belum siap.', true); return; }
+    const room = roomDipilih();
+    if (!room) { status('Pilih Room dulu di dropdown atas.', true); return; }
     const judul = ($('ckJudul').value || '').trim() || 'Ceklist Lokasi';
     const teks = $('ckItems').value || '';
     const impor = window._ckItems || [];
@@ -885,8 +912,9 @@
     if (!items.length) { status('Daftar lokasi kosong.', true); return; }
     status('Menyimpan ceklist ke MEGA…');
     try {
-      await tulisJson(S.master, '_ceklist.json', { v: 1, judul, diperbarui: Date.now(), oleh: ((S.storage && S.storage.email) || 'admin'), items });
-      status('Ceklist tersimpan & dibagikan (' + items.length + ' lokasi).');
+      const fr = await folderRoomNode(true);
+      await tulisJson(fr, '_ceklist.json', { v: 1, judul, diperbarui: Date.now(), oleh: ((S.storage && S.storage.email) || 'admin'), items });
+      status('Ceklist room ' + room + ' tersimpan & dibagikan (' + items.length + ' lokasi).');
       muatCeklistSpace();
     } catch (e) { status('Gagal menyimpan: ' + (e.message || e), true); }
   }
@@ -894,7 +922,8 @@
   async function muatProgresCeklistSpace(def) {
     const el = $('ckProgres'); if (!el) return;
     try {
-      const files = (S.master ? (S.master.children || []) : []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
+      const fr = await folderRoomNode(false);
+      const files = (fr ? (fr.children || []) : []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
       const anggota = [];
       for (const f of files) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId) anggota.push(j); } catch (_) {} }
       const total = def && def.items ? def.items.length : 0;
