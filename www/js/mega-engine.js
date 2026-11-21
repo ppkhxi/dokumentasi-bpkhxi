@@ -751,6 +751,31 @@
       return { ok: true, jumlah: bundel.lapisan.length };
     },
 
+    // Tarik KML bersama yang ditulis admin via desktop (space) ke folder GLOBAL
+    // DKPOINT_DOKUMENTASI/_peta/*.kml. Tampil untuk semua anggota yang punya akses MEGA room.
+    async tarikPetaBersama(namaRoom) {
+      const nama = (namaRoom || '').trim().toUpperCase();
+      // Pakai storage room aktif (host sesi / anggota via tiket) — _peta ada di master yang sama
+      const { storage } = await this._storageRoom(nama || (this.getRoomAktif() || {}).nama || '');
+      if (!storage) return [];
+      const master = await this.dapatkanFolderMaster(storage);
+      if (!master || !master.children) return [];
+      const folderPeta = master.children.find(n => n.directory && n.name === '_peta');
+      if (!folderPeta || !folderPeta.children) return [];
+      const files = folderPeta.children.filter(x => !x.directory && /\.(kml|geojson)$/i.test(x.name));
+      const hasil = [];
+      for (const f of files) {
+        try {
+          const buf = await withTimeout(f.downloadBuffer(), 30000, 'Tarik KML admin timeout');
+          const teks = new TextDecoder().decode(buf);
+          if (teks && (teks.includes('<kml') || teks.includes('FeatureCollection'))) {
+            hasil.push({ id: f.name, nama: f.name.replace(/\.(kml|geojson)$/i, ''), kmlText: teks });
+          }
+        } catch (e) { /* lewati berkas rusak */ }
+      }
+      return hasil;
+    },
+
     // Host/Anggota menarik lapisan KML yang dibagikan di room (return array, [] bila kosong)
     async tarikSpasial(namaRoom) {
       const nama = (namaRoom || '').trim().toUpperCase();
@@ -776,13 +801,11 @@
 
     async unggahCeklistDef(namaRoom, def) {
       const nama = (namaRoom || '').trim().toUpperCase();
-      if (!nama) throw new Error('Nama room kosong');
       const { storage } = await this._storageRoom(nama);
-      if (!storage) throw new Error('Belum terhubung ke Cloud room.');
+      if (!storage) throw new Error('Belum terhubung ke Cloud. Login MEGA / pakai undangan Host.');
       const master = await this.dapatkanFolderMaster(storage);
-      let folderRoom = master.find(nama);
-      if (!folderRoom) folderRoom = await storage.mkdir({ name: nama, target: master });
-      if (!folderRoom) throw new Error('Folder room tidak tersedia');
+      const folderRoom = master;   // GLOBAL: ceklist disimpan di folder master (dipakai semua room)
+      if (!folderRoom) throw new Error('Folder master tidak tersedia di MEGA');
       const payload = {
         v: 1, judul: (def && def.judul) || 'Ceklist Lokasi',
         diperbarui: Date.now(), oleh: this.getEmail() || 'host',
@@ -802,11 +825,10 @@
 
     async tarikCeklistDef(namaRoom) {
       const nama = (namaRoom || '').trim().toUpperCase();
-      if (!nama) return null;
       const { storage } = await this._storageRoom(nama);
       if (!storage) return null;
       const master = await this.dapatkanFolderMaster(storage);
-      const folderRoom = master.find(nama);
+      const folderRoom = master;   // GLOBAL
       if (!folderRoom || !folderRoom.children) return null;
       const berkas = folderRoom.children.find(x => !x.directory && x.name === '_ceklist.json');
       if (!berkas) return null;
@@ -818,13 +840,11 @@
 
     async simpanProgresCeklist(namaRoom, userId, nama, selesai) {
       const room = (namaRoom || '').trim().toUpperCase();
-      if (!room) throw new Error('Nama room kosong');
       const uid = String(userId || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USER';
       const { storage } = await this._storageRoom(room);
-      if (!storage) throw new Error('Belum terhubung ke Cloud room.');
+      if (!storage) throw new Error('Belum terhubung ke Cloud.');
       const master = await this.dapatkanFolderMaster(storage);
-      let folderRoom = master.find(room);
-      if (!folderRoom) folderRoom = await storage.mkdir({ name: room, target: master });
+      const folderRoom = master;   // GLOBAL: progres per-anggota di folder master
       const payload = {
         v: 1, userId: uid, nama: nama || uid, diperbarui: Date.now(),
         selesai: (selesai || []).map(s => ({ no: Number(s.no), ts: s.ts || Date.now() }))
@@ -840,11 +860,10 @@
 
     async tarikProgresCeklist(namaRoom) {
       const room = (namaRoom || '').trim().toUpperCase();
-      if (!room) return [];
       const { storage } = await this._storageRoom(room);
       if (!storage) return [];
       const master = await this.dapatkanFolderMaster(storage);
-      const folderRoom = master.find(room);
+      const folderRoom = master;   // GLOBAL
       if (!folderRoom || !folderRoom.children) return [];
       const files = folderRoom.children.filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
       const hasil = [];

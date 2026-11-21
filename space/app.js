@@ -294,8 +294,8 @@
   document.querySelectorAll('#tab button').forEach(b => b.onclick = () => {
     S.tab = b.dataset.v;
     document.querySelectorAll('#tab button').forEach(x => x.classList.toggle('pilih', x === b));
-    ['tabel', 'galeri', 'peta'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
-    render();
+    ['tabel', 'galeri', 'peta', 'ceklist'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
+    if (S.tab === 'ceklist') muatCeklistSpace(); else render();
   });
 
   function render() {
@@ -813,6 +813,96 @@
           asli: { no: i, lat: -7.8 + ri * .05 + pi * .02 + i * .004, lon: 110.4 + pi * .03 + i * .006, catatan: i % 2 ? 'Patok batas ' + n : '' } });
       }
     }));
+  }
+
+  /* ---------------- CEKLIST LOKASI (global, dibagikan ke semua anggota) ---------------- */
+  // Ekstrak fitur (nama + geometri) dari lapisan Leaflet hasil kmlKeLayer
+  function ekstrakFiturDariLayer(fg) {
+    const out = [];
+    if (!fg || !fg.eachLayer) return out;
+    fg.eachLayer(l => {
+      let nama = 'Objek';
+      try { const html = l.getPopup && l.getPopup() && l.getPopup().getContent(); const m = html && String(html).match(/<b>(.*?)<\/b>/); if (m) nama = m[1]; } catch (_) {}
+      let tipe = null, latlngs = null;
+      if (l instanceof L.Polygon) { const ll = l.getLatLngs(); const ring = Array.isArray(ll[0]) ? ll[0] : ll; tipe = 'polygon'; latlngs = ring.map(p => [p.lat, p.lng]); }
+      else if (l instanceof L.Polyline) { const ll = l.getLatLngs(); tipe = 'line'; latlngs = ll.map(p => [p.lat, p.lng]); }
+      else if (l.getLatLng) { const p = l.getLatLng(); tipe = 'point'; latlngs = [p.lat, p.lng]; }
+      if (tipe) out.push({ nama, tipe, latlngs });
+    });
+    return out;
+  }
+
+  async function muatCeklistSpace() {
+    const wrap = $('isiCeklist'); if (!wrap) return;
+    if (!S.storage) { wrap.innerHTML = '<p class="kecil">Login MEGA dulu.</p>'; return; }
+    let def = null;
+    try {
+      const berkas = S.master && (S.master.children || []).find(x => !x.directory && x.name === '_ceklist.json');
+      if (berkas) def = JSON.parse(new TextDecoder().decode(await berkas.downloadBuffer()));
+    } catch (_) {}
+    window._ckItems = def ? (def.items || []) : [];
+    const opsiKml = (S.kml || []).map((k, i) => `<option value="${i}">${esc(k.nama)}</option>`).join('');
+    wrap.innerHTML =
+      '<h2 style="margin:0 0 4px">Ceklist Lokasi</h2>' +
+      '<p class="kecil" style="margin:0 0 12px">Daftar ini dibagikan ke semua anggota room. Anggota menandai lokasi yang sudah dikerjakan; statusnya muncul di peta HP (hijau=sudah, merah=belum).</p>' +
+      '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px">' +
+        '<label class="kecil">Judul</label><br>' +
+        '<input id="ckJudul" value="' + esc(def ? def.judul : '') + '" placeholder="Contoh: Survei Patok Blok A" style="width:100%;margin-bottom:8px">' +
+        '<div style="display:flex;gap:8px;margin:4px 0 8px;align-items:center;flex-wrap:wrap">' +
+          '<label class="kecil">Ambil dari KML:</label>' +
+          '<select id="ckDariKml"><option value="">— pilih lapisan —</option>' + opsiKml + '</select>' +
+          '<button id="ckBtnDariKml" type="button">Ambil fitur</button>' +
+          '<span id="ckInfoGeo" class="kecil"></span>' +
+        '</div>' +
+        '<label class="kecil">Daftar lokasi (1 baris = 1 lokasi)</label><br>' +
+        '<textarea id="ckItems" rows="10" style="width:100%" placeholder="Patok 001 - Dusun Ciasih&#10;Patok 002 - Tepi Sungai">' + esc(def ? (def.items || []).map(it => it.nama).join('\n') : '') + '</textarea><br>' +
+        '<button id="ckSimpan" class="tombol" style="margin-top:8px">Simpan &amp; Bagikan ke anggota</button>' +
+      '</div>' +
+      '<h3 style="margin:18px 0 6px">Progres tim</h3><div id="ckProgres" class="kecil">Memuat…</div>';
+    $('ckBtnDariKml').onclick = () => {
+      const sel = $('ckDariKml'); const i = +sel.value;
+      if (sel.value === '' || !S.kml[i]) { status('Pilih lapisan KML dulu.', true); return; }
+      const fitur = ekstrakFiturDariLayer(S.kml[i].layer);
+      if (!fitur.length) { status('Tidak ada fitur di lapisan ini.', true); return; }
+      window._ckItems = fitur;
+      $('ckItems').value = fitur.map(f => f.nama).join('\n');
+      $('ckInfoGeo').textContent = '✅ ' + fitur.length + ' fitur spasial siap (muncul di peta HP).';
+    };
+    $('ckSimpan').onclick = simpanCeklistSpace;
+    muatProgresCeklistSpace(def);
+  }
+
+  async function simpanCeklistSpace() {
+    if (!S.master) { status('Folder master belum siap.', true); return; }
+    const judul = ($('ckJudul').value || '').trim() || 'Ceklist Lokasi';
+    const teks = $('ckItems').value || '';
+    const impor = window._ckItems || [];
+    const items = teks.split('\n').map(s => s.trim()).filter(Boolean).map((nama, i) => {
+      const o = { no: i + 1, nama };
+      if (impor[i] && impor[i].latlngs) { o.tipe = impor[i].tipe; o.latlngs = impor[i].latlngs; }
+      return o;
+    });
+    if (!items.length) { status('Daftar lokasi kosong.', true); return; }
+    status('Menyimpan ceklist ke MEGA…');
+    try {
+      await tulisJson(S.master, '_ceklist.json', { v: 1, judul, diperbarui: Date.now(), oleh: ((S.storage && S.storage.email) || 'admin'), items });
+      status('Ceklist tersimpan & dibagikan (' + items.length + ' lokasi).');
+      muatCeklistSpace();
+    } catch (e) { status('Gagal menyimpan: ' + (e.message || e), true); }
+  }
+
+  async function muatProgresCeklistSpace(def) {
+    const el = $('ckProgres'); if (!el) return;
+    try {
+      const files = (S.master ? (S.master.children || []) : []).filter(x => !x.directory && /^_ceklist_.+\.json$/i.test(x.name));
+      const anggota = [];
+      for (const f of files) { try { const j = JSON.parse(new TextDecoder().decode(await f.downloadBuffer())); if (j && j.userId) anggota.push(j); } catch (_) {} }
+      const total = def && def.items ? def.items.length : 0;
+      const doneSet = new Set(); anggota.forEach(a => (a.selesai || []).forEach(s => doneSet.add(Number(s.no))));
+      const persen = total ? Math.round(doneSet.size / total * 100) : 0;
+      el.innerHTML = '<b>' + doneSet.size + '/' + total + ' lokasi selesai (' + persen + '%)</b> oleh ' + anggota.length + ' anggota.' +
+        (anggota.length ? '<ul>' + anggota.map(a => '<li>' + esc(a.nama || a.userId) + ': ' + (a.selesai || []).length + ' lokasi</li>').join('') + '</ul>' : ' Belum ada progres dari anggota.');
+    } catch (e) { el.textContent = 'Gagal memuat progres.'; }
   }
 
   /* ---------------- mulai ---------------- */
