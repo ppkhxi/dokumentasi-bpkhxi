@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.92</span>
+            Dokumentasi <span id="loginVersi">v3.9.93</span>
           </div>
         </div>
       </div>
@@ -2270,8 +2270,34 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.92';
+const VERSI = '3.9.93';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
+
+/* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
+function modeAplikasi(){
+  try {
+    if(/DokumentasiApp/.test(navigator.userAgent) || window.DokumentasiNative || (document.referrer||'').startsWith('android-app://')) return 'apk';
+    if((window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)) || navigator.standalone) return 'pwa';
+  } catch(_){}
+  return 'web';
+}
+let _versiApkCache = null;
+async function versiApk(){
+  if(_versiApkCache !== null) return _versiApkCache;
+  try { if(window.DokumentasiNative && DokumentasiNative.versiApk){ const v = DokumentasiNative.versiApk(); if(v){ return (_versiApkCache = String(v)); } } } catch(_){}
+  try { const r = await fetch('dl/versi.json', {cache:'no-store'}); if(r.ok){ const j = await r.json(); return (_versiApkCache = (j.versionName||'') + (j.versionCode ? ' ('+j.versionCode+')' : '')); } } catch(_){}
+  return (_versiApkCache = '');
+}
+// Tampilkan label versi: web selalu; APK + versi APK; PWA ditandai.
+async function pasangLabelVersi(){
+  const m = modeAplikasi();
+  let teks = 'v' + VERSI;
+  if(m === 'apk'){ const a = await versiApk(); teks += (a ? ' · APK ' + a : ' · APK'); }
+  else if(m === 'pwa'){ teks += ' · PWA'; }
+  if(document.getElementById('loginVersi')) document.getElementById('loginVersi').textContent = teks;
+  if(document.getElementById('stVersi')) document.getElementById('stVersi').innerHTML = teks + ' <span style="font-size:11px;color:var(--biru);margin-left:6px;cursor:pointer;text-decoration:underline;font-weight:600">Periksa 🔄</span>';
+  return teks;
+}
 (function modeFlyoutNative(){
   if(new URLSearchParams(location.search).get('flyout') !== '1') return;
   document.body.classList.add('modo-flyout');
@@ -8625,7 +8651,7 @@ async function muatPengaturan(){
         '<b><span class="badge pending">Mode Offline (Lokal)</span></b></div>';
 
   $('stRoom').textContent = S.room || '—';
-  $('stVersi').innerHTML = 'v' + VERSI + ' <span style="font-size:11px;color:var(--biru);margin-left:6px;cursor:pointer;text-decoration:underline;font-weight:600">Periksa 🔄</span>';
+  pasangLabelVersi();
   $('stVersi').onclick = () => periksaPembaruan(true);
   $('inKantor').value = S.kantor;
   $('inTarget').value = S.targetKB;
@@ -9323,7 +9349,7 @@ async function pulihkanRoomLama(){
   const q = new URLSearchParams(location.search);
   perbaruiKoneksi();
   kunciPenyimpanan();
-  if($('loginVersi')) $('loginVersi').textContent = 'v' + VERSI;
+  pasangLabelVersi();
   setTimeout(kirimTelemetriPengguna, 1800);
 
   // Muat room yang tersimpan
