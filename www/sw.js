@@ -2,7 +2,7 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v3.9.95';
+const VERSI = 'dkpoint-v3.9.96';
 const CACHE_TILES = 'dkpoint-tiles-v2';
 const MAKS_TILE = 150;   // tile tanpa-CORS dihitung Chrome ±7 MB per berkas, jadi dibatasi kecil
 
@@ -23,6 +23,7 @@ const BERKAS = [
   './peta.js',
   './js/security.js',
   './js/exif-gps.js',
+  './js/shp.min.js',
   './js/leaflet.js',
   './js/leaflet.css',
   './js/maplibre-gl.css',

@@ -1522,7 +1522,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.95</span>
+            Dokumentasi <span id="loginVersi">v3.9.96</span>
           </div>
         </div>
       </div>
@@ -1863,7 +1863,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
             <svg viewBox="0 0 24 24"><path d="M2 17l4-4 4 4 12-12-4-4-12 12-4-4v8h8z"/><line x1="14" y1="5" x2="16" y2="7"/><line x1="10" y1="9" x2="12" y2="11"/><line x1="6" y1="13" x2="8" y2="15"/></svg>
             <span>Alat</span>
           </button>
-          <button id="btnPetaLayer" class="btn-alat-peta" title="Kelola Lapisan (KML, Raster, Urutan & 1 Pintu Input Dokumen)">
+          <button id="btnPetaLayer" class="btn-alat-peta" title="Kelola Lapisan (KML/SHP, Raster, Urutan)">
             <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Lapisan</span>
           </button>
@@ -2270,7 +2270,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.95';
+const VERSI = '3.9.96';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -6296,7 +6296,66 @@ if ($('btnPetaKml')) $('btnPetaKml').onclick = () => bukaDialogLapisan('daftar')
 if ($('btnPetaRaster')) $('btnPetaRaster').onclick = () => bukaDialogLapisan('tambah');
 if ($('btnPetaUrutan')) $('btnPetaUrutan').onclick = () => bukaDialogLapisan('daftar');
 
-/* ---------- PENGELOLAAN LAPISAN TERPADU (1 PINTU INPUT DOKUMEN & URUTAN LAYER) ---------- */
+/* ---------- DUKUNGAN VEKTOR: SHAPEFILE & GEOJSON -> KML ---------- */
+let _janjiShp = null;
+function muatShpJs(){
+  if (window.shp) return Promise.resolve();
+  if (_janjiShp) return _janjiShp;
+  _janjiShp = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = 'js/shp.min.js';
+    s.onload = () => res(); s.onerror = () => { _janjiShp = null; rej(new Error('Gagal memuat pustaka shapefile')); };
+    document.head.appendChild(s);
+  });
+  return _janjiShp;
+}
+// GeoJSON (atau hasil shapefile) -> teks KML agar dirender oleh parseKML
+function geojsonKeKmlTeks(gj){
+  const feats = gj && gj.type === 'FeatureCollection' ? gj.features : (gj && gj.type === 'Feature' ? [gj] : (Array.isArray(gj) ? gj : (gj ? [gj] : [])));
+  const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const ks = ring => (ring||[]).map(c => c[0] + ',' + c[1] + ',0').join(' ');
+  let pm = '';
+  (feats||[]).forEach(f => {
+    if(!f || !f.geometry) return;
+    const g = f.geometry, pr = f.properties || {};
+    const nama = pr.name || pr.NAMA || pr.Name || pr.nama || pr.NAME || '';
+    const desk = pr.description || pr.KETERANGAN || pr.Keterangan || '';
+    const mk = inner => '<Placemark><name>' + esc(nama) + '</name>' + (desk ? '<description>' + esc(desk) + '</description>' : '') + inner + '</Placemark>';
+    const poly = rings => '<Polygon><outerBoundaryIs><LinearRing><coordinates>' + ks(rings[0]) + '</coordinates></LinearRing></outerBoundaryIs></Polygon>';
+    try {
+      if(g.type==='Point') pm += mk('<Point><coordinates>'+g.coordinates[0]+','+g.coordinates[1]+',0</coordinates></Point>');
+      else if(g.type==='MultiPoint') (g.coordinates||[]).forEach(c=> pm += mk('<Point><coordinates>'+c[0]+','+c[1]+',0</coordinates></Point>'));
+      else if(g.type==='LineString') pm += mk('<LineString><coordinates>'+ks(g.coordinates)+'</coordinates></LineString>');
+      else if(g.type==='MultiLineString') (g.coordinates||[]).forEach(ls=> pm += mk('<LineString><coordinates>'+ks(ls)+'</coordinates></LineString>'));
+      else if(g.type==='Polygon') pm += mk(poly(g.coordinates));
+      else if(g.type==='MultiPolygon') (g.coordinates||[]).forEach(p=> pm += mk(poly(p)));
+    } catch(_){}
+  });
+  return '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>' + pm + '</Document></kml>';
+}
+// Daftar berkas vektor (kml / geojson / shp / zip) -> { nama, kmlText }
+async function vektorKeKml(files){
+  const arr = Array.from(files||[]);
+  const ext = f => (f.name.match(/\.([^.]+)$/)||[,''])[1].toLowerCase();
+  const zip = arr.find(f => ext(f)==='zip');
+  const shpF = arr.find(f => ext(f)==='shp');
+  if(zip || shpF){
+    await muatShpJs();
+    if(zip){ const gj = await shp(await zip.arrayBuffer()); return { nama: zip.name.replace(/\.zip$/i,''), kmlText: geojsonKeKmlTeks(gj) }; }
+    const baca = async (f)=> f ? await f.arrayBuffer() : undefined;
+    const dbf = arr.find(f=>ext(f)==='dbf');
+    const gj = await shp({ shp: await baca(shpF), dbf: await baca(dbf) });
+    return { nama: shpF.name.replace(/\.shp$/i,''), kmlText: geojsonKeKmlTeks(gj) };
+  }
+  const f = arr[0]; if(!f) throw new Error('Tidak ada berkas dipilih');
+  const nama = f.name.replace(/\.(kml|kmz|geojson|json)$/i,'');
+  const e = ext(f);
+  if(e==='geojson' || e==='json'){ const t = await f.text(); return { nama, kmlText: geojsonKeKmlTeks(JSON.parse(t)) }; }
+  const t = await f.text();
+  if(!t.includes('<kml')) throw new Error('Berkas bukan KML yang valid (KMZ perlu di-ekstrak dulu di laptop).');
+  return { nama, kmlText: t };
+}
+
+/* ---------- PENGELOLAAN LAPISAN TERPADU (INPUT DOKUMEN & URUTAN LAYER) ---------- */
 /* Status room untuk fitur spasial bersama:
    - host: pembuat room (boleh membagikan lapisan)
    - cloud: punya akses cloud room (host sesi MEGA, atau anggota via tiket undangan) */
@@ -6350,7 +6409,7 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
     let tabHtml = `
       <div class="tab-wadah-lapisan">
         <button class="tab-btn-lapisan ${tab === 'daftar' ? 'aktif' : ''}" onclick="window.renderKontenLapisan('daftar')">📑 Daftar &amp; Urutan (${layers.length})</button>
-        <button class="tab-btn-lapisan ${tab === 'tambah' ? 'aktif' : ''}" onclick="window.renderKontenLapisan('tambah')">➕ Tambah Lapisan (1 Pintu)</button>
+        <button class="tab-btn-lapisan ${tab === 'tambah' ? 'aktif' : ''}" onclick="window.renderKontenLapisan('tambah')">➕ Tambah Lapisan</button>
       </div>
     `;
 
@@ -6402,12 +6461,20 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
       dialog(`
         <h3 style="margin-bottom:8px">Tambah Lapisan Peta</h3>
         ${tabHtml}
-        <div id="boxUploadLayer" style="background:#fff;border:2px dashed #007AFF;border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer" onclick="$('inUploadLayerSatuPintu').click()">
-          <div style="font-size:34px;margin-bottom:4px">📂</div>
-          <b style="font-size:14px;color:#007AFF" id="labelPilihDokumen">Ketuk untuk Memilih Berkas</b>
-          <div style="font-size:11px;color:var(--teks-2);margin-top:5px;line-height:1.4">Dari <u>File Manager / Dokumen</u> (bukan Galeri Foto)<br>KML · KMZ · GeoJSON · GeoPDF · PDF · JPG · PNG · TIFF</div>
+        <div id="boxUploadVektor" style="background:#fff;border:2px dashed #2E7D32;border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer;margin-bottom:10px" onclick="$('inVektorBaru').click()">
+          <div style="font-size:30px;margin-bottom:2px">🗂️</div>
+          <b style="font-size:14px;color:#2E7D32">Vektor — KML / SHP / GeoJSON</b>
+          <div style="font-size:11px;color:var(--teks-2);margin-top:4px;line-height:1.4">Batas kawasan, trayek, titik.<br>KML · GeoJSON · Shapefile (.zip, atau .shp + .dbf + .prj)</div>
         </div>
-        <input type="file" id="inUploadLayerSatuPintu" accept="*/*" style="display:none">
+        <input type="file" id="inVektorBaru" accept="*/*" multiple style="display:none">
+
+        <div id="boxUploadRaster" style="background:#fff;border:2px dashed #7c3aed;border-radius:14px;padding:16px 12px;text-align:center;cursor:pointer" onclick="$('inRasterBaru').click()">
+          <div style="font-size:30px;margin-bottom:2px">🖼️</div>
+          <b style="font-size:14px;color:#7c3aed">Gambar / Peta Raster</b>
+          <div style="font-size:11px;color:var(--teks-2);margin-top:4px;line-height:1.4">Peta kerja / citra.<br>GeoPDF · PDF · JPG · PNG · TIFF</div>
+        </div>
+        <input type="file" id="inRasterBaru" accept="image/*,application/pdf,.pdf,.tif,.tiff" style="display:none">
+        <div id="labelPilihDokumen" style="display:none"></div>
 
         <div id="formOpsiLayer" style="display:none;margin-top:12px;background:#f9f9f9;padding:12px;border-radius:12px;border:1px solid var(--garis)">
           <div id="badgeTipeTerpilih" style="display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;background:#007AFF;color:#fff;margin-bottom:8px">Vektor Spasial</div>
@@ -6449,52 +6516,56 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
 
       let berkasTerpilih = null;
       let tipeBerkasTerpilih = 'kml';
+      let kmlTeksOverride = null;
 
-      $('inUploadLayerSatuPintu').onchange = async (e) => {
+      // PINTU 1: Vektor (KML / GeoJSON / Shapefile) — dikonversi ke KML agar tampil
+      $('inVektorBaru').onchange = async (e) => {
+        const files = e.target.files;
+        if (!files || !files.length) return;
+        $('formOpsiLayer').style.display = 'block';
+        $('badgeTipeTerpilih').textContent = '⏳ Membaca vektor…';
+        $('badgeTipeTerpilih').style.background = '#2E7D32';
+        $('opsiKhususKml').style.display = 'block';
+        $('opsiKhususRaster').style.display = 'none';
+        try {
+          const hasil = await vektorKeKml(files);
+          kmlTeksOverride = hasil.kmlText;
+          berkasTerpilih = { name: hasil.nama + '.kml' };
+          tipeBerkasTerpilih = 'kml';
+          $('badgeTipeTerpilih').textContent = 'Vektor Spasial (KML/SHP/GeoJSON)';
+          $('inNamaLayerBaru').value = hasil.nama;
+        } catch(err) {
+          $('formOpsiLayer').style.display = 'none';
+          pesan('Gagal membaca berkas vektor: ' + (err && err.message || err));
+        }
+      };
+
+      // PINTU 2: Gambar / Raster
+      $('inRasterBaru').onchange = async (e) => {
         const f = e.target.files && e.target.files[0];
         if (!f) return;
-        berkasTerpilih = f;
-        const fn = f.name.toLowerCase();
-        $('labelPilihDokumen').textContent = '📄 ' + f.name;
+        berkasTerpilih = f; kmlTeksOverride = null; tipeBerkasTerpilih = 'raster';
         $('formOpsiLayer').style.display = 'block';
-
-        if (fn.endsWith('.kml') || fn.endsWith('.kmz') || fn.endsWith('.geojson')) {
-          tipeBerkasTerpilih = 'kml';
-          $('badgeTipeTerpilih').textContent = 'Vektor Spasial (KML/GeoJSON)';
-          $('badgeTipeTerpilih').style.background = '#2E7D32';
-          $('opsiKhususKml').style.display = 'block';
-          $('opsiKhususRaster').style.display = 'none';
-          $('inNamaLayerBaru').value = f.name.replace(/\.(kml|kmz|geojson)$/i, '');
-        } else {
-          tipeBerkasTerpilih = 'raster';
-          $('badgeTipeTerpilih').textContent = 'Peta Citra / Raster (GeoPDF/Gambar)';
-          $('badgeTipeTerpilih').style.background = '#7c3aed';
-          $('opsiKhususKml').style.display = 'none';
-          $('opsiKhususRaster').style.display = 'block';
-          $('inNamaLayerBaru').value = f.name.replace(/\.(pdf|jpe?g|png|webp|tif|tiff)$/i, '');
-
-          const infoEl = $('infoMetadataRasterSatuPintu');
-          infoEl.innerHTML = '⏳ Memeriksa metadata georeferensi…';
-          try {
-            if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
-              const geoPdf = await ekstrakGeoPdf(f);
-              if (geoPdf && geoPdf.bounds) {
-                infoEl.innerHTML = `<span style="color:#28a745;font-weight:700">✅ GeoPDF Ber-georeferensi Terdeteksi!</span><br>Koordinat asli akan dipasang presisi di dunia nyata.`;
-              } else {
-                infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">ℹ️ Dokumen Peta PDF Siap Dipasang</span><br>Rasio utuh akan diproyeksikan dan dapat disesuaikan dengan Sentuh Freehand.`;
-              }
-            } else {
-              const exifPos = await ekstrakExifGps(f);
-              if (exifPos && exifPos.lat != null) {
-                infoEl.innerHTML = `<span style="color:#28a745;font-weight:700">✅ EXIF GPS Terdeteksi!</span> (${exifPos.lat.toFixed(5)}, ${exifPos.lon.toFixed(5)})`;
-              } else {
-                infoEl.innerHTML = `<span style="color:#2563eb;font-weight:600">💡 Citra Peta Terpilih</span><br>Dapat digeser dan dicubit langsung dengan Freehand Sentuh.`;
-              }
-            }
-          } catch(e) {
-            infoEl.innerHTML = 'Siap dipasang ke peta.';
+        $('badgeTipeTerpilih').textContent = 'Peta Citra / Raster (GeoPDF/Gambar)';
+        $('badgeTipeTerpilih').style.background = '#7c3aed';
+        $('opsiKhususKml').style.display = 'none';
+        $('opsiKhususRaster').style.display = 'block';
+        $('inNamaLayerBaru').value = f.name.replace(/\.(pdf|jpe?g|png|webp|tif|tiff)$/i, '');
+        const infoEl = $('infoMetadataRasterSatuPintu');
+        infoEl.innerHTML = '⏳ Memeriksa metadata georeferensi…';
+        try {
+          if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+            const geoPdf = await ekstrakGeoPdf(f);
+            infoEl.innerHTML = (geoPdf && geoPdf.bounds)
+              ? '<span style="color:#28a745;font-weight:700">✅ GeoPDF Ber-georeferensi Terdeteksi!</span><br>Koordinat asli akan dipasang presisi di dunia nyata.'
+              : '<span style="color:#2563eb;font-weight:600">ℹ️ Dokumen Peta PDF Siap Dipasang</span><br>Rasio utuh akan diproyeksikan dan dapat disesuaikan dengan Sentuh Freehand.';
+          } else {
+            const exifPos = await ekstrakExifGps(f);
+            infoEl.innerHTML = (exifPos && exifPos.lat != null)
+              ? '<span style="color:#28a745;font-weight:700">✅ EXIF GPS Terdeteksi!</span> (' + exifPos.lat.toFixed(5) + ', ' + exifPos.lon.toFixed(5) + ')'
+              : '<span style="color:#2563eb;font-weight:600">💡 Citra Peta Terpilih</span><br>Dapat digeser dan dicubit langsung dengan Freehand Sentuh.';
           }
-        }
+        } catch(e) { infoEl.innerHTML = 'Siap dipasang ke peta.'; }
       };
 
       $('btnSimpanLayerSatuPintu').onclick = async () => {
@@ -6506,9 +6577,9 @@ async function bukaDialogLapisan(tabAwal = 'daftar') {
 
         try {
           if (tipeBerkasTerpilih === 'kml') {
-            const teks = await berkasTerpilih.text();
-            if (!teks.includes('<kml') && !teks.includes('coordinates') && !teks.includes('"type"')) {
-              pesan('Berkas bukan format spasial KML/GeoJSON yang valid');
+            const teks = kmlTeksOverride || (berkasTerpilih.text ? await berkasTerpilih.text() : '');
+            if (!teks.includes('<kml')) {
+              pesan('Berkas vektor tidak valid / kosong');
               $('btnSimpanLayerSatuPintu').disabled = false;
               $('pesanProsesLayer').style.display = 'none';
               return;
