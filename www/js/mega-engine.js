@@ -548,14 +548,16 @@
 
       let storageUntukUpload = null;
 
-      // Kasus 1: Pengguna sudah login akun MEGA sendiri
-      if (this.punyaSesi()) {
+      // PENTING: untuk room yang diikuti via undangan (punya authTicket), data HARUS
+      // masuk ke akun HOST room — bukan akun MEGA pribadi perangkat. Kalau tidak,
+      // upload anggota mendarat di akun pribadinya & admin room tidak melihatnya.
+      if (roomAktif && roomAktif.authTicket) {
+        storageUntukUpload = await dapatkanStorageHost(roomAktif.authTicket);
+      }
+      // Room milik sendiri (host) / tanpa tiket: pakai sesi MEGA perangkat ini.
+      else if (this.punyaSesi()) {
         await this.pastikanTerhubung();
         storageUntukUpload = _storageInstance;
-      } 
-      // Kasus 2: Pengguna adalah Anggota yang menggunakan Otorisasi Room Host (Session Cached)
-      else if (roomAktif && roomAktif.authTicket) {
-        storageUntukUpload = await dapatkanStorageHost(roomAktif.authTicket);
       }
 
       if (!storageUntukUpload) {
@@ -717,8 +719,9 @@
     async _storageRoom(namaRoom) {
       const nama = (namaRoom || '').trim().toUpperCase();
       const roomAktif = this.ambilSemuaRoom().find(r => (r.nama || '').trim().toUpperCase() === nama) || this.getRoomAktif();
-      if (this.punyaSesi()) { await this.pastikanTerhubung(); return { storage: _storageInstance, roomAktif }; }
+      // Prioritaskan tiket room (undangan) agar data masuk ke akun HOST room, bukan akun pribadi.
       if (roomAktif && roomAktif.authTicket) { return { storage: await dapatkanStorageHost(roomAktif.authTicket), roomAktif }; }
+      if (this.punyaSesi()) { await this.pastikanTerhubung(); return { storage: _storageInstance, roomAktif }; }
       return { storage: null, roomAktif };
     },
 
