@@ -298,7 +298,7 @@
   document.querySelectorAll('#tab button').forEach(b => b.onclick = () => {
     S.tab = b.dataset.v;
     document.querySelectorAll('#tab button').forEach(x => x.classList.toggle('pilih', x === b));
-    ['tabel', 'galeri', 'peta', 'ceklist'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
+    ['tabel', 'galeri', 'peta', 'ceklist', 'video'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
     if (S.tab === 'ceklist') muatCeklistSpace();
     else { render(); if (S.tab === 'peta' && typeof petaSiap !== 'undefined' && petaSiap) muatUlangLapisanPeta(); }
   });
@@ -306,6 +306,7 @@
   function render() {
     if (S.tab === 'tabel') renderTabel();
     else if (S.tab === 'galeri') renderGaleri();
+    else if (S.tab === 'video') { if (window.StudioVideo) window.StudioVideo.tampilkan(); }
     else pastikanPeta();
   }
 
@@ -983,6 +984,14 @@
       muatCeklistSpace();
     } catch (e) { status('Gagal menyimpan centang: ' + (e.message || e), true); }
   }
+
+  /* ---------------- API untuk modul lain (Studio Video) ---------------- */
+  window.SpaceCtx = {
+    get storage() { return S.storage; },
+    get master() { return S.master; },
+    get demo() { return S.demo; },
+    status, unduh, unggahNode, tulisJson, esc, waktu, roomDipilih
+  };
 
   /* ---------------- mulai ---------------- */
   (async function mulai() {

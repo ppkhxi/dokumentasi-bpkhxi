@@ -34,6 +34,7 @@
       <button data-v="galeri">Galeri</button>
       <button data-v="peta">Peta</button>
       <button data-v="ceklist">Ceklist</button>
+      <button data-v="video">Video</button>
     </nav>
     <div class="saring">
       <select id="fRoom" title="Room"></select>
@@ -94,6 +95,59 @@
     <section id="vCeklist" class="view" hidden>
       <div id="isiCeklist" style="max-width:860px;margin:0 auto;padding:4px 2px"></div>
     </section>
+
+    <section id="vVideo" class="view" hidden>
+      <div class="studio">
+        <aside class="stPanel stKiri">
+          <h3>Klip dari cloud <span id="stJumlah" class="kecil"></span></h3>
+          <p class="kecil" style="margin:0 0 8px">Klip dari <code>ROOM/VIDEO/PETUGAS</code>. Klik untuk memasukkan ke urutan.</p>
+          <div id="stDaftarKlip" class="stDaftar"></div>
+          <label class="tambah" style="margin-top:8px">+ Tambah video dari komputer<input id="stFile" type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden></label>
+          <button id="stMuatUlang" style="width:100%;margin-top:8px">Muat ulang daftar klip</button>
+        </aside>
+
+        <section class="stPanel stTengah">
+          <div class="stPratinjau">
+            <video id="stVideo" playsinline controls preload="metadata"></video>
+            <div id="stTeksPratinjau" class="stTeksPratinjau bawah"></div>
+          </div>
+          <div class="stKepala"><b id="stNamaKlip">Belum ada klip terpilih</b><span class="rapat"></span><span id="stTotal" class="kecil">0 klip</span></div>
+          <div class="stKontrol">
+            <label>Mulai (dtk)<input id="stAwal" type="number" min="0" step="0.1" value="0"></label>
+            <button id="stTandaiAwal">Tandai dari pemutar</button>
+            <label>Akhir (dtk)<input id="stAkhir" type="number" min="0" step="0.1" value="0"></label>
+            <button id="stTandaiAkhir">Tandai dari pemutar</button>
+          </div>
+          <label class="stBaris">Teks di klip ini<input id="stTeksKlip" maxlength="90" placeholder="mis. Pengukuran patok 012 — Desa Ciasih"></label>
+          <div class="stKontrol">
+            <label>Posisi teks<select id="stPosisiTeks"><option value="bawah">Bawah</option><option value="tengah">Tengah</option><option value="atas">Atas</option></select></label>
+            <label>Warna<input id="stWarnaTeks" type="color" value="#ffffff"></label>
+          </div>
+          <h3 style="margin:14px 0 6px;font-size:14px">Urutan video</h3>
+          <div id="stTimeline" class="stTimeline"></div>
+        </section>
+
+        <aside class="stPanel stKanan">
+          <h3>Hasil video</h3>
+          <label class="stBaris">Rasio<select id="stRasio">
+            <option value="16:9">16:9 — 1920×1080</option>
+            <option value="9:16">9:16 — 1080×1920</option>
+            <option value="1:1">1:1 — 1080×1080</option>
+            <option value="4:5">4:5 — 1080×1350</option>
+          </select></label>
+          <label class="stBaris">Judul pembuka<input id="stJudul" maxlength="80" placeholder="mis. Kegiatan Survei Blok A"></label>
+          <label class="stBaris">Teks penutup<input id="stPenutup" maxlength="80" placeholder="mis. Dokumentasi BPKH — 2026"></label>
+          <label class="stBaris">Backsound<input id="stAudio" type="file" accept="audio/*"></label>
+          <div class="stKecil"><span id="stNamaAudio">Belum ada backsound</span><button id="stHapusAudio" class="mini">✕</button></div>
+          <label class="stBaris">Volume backsound <b id="stVolNilai">35%</b><input id="stVol" type="range" min="0" max="100" value="35"></label>
+          <label class="stBaris">Volume suara klip <b id="stVolKlipNilai">100%</b><input id="stVolKlip" type="range" min="0" max="150" value="100"></label>
+          <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code></label>
+          <button id="stRender" class="utama" style="width:100%;margin-top:8px">🎬 Gabungkan &amp; unduh</button>
+          <p class="kecil" style="margin:8px 0 0">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
+          <div id="stProgres" class="stProgres"></div>
+        </aside>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -116,5 +170,6 @@
 <script src="js/peta.js"></script>
 <script src="raster-impor.js"></script>
 <script src="app.js"></script>
+<script src="studio-video.js"></script>
 </body>
 </html>
