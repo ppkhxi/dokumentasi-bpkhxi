@@ -35,7 +35,13 @@ class MainActivity : Activity() {
         const val URL_APP = "https://dkpoint.pages.dev/"
         const val REQ_FILE = 1001
         const val REQ_IZIN = 1002
+        const val REQ_VIDEO = 1003
+        const val BATAS_VIDEO_MS = 10_000
     }
+
+    /** Satu klip video hasil kamera HP yang siap dibaca halaman web. */
+    private var berkasVideo: File? = null
+    private var statusVideo: String = "menunggu"   // menunggu | siap | batal
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -146,6 +152,25 @@ class MainActivity : Activity() {
         if (requestCode == REQ_FILE) {
             fileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
             fileCallback = null
+            return
+        }
+        if (requestCode == REQ_VIDEO) {
+            val uri = if (resultCode == RESULT_OK) data?.data else null
+            if (uri == null) { statusVideo = "batal"; return }
+            Thread {
+                try {
+                    val dir = File(cacheDir, "video").apply { mkdirs() }
+                    dir.listFiles()?.forEach { it.delete() }
+                    val tujuan = File(dir, "rekam_" + System.currentTimeMillis() + ".mp4")
+                    contentResolver.openInputStream(uri)?.use { masuk ->
+                        tujuan.outputStream().use { keluar -> masuk.copyTo(keluar) }
+                    } ?: throw IllegalStateException("Tidak bisa membaca video")
+                    berkasVideo = tujuan
+                    statusVideo = "siap"
+                } catch (e: Exception) {
+                    statusVideo = "batal"
+                }
+            }.start()
         }
     }
 
@@ -304,6 +329,69 @@ class MainActivity : Activity() {
                     }
                 }
             }.start()
+        }
+
+        /**
+         * Rekam satu klip video memakai aplikasi kamera bawaan HP (sensor & stabilizer asli,
+         * tanpa encode ulang). Batas 10 detik dikirim sebagai petunjuk durasi ke aplikasi kamera.
+         */
+        @JavascriptInterface
+        fun rekamVideo(): Boolean {
+            berkasVideo?.delete()
+            berkasVideo = null
+            statusVideo = "menunggu"
+            var berhasil = false
+            runOnUiThread {
+                try {
+                    val niat = Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE).apply {
+                        putExtra(android.provider.MediaStore.EXTRA_VIDEO_QUALITY, 1)
+                        putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, BATAS_VIDEO_MS / 1000)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivityForResult(niat, REQ_VIDEO)
+                    berhasil = true
+                } catch (e: Exception) {
+                    statusVideo = "batal"
+                }
+            }
+            return berhasil
+        }
+
+        /** Status rekaman terakhir: menunggu | siap | batal, lengkap dengan ukuran berkas. */
+        @JavascriptInterface
+        fun statusRekam(): String {
+            val f = berkasVideo
+            return JSONObject().apply {
+                put("status", statusVideo)
+                put("nama", f?.name ?: "")
+                put("ukuran", if (f != null && f.exists()) f.length() else 0L)
+                put("mime", "video/mp4")
+            }.toString()
+        }
+
+        /** Baca potongan berkas video dalam base64 (offset & panjang dalam byte). */
+        @JavascriptInterface
+        fun bacaRekam(offset: Int, panjang: Int): String {
+            val f = berkasVideo ?: return ""
+            if (!f.exists() || offset < 0 || panjang <= 0) return ""
+            return try {
+                java.io.RandomAccessFile(f, "r").use { raf ->
+                    if (offset.toLong() >= raf.length()) return ""
+                    val tersedia = minOf(panjang.toLong(), raf.length() - offset).toInt()
+                    val buf = ByteArray(tersedia)
+                    raf.seek(offset.toLong())
+                    raf.readFully(buf)
+                    Base64.encodeToString(buf, Base64.NO_WRAP)
+                }
+            } catch (e: Exception) { "" }
+        }
+
+        /** Hapus berkas klip sementara setelah halaman web menyalinnya ke penyimpanan aplikasi. */
+        @JavascriptInterface
+        fun hapusRekam() {
+            berkasVideo?.delete()
+            berkasVideo = null
+            statusVideo = "menunggu"
         }
 
         /** Nama versi aplikasi yang terpasang, misalnya 3.9.39. */
