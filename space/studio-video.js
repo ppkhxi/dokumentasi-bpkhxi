@@ -213,6 +213,60 @@
     renderPlaylist(); renderDaftar(); sinkronForm(); perbaruiWaktu();
     status('Klip dipecah di ' + detik(lokal) + '.');
   }
+  async function putarJeda() {
+    if (ST.putar) { jedaSequence(); return; }
+    if (ST.renderJalan) return;
+    if (!ST.pilih.length) { status('Tambahkan klip dulu.', true); return; }
+    status('Menyiapkan klip…');
+    for (const k of ST.pilih) await pastikanDurasi(k);
+    renderPlaylist();
+    let mulai = ST.pos;
+    const i = idxTerpilih();
+    if (i >= 0) {
+      const v = $('stVideo'), lokal = Number(v.currentTime) || 0;
+      if (v.dataset.klip === ST.terpilih.id && lokal > 0) {
+        mulai = posisiMulai(i) + Math.max(0, lokal - (Number(ST.terpilih.trimAwal) || 0));
+      }
+    }
+    mainkanDari(mulai >= totalDurasi() - 0.05 ? 0 : mulai);
+  }
+  function buangTerpilih() {
+    const i = idxTerpilih();
+    if (i < 0) { status('Pilih klip yang ingin dikeluarkan.', true); return; }
+    jedaSequence();
+    const [x] = ST.pilih.splice(i, 1);
+    ST.terpilih = ST.pilih[Math.min(i, ST.pilih.length - 1)] || null;
+    ST.idx = ST.terpilih ? idxTerpilih() : -1;
+    ST.pos = ST.terpilih ? posisiMulai(ST.idx) : 0;
+    renderPlaylist(); renderDaftar(); sinkronForm(); perbaruiWaktu();
+    if (ST.terpilih) {
+      const p = klipPada(ST.pos);
+      if (p) tampilkanKlip(p, false);
+    } else {
+      $('stTotal').textContent = '0 klip';
+      $('stVideo').removeAttribute('src');
+      $('stVideo').removeAttribute('data-klip');
+      tampilTeksPratinjau(null);
+    }
+    status('Klip dikeluarkan: ' + x.nama);
+  }
+  function langkahFrame(arah) {
+    if (!ST.pilih.length) return;
+    jedaSequence();
+    let t = ST.pos;
+    const i = idxTerpilih();
+    if (i >= 0) {
+      const v = $('stVideo'), lokal = Number(v.currentTime) || 0;
+      if (v.dataset.klip === ST.terpilih.id && lokal > 0) {
+        t = posisiMulai(i) + Math.max(0, lokal - (Number(ST.terpilih.trimAwal) || 0));
+      }
+    }
+    t = Math.max(0, Math.min(totalDurasi(), t + arah / 30));
+    ST.pos = t;
+    perbaruiWaktu();
+    const p = klipPada(t);
+    if (p) tampilkanKlip(p, false);
+  }
 
   let seqToken = 0;
   function jedaSequence() {
@@ -738,6 +792,29 @@
     });
   }
 
+  function diKolomTeks(el) {
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+    if (el.tagName !== 'INPUT') return false;
+    return ['text', 'search', 'email', 'password', 'url', 'tel', 'number', 'date', 'time', 'datetime-local', 'month', 'week'].includes((el.type || 'text').toLowerCase());
+  }
+  function pasangShortcut() {
+    document.addEventListener('keydown', e => {
+      if (!$('app') || $('app').hidden || !$('vVideo') || $('vVideo').hidden) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (diKolomTeks(e.target)) return;
+      if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); putarJeda(); }
+      else if (e.key === 's' || e.key === 'S') { e.preventDefault(); pecahDiPosisi(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); buangTerpilih(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (e.target === $('stSeqRange')) e.target.blur();   // cegah slider ikut melangkah 0,05 dtk
+        langkahFrame(e.key === 'ArrowLeft' ? -1 : 1);
+      }
+    });
+  }
+
   function pasang() {
     $('stFile').onchange = e => {
       const f = Array.from(e.target.files || []);   // salin dulu: mengosongkan input ikut mengosongkan FileList
@@ -765,14 +842,7 @@
       $('stAkhir').value = angka(Math.max(Number($('stAwal').value) + 0.3, $('stVideo').currentTime || 0));
       bacaForm();
     };
-    $('stPutar').onclick = async () => {
-      if (ST.putar) { jedaSequence(); return; }
-      if (!ST.pilih.length) { status('Tambahkan klip dulu.', true); return; }
-      status('Menyiapkan klip…');
-      for (const k of ST.pilih) await pastikanDurasi(k);
-      renderPlaylist();
-      mainkanDari(ST.pos >= totalDurasi() - 0.05 ? 0 : ST.pos);
-    };
+    $('stPutar').onclick = putarJeda;
     $('stSeqRange').oninput = () => {
       jedaSequence();
       ST.pos = Number($('stSeqRange').value) || 0;
@@ -821,6 +891,7 @@
     $('stVolNilai').textContent = $('stVol').value + '%';
     $('stVolKlipNilai').textContent = $('stVolKlip').value + '%';
     pasangTimeline();
+    pasangShortcut();
   }
 
   /* ---------------- API untuk app.js ---------------- */

@@ -127,13 +127,13 @@
             <h3>Urutan video</h3>
             <div class="stSeqKontrol">
               <button id="stPutar" title="Putar seluruh urutan">▶</button>
-              <input id="stSeqRange" type="range" min="0" max="0" step="0.05" value="0" aria-label="Posisi pemutaran urutan">
+              <input id="stSeqRange" type="range" min="0" max="0" step="0.01" value="0" aria-label="Posisi pemutaran urutan">
               <span id="stSeqWaktu" class="kecil">00:00 / 00:00</span>
               <button id="stPecah" title="Pecah klip di posisi pemutar">✂ Pecah</button>
             </div>
           </div>
           <div id="stTimeline" class="stTimeline"></div>
-          <p class="kecil stPetunjuk">Geser blok untuk mengubah urutan (di HP pakai tombol ← →). Tarik tepi kiri/kanan blok untuk memotong klip. Tombol ✂ memecah klip tepat di posisi pemutar.</p>
+          <p class="kecil stPetunjuk">Geser blok untuk mengubah urutan; tarik tepi kiri/kanan untuk memotong. <b>Space</b> putar/jeda · <b>S</b> pecah · <b>Delete</b> keluarkan · <b>←/→</b> satu frame.</p>
         </section>
 
         <aside class="stPanel stKanan">
@@ -179,6 +179,6 @@
 <script src="js/peta.js"></script>
 <script src="raster-impor.js"></script>
 <script src="app.js"></script>
-<script src="studio-video.js?v=timeline1"></script>
+<script src="studio-video.js?v=timeline4"></script>
 </body>
 </html>
