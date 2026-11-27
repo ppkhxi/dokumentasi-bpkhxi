@@ -2834,8 +2834,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
           </button>
           <button id="vidRekam" class="vid-rana" aria-label="Mulai merekam" title="Mulai merekam" style="display:none"></button>
         </div>
-        <p class="vid-nota" id="vidNota">Klip maksimal 10 detik. Hasil tersimpan di Galeri → Video dan menunggu terkirim ke cloud room.</p>
-        <button class="tombol sekunder" id="vidKirim" style="margin:10px 0 0;width:100%">☁️ Kirim Klip ke Cloud</button>
+        <p class="vid-nota" id="vidNota">Klip maksimal 10 detik. Tersimpan di Galeri → Video dan terkirim otomatis ke cloud room mulai pukul 16.00 WIB, sama seperti foto.</p>
         <div id="vidTerbaru"></div>
       </div>
     </section>
@@ -2864,7 +2863,6 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
       <video id="pemutarLayar" playsinline controls preload="metadata"></video>
       <div class="pemutar-info" id="pemutarInfo"></div>
       <div class="pemutar-aksi">
-        <button class="tombol sekunder" id="pemutarKirim" style="margin:0">☁️ Kirim</button>
         <button class="tombol sekunder" id="pemutarUnduh" style="margin:0">Unduh</button>
         <button class="tombol" id="pemutarHapus" style="margin:0;background:#C62828">Hapus</button>
       </div>
@@ -10590,7 +10588,6 @@ async function bukaPemutarVideo(id){
   pemutarUrl = URL.createObjectURL(v.blob);
   $('pemutarLayar').src = pemutarUrl;
   $('pemutarJudul').textContent = v.nama || 'Video Kegiatan';
-  $('pemutarKirim').textContent = (v.status === 'terkirim') ? '✓ Terkirim' : '☁️ Kirim';
   $('pemutarInfo').innerHTML = fmtWaktu(v.ts)+' · '+durasiTeks(v.durasi)+' · '+(v.ukuran/1048576).toFixed(1)+' MB · '+esc(v.room||'LOKAL')+
     ' · '+esc(labelStatusVideo(v.status)) +
     (v.namaPetugas?' · '+esc(v.namaPetugas):'')+
@@ -10717,13 +10714,6 @@ async function sinkronVideo(diam, paksa){
   if(!diam) pesan(ok+' klip terkirim'+(gagal?', '+gagal+' gagal (dicoba lagi nanti)':''));
 }
 
-$('vidKirim').onclick = ()=>sinkronVideo(false, true);
-$('pemutarKirim').onclick = async ()=>{
-  if(!pemutarId) return;
-  const id = pemutarId;
-  tutupPemutarVideo();
-  await kirimKlipVideo(id, false);
-};
 setTimeout(perbaruiJumlahVideo, 1200);
 
 /* ---------- Nav & login ---------- */
