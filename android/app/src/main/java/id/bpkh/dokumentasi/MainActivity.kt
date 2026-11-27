@@ -155,12 +155,24 @@ class MainActivity : Activity() {
             return
         }
         if (requestCode == REQ_VIDEO) {
-            val uri = if (resultCode == RESULT_OK) data?.data else null
+            val langsung = berkasVideo
+            if (resultCode != RESULT_OK) {
+                langsung?.delete()
+                berkasVideo = null
+                statusVideo = "batal"
+                return
+            }
+            // EXTRA_OUTPUT: kamera menulis langsung ke cacheDir/video, jadi tidak
+            // bergantung pada data.data yang bisa kosong di sebagian aplikasi kamera.
+            if (langsung != null && langsung.exists() && langsung.length() > 0) {
+                statusVideo = "siap"
+                return
+            }
+            val uri = data?.data
             if (uri == null) { statusVideo = "batal"; return }
             Thread {
                 try {
                     val dir = File(cacheDir, "video").apply { mkdirs() }
-                    dir.listFiles()?.forEach { it.delete() }
                     val tujuan = File(dir, "rekam_" + System.currentTimeMillis() + ".mp4")
                     contentResolver.openInputStream(uri)?.use { masuk ->
                         tujuan.outputStream().use { keluar -> masuk.copyTo(keluar) }
@@ -340,6 +352,8 @@ class MainActivity : Activity() {
             berkasVideo?.delete()
             berkasVideo = null
             statusVideo = "menunggu"
+            val dir = File(cacheDir, "video").apply { mkdirs() }
+            val tujuan = File(dir, "rekam_" + System.currentTimeMillis() + ".mp4")
             var berhasil = false
             val selesai = java.util.concurrent.CountDownLatch(1)
             runOnUiThread {
@@ -347,7 +361,11 @@ class MainActivity : Activity() {
                     val niat = Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE).apply {
                         putExtra(android.provider.MediaStore.EXTRA_VIDEO_QUALITY, 1)
                         putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, BATAS_VIDEO_MS / 1000)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        putExtra(
+                            android.provider.MediaStore.EXTRA_OUTPUT,
+                            FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", tujuan)
+                        )
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     }
                     startActivityForResult(niat, REQ_VIDEO)
                     berhasil = true
@@ -361,6 +379,7 @@ class MainActivity : Activity() {
             // menitipkan pekerjaan: tanpa menunggu di sini hasilnya selalu false walau kamera
             // sudah terbuka, dan halaman web berhenti memantau rekaman.
             try { selesai.await(3, java.util.concurrent.TimeUnit.SECONDS) } catch (_: InterruptedException) { }
+            if (berhasil) berkasVideo = tujuan
             return berhasil
         }
 

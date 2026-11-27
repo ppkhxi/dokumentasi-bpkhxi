@@ -357,6 +357,14 @@ async function prosesFoto(sumber, wAsli, hAsli) {
   while (blob.size / 1024 > S.targetKB && q > 0.35) { q -= 0.08; blob = await keBlob(c, q); }
   let dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
 
+  // Thumbnail 240 px untuk peta & ekspor KML (hemat memori).
+  const tSk = Math.min(1, 240 / Math.max(W, H));
+  const kanvasKecil = document.createElement('canvas');
+  kanvasKecil.width = Math.max(1, Math.round(W * tSk));
+  kanvasKecil.height = Math.max(1, Math.round(H * tSk));
+  kanvasKecil.getContext('2d').drawImage(c, 0, 0, kanvasKecil.width, kanvasKecil.height);
+  const thumb = kanvasKecil.toDataURL('image/jpeg', 0.6);
+
   if (typeof ExifGps !== 'undefined' && posisiFoto() && posisiFoto().lat != null) {
     const rawCat = $('catatan').value.trim();
     dataUrl = ExifGps.sematkanKeDataUrl(dataUrl, {
@@ -364,7 +372,7 @@ async function prosesFoto(sumber, wAsli, hAsli) {
       deskripsi: rawCat || 'Dokumentasi dkpoint', kantor: S.kantor
     });
   }
-  return { dataUrl, ukuran: Math.round(dataUrl.length * 0.75), w: W, h: H };
+  return { dataUrl, thumb, ukuran: Math.round(dataUrl.length * 0.75), w: W, h: H };
 }
 
 let cacheJumlah = null, cacheRoom = '';
@@ -440,7 +448,7 @@ async function simpanDenganRekaman(hasil) {
     await simpanFoto({
       id: 'F' + ts, ts, nama: S.nama || 'Petugas', userId: idUser, noUrut, room: namaRoom, catatan,
       lat: latValid, lon: lonValid, akurasi: akurasiValid, namaBerkas,
-      dataUrl: hasil.dataUrl, ukuran: hasil.ukuran, status: statusAwal,
+      dataUrl: hasil.dataUrl, thumb: hasil.thumb || '', ukuran: hasil.ukuran, status: statusAwal,
       salinanHp: salinKeGaleriHp(namaBerkas, hasil.dataUrl)
     });
     cacheJumlah = noUrut; cacheRoom = kunciRoom;
@@ -553,20 +561,25 @@ async function pindaiAwal() {
   try {
     const d = await bukaDB();
     const kunci = (S.room || 'LOKAL').trim().toUpperCase();
-    let n = 0, terbaru = null;
+    let n = 0, maks = 0, terbaru = null;
     await new Promise((res, rej) => {
       const req = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
       req.onsuccess = () => {
         const c = req.result;
         if (!c) return res();
         const v = c.value;
-        if (((v.room || 'LOKAL').trim().toUpperCase()) === kunci) n++;
+        if (((v.room || 'LOKAL').trim().toUpperCase()) === kunci) {
+          n++;
+          maks = Math.max(maks, Number(v.noUrut) || 0);
+        }
         if (v.dataUrl && (!terbaru || (v.ts || 0) > terbaru.ts)) terbaru = { ts: v.ts || 0, dataUrl: v.dataUrl };
         c.continue();
       };
       req.onerror = () => rej(req.error);
     });
-    if (cacheJumlah === null) { cacheJumlah = n; cacheRoom = kunci; $('nilFoto').textContent = n; }
+    // Nomor urut berikutnya HARUS dari nomor tertinggi, bukan jumlah foto: foto yang
+    // sudah terkirim bisa dihapus dari HP dan jumlahnya menyusut (dulu nomor dipakai ulang).
+    if (cacheJumlah === null) { cacheJumlah = maks; cacheRoom = kunci; $('nilFoto').textContent = maks; }
     if (terbaru && !fotoBaruAda) setMini(terbaru.dataUrl);
   } catch (_) {}
 }

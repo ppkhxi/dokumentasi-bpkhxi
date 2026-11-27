@@ -65,6 +65,12 @@ object Pengingat {
 /** Dipanggil alarm pukul 16.00 WIB; menampilkan pengingat lalu menjadwalkan hari berikutnya. */
 class PengingatReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent?) {
+        // Setelah HP dinyalakan ulang, alarm harian hilang. Cukup jadwalkan lagi;
+        // jangan tampilkan notifikasi "saatnya upload" saat boot.
+        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
+            Pengingat.jadwalkan(ctx)
+            return
+        }
         Pengingat.tampil(ctx)
         Pengingat.jadwalkan(ctx)
     }

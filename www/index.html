@@ -3415,7 +3415,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.0.0';
+const VERSI = '4.1.0';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -3983,11 +3983,14 @@ function inisialisasiKontrolZoom(){
 }
 
 /* ---------- Kamera Utama (Native 4:3 Sensor, No Auto-Zoom) ---------- */
+let _kameraGen = 0;
 async function nyalakanKamera(){
+  const gen = ++_kameraGen;
   $('pesanKamera').style.display='none';
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ gagalKamera('Browser ini tidak mendukung akses kamera.'); return; }
   try{
     await perbaruiDaftarKamera();
+    if(gen !== _kameraGen || layarSekarang() !== 'kamera') return;
 
     // Minta resolusi 4:3 standar sensor bawaan (1920x1440) tanpa paksaan crop min-constraints
     // Menghilangkan bug auto-zoom karena rasio 16:9 yang di-crop ke kotak 3:4
@@ -4003,10 +4006,14 @@ async function nyalakanKamera(){
       videoConfig.facingMode = { ideal: S.facing };
     }
 
-    S.stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: videoConfig,
       audio: false
     });
+    // Izin kamera bisa selesai setelah layar ditinggalkan atau tombol ganti lensa
+    // ditekan: jangan pasang stream basi (kamera akan tetap hidup di latar).
+    if(gen !== _kameraGen || layarSekarang() !== 'kamera'){ stream.getTracks().forEach(t=>t.stop()); return; }
+    S.stream = stream;
 
     $('video').srcObject = S.stream; $('video').style.visibility='visible';
     const track = S.stream.getVideoTracks()[0];
@@ -4027,6 +4034,7 @@ function gagalKamera(html){
   $('pesanKamera').innerHTML = '\u{1F4F5}<br><br>'+html;
 }
 function matikanKamera(){
+  _kameraGen++;
   if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; }
   $('video').style.visibility='hidden';
 }
@@ -4552,6 +4560,15 @@ async function prosesFoto(sumber,wAsli,hAsli){
   // Gambar watermark di pojok kiri bawah (dengan rotasi orientasi jika kamera miring)
   gambarWatermark(ctx, W, H, rot);
 
+  // Thumbnail kecil disimpan bersama foto: peta & ekspor KML tidak perlu lagi
+  // memuat gambar ukuran penuh untuk setiap titik.
+  const tSk = Math.min(1, 240 / Math.max(W, H));
+  const kanvasKecil = document.createElement('canvas');
+  kanvasKecil.width = Math.max(1, Math.round(W * tSk));
+  kanvasKecil.height = Math.max(1, Math.round(H * tSk));
+  kanvasKecil.getContext('2d').drawImage(c, 0, 0, kanvasKecil.width, kanvasKecil.height);
+  const thumb = kanvasKecil.toDataURL('image/jpeg', 0.6);
+
   let q=0.85, blob=await keBlob(c,q);
   while(blob.size/1024>S.targetKB && q>0.35){ q-=0.08; blob=await keBlob(c,q); }
   let dataUrl=await new Promise(r=>{const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob);});
@@ -4570,7 +4587,7 @@ async function prosesFoto(sumber,wAsli,hAsli){
   }
 
   const ukuranFinal = Math.round(dataUrl.length * 0.75);
-  return {dataUrl, ukuran:ukuranFinal, w:W, h:H};
+  return {dataUrl, ukuran:ukuranFinal, w:W, h:H, thumb};
 }
 
 /* Potongan 3:4 dipakai bersama pratinjau (lewat aspect-ratio di #bingkai34) dan
@@ -4672,7 +4689,7 @@ async function simpanLangsung(hasil){
     await simpanFoto({id:'F'+ts, ts, nama:S.nama || 'Petugas', userId:idUser, noUrut, room:namaRoom, catatan,
       lat:latValid, lon:lonValid, akurasi:akurasiValid,
       namaBerkas,
-      dataUrl:hasil.dataUrl, ukuran:hasil.ukuran, status:statusAwal,
+      dataUrl:hasil.dataUrl, thumb:hasil.thumb || '', ukuran:hasil.ukuran, status:statusAwal,
       salinanHp:salinKeGaleriHp(namaBerkas, hasil.dataUrl)});
   }catch(err){
     const penuh = /quota|storage|space/i.test(err.name+' '+err.message);
@@ -4721,6 +4738,7 @@ const adaServer = ()=> typeof MegaEngine !== 'undefined' && MegaEngine.punyaSesi
 let sedangSinkron = false;
 let _sinkronWdTimer = null;
 let _sinkronTerakhirProgres = 0;
+let _sinkronBatal = false;
 /* Upload ke cloud hanya dibuka mulai pukul 16.00 WIB, supaya saat bekerja tidak terganggu. */
 const JAM_BUKA_UPLOAD = 16;
 function jamWIB(){
@@ -4735,6 +4753,7 @@ async function sinkron(diam, paksa){
   // Kunci dipasang SEBELUM await apa pun: dua pemicu yang datang hampir bersamaan
   // (timer, event online, buka aplikasi) tidak boleh menjalankan dua antrean sekaligus.
   sedangSinkron = true;
+  _sinkronBatal = false;
   _sinkronTerakhirProgres = Date.now();
   if(!navigator.onLine){ sedangSinkron = false; if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
   if(typeof daftarkanAnggotaKeRoom === 'function') daftarkanAnggotaKeRoom();
@@ -4795,8 +4814,10 @@ async function sinkron(diam, paksa){
   const jagaSinkron = () => {
     if (!sedangSinkron) return;
     if (Date.now() - _sinkronTerakhirProgres > 90000) {
-      console.warn('Watchdog: antrean upload tanpa kemajuan 90 detik — kunci dilepas.');
-      sedangSinkron = false;
+      // Kunci TIDAK dilepas: melepasnya membuat sinkron kedua mengambil foto yang
+      // masih diunggah dan mengunggahnya ulang (duplikat). Antrean dihentikan rapi.
+      console.warn('Watchdog: antrean upload tanpa kemajuan 120 detik — dihentikan.');
+      _sinkronBatal = true;
       return;
     }
     _sinkronWdTimer = setTimeout(jagaSinkron, 15000);
@@ -4806,6 +4827,7 @@ async function sinkron(diam, paksa){
   try{
     let sukses=0, gagal=0, dilewati=0, pesanGagal='';
     for(let i=0;i<antriCloud.length;i++){
+      if(_sinkronBatal){ console.warn('Antrean upload dihentikan watchdog; sisa foto dicoba lagi nanti.'); break; }
       const f=antriCloud[i];
       _sinkronTerakhirProgres = Date.now();
       pesan('Mengunggah '+(i+1)+' dari '+antriCloud.length+' ke Cloud MEGA…');
@@ -4813,6 +4835,8 @@ async function sinkron(diam, paksa){
         const hasil = await MegaEngine.unggahFoto(f);
         f.status='terkirim';
         f.linkDrive=hasil.linkDrive || f.linkDrive || '';
+        f.namaBerkas=hasil.namaBerkas || f.namaBerkas;
+        if(hasil.ukuran) f.ukuran=hasil.ukuran;
         f.pesanGagal='';
         if(hasil.dilewati) dilewati++; else sukses++;
         if(S.hapusSetelahKirim){ await hapusFoto(f.id); continue; }
@@ -5045,12 +5069,15 @@ function gambarAksiGaleri(data){
     if(!dataRooms || !dataRooms.length) {
       html += '<p>Belum ada room.</p>';
     } else {
-      dataRooms.forEach(r => {
-        html += '<button class="tombol sekunder" style="margin:0" onclick="mulaiUploadPilihan(\''+r.nama+'\')">'+esc(r.nama)+'</button>';
+      dataRooms.forEach((r, i) => {
+        html += '<button class="tombol sekunder" style="margin:0" data-room-pilih="'+esc(r.nama)+'" data-idx="'+i+'">'+esc(r.nama)+'</button>';
       });
     }
     html += '</div><button class="tombol abu" style="margin:0" onclick="tutupDialog()">Batal</button>';
     dialog(html);
+    document.querySelectorAll('#dialogIsi [data-room-pilih]').forEach(b=>{
+      b.onclick = ()=>mulaiUploadPilihan(b.dataset.roomPilih);
+    });
   };
   $('btnHapusPilihan').onclick=()=>{
     const n=S.terpilih.size;
@@ -5080,6 +5107,8 @@ window.mulaiUploadPilihan = async function(namaRoom){
       const hasil = await MegaEngine.unggahFoto(f);
       f.status='terkirim';
       f.linkDrive=hasil.linkDrive || '';
+      f.namaBerkas=hasil.namaBerkas || f.namaBerkas;
+      if(hasil.ukuran) f.ukuran=hasil.ukuran;
       f.pesanGagal='';
       sukses++;
     }catch(err){
@@ -6097,6 +6126,34 @@ async function pulihkanSimulasi(){
   return simulasi.length;
 }
 
+/* Versi lama menyimpan catatan yang sudah di-HTML-escape, lalu meng-escape lagi
+   saat menampilkan ("&" tampil "&amp;"). Sekali saja, ubah data lama ke teks mentah. */
+function uraiEntitasCatatan(teks){
+  return String(teks)
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+async function migrasiCatatanLama(){
+  try{
+    if(localStorage.getItem('dkpoint_catatan_mentah_v2') === '1') return 0;
+    const semua = await ambilSemua();
+    let ubah = 0;
+    for(const f of semua){
+      if(typeof f.catatan !== 'string' || !f.catatan) continue;
+      if(!/&(amp|lt|gt|quot|#39);/.test(f.catatan)) continue;
+      f.catatan = uraiEntitasCatatan(f.catatan);
+      await simpanFoto(f);
+      ubah++;
+    }
+    localStorage.setItem('dkpoint_catatan_mentah_v2', '1');
+    if(ubah) console.info('Catatan lama dirapikan:', ubah, 'foto');
+    return ubah;
+  }catch(e){ return 0; }
+}
+
 async function htmlRekap(filterData){
   let data = filterData;
   if(!data){
@@ -6625,7 +6682,7 @@ async function titikPeta(){
   return saring(await ambilSemua(), S.lingkupPeta).map(f=>({
     lat:f.lat, lon:f.lon, akurasi:f.akurasi, nama:f.nama, room:f.room,
     waktu:fmtWaktu(f.ts), catatan:f.catatan, email:S.email,
-    namaBerkas:f.namaBerkas||'', linkDrive:f.linkDrive||'', thumb:f.dataUrl
+    namaBerkas:f.namaBerkas||'', linkDrive:f.linkDrive||'', thumb:f.thumb || f.dataUrl
   }));
 }
 
@@ -9469,6 +9526,21 @@ async function muatAntrian(){
 }
 
 /* ---------- Room Terdistribusi (MegaEngine) ---------- */
+/* Semua aksi room dipasang lewat data-* (bukan onclick inline) supaya nama room
+   yang mengandung kutip/karakter khusus tidak merusak tombol atau menyuntik JS. */
+function pasangAksiRoom(wadah){
+  if(!wadah) return;
+  wadah.querySelectorAll('[data-aksi-room]').forEach(el=>{
+    el.onclick = ()=>{
+      const aksi = el.dataset.aksiRoom, nama = el.dataset.room || '';
+      if(aksi==='pilih') pilihRoom(nama);
+      else if(aksi==='anggota') lihatAnggotaRoom(nama);
+      else if(aksi==='bagikan') bagikanUndanganRoom(nama);
+      else if(aksi==='hapus') hapusSatuRoom(nama);
+      else if(aksi==='keluar') keluarDariRoom(nama);
+    };
+  });
+}
 function gambarDialogRoom(){
   const semua = typeof MegaEngine !== 'undefined' ? MegaEngine.ambilSemuaRoom() : S.rooms;
   const isHostMega = adaServer();
@@ -9491,15 +9563,15 @@ function gambarDialogRoom(){
       html += hostRooms.map(r => {
         const aktif = r.nama === S.room;
         return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:'+(aktif?'var(--hijau-terang)':'var(--surface)')+';border:1px solid '+(aktif?'var(--hijau)':'var(--garis)')+';border-radius:10px;margin-bottom:6px">'+
-          '<div style="flex:1;cursor:pointer" onclick="pilihRoom(\''+esc(r.nama)+'\')">'+
+          '<div style="flex:1;cursor:pointer" data-aksi-room="pilih" data-room="'+esc(r.nama)+'">'+
             '<b style="color:'+(aktif?'var(--hijau)':'var(--teks)')+'">&#128193; '+esc(r.nama)+'</b>'+
             (aktif ? ' <span style="font-size:10px;background:var(--hijau);color:#fff;padding:2px 6px;border-radius:10px;margin-left:4px">Aktif</span>' : '')+
             '<br><small style="color:var(--teks-2)">Pemilik: Akun Saya (Host MEGA)</small>'+
           '</div>'+
           '<div style="display:flex;gap:4px">'+
-            '<button class="tombol-kecil" onclick="lihatAnggotaRoom(\''+esc(r.nama)+'\')" style="background:#2E7D32;color:#fff;padding:4px 8px;font-size:11px" title="Lihat Anggota">&#128101; Anggota</button>'+
-            '<button class="tombol-kecil sekunder" onclick="bagikanUndanganRoom(\''+esc(r.nama)+'\')" style="padding:4px 8px;font-size:11px" title="Bagikan Undangan">&#128279; Share</button>'+
-            '<button class="tombol-kecil abu" onclick="hapusSatuRoom(\''+esc(r.id||r.nama)+'\')" style="color:var(--merah);padding:4px 8px;font-size:11px" title="Hapus Room">&#128465;</button>'+
+            '<button class="tombol-kecil" data-aksi-room="anggota" data-room="'+esc(r.nama)+'" style="background:#2E7D32;color:#fff;padding:4px 8px;font-size:11px" title="Lihat Anggota">&#128101; Anggota</button>'+
+            '<button class="tombol-kecil sekunder" data-aksi-room="bagikan" data-room="'+esc(r.nama)+'" style="padding:4px 8px;font-size:11px" title="Bagikan Undangan">&#128279; Share</button>'+
+            '<button class="tombol-kecil abu" data-aksi-room="hapus" data-room="'+esc(r.id||r.nama)+'" style="color:var(--merah);padding:4px 8px;font-size:11px" title="Hapus Room">&#128465;</button>'+
           '</div>'+
         '</div>';
       }).join('');
@@ -9512,13 +9584,13 @@ function gambarDialogRoom(){
     html += localRooms.map(r => {
       const aktif = r.nama === S.room;
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:'+(aktif?'#E3F2FD':'var(--surface)')+';border:1px solid '+(aktif?'#1E88E5':'var(--garis)')+';border-radius:10px;margin-bottom:6px">'+
-        '<div style="flex:1;cursor:pointer" onclick="pilihRoom(\''+esc(r.nama)+'\')">'+
+        '<div style="flex:1;cursor:pointer" data-aksi-room="pilih" data-room="'+esc(r.nama)+'">'+
           '<b style="color:'+(aktif?'#1565C0':'var(--teks)')+'">&#128193; '+esc(r.nama)+'</b>'+
           (aktif ? ' <span style="font-size:10px;background:#1E88E5;color:#fff;padding:2px 6px;border-radius:10px;margin-left:4px">Aktif</span>' : '')+
           '<br><small style="color:var(--teks-2)">Penyimpanan Lokal HP (Tanpa Server Cloud)</small>'+
         '</div>'+
         '<div style="display:flex;gap:4px">'+
-          (aktif ? '<span style="font-size:11px;color:#1565C0;padding:4px 8px;font-weight:600">Dipilih</span>' : '<button class="tombol-kecil sekunder" onclick="pilihRoom(\''+esc(r.nama)+'\')" style="padding:4px 8px;font-size:11px">Pilih</button>')+
+          (aktif ? '<span style="font-size:11px;color:#1565C0;padding:4px 8px;font-weight:600">Dipilih</span>' : '<button class="tombol-kecil sekunder" data-aksi-room="pilih" data-room="'+esc(r.nama)+'" style="padding:4px 8px;font-size:11px">Pilih</button>')+
         '</div>'+
       '</div>';
     }).join('');
@@ -9532,13 +9604,13 @@ function gambarDialogRoom(){
     html += memberRooms.map(r => {
       const aktif = r.nama === S.room;
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:'+(aktif?'var(--hijau-terang)':'var(--surface)')+';border:1px solid '+(aktif?'var(--hijau)':'var(--garis)')+';border-radius:10px;margin-bottom:6px">'+
-        '<div style="flex:1;cursor:pointer" onclick="pilihRoom(\''+esc(r.nama)+'\')">'+
+        '<div style="flex:1;cursor:pointer" data-aksi-room="pilih" data-room="'+esc(r.nama)+'">'+
           '<b style="color:'+(aktif?'var(--hijau)':'var(--teks)')+'">&#128193; '+esc(r.nama)+'</b>'+
           (aktif ? ' <span style="font-size:10px;background:var(--hijau);color:#fff;padding:2px 6px;border-radius:10px;margin-left:4px">Aktif</span>' : '')+
           '<br><small style="color:var(--teks-2)">Server Host: '+esc(r.hostEmail || 'Koordinator')+'</small>'+
         '</div>'+
         '<div style="display:flex;gap:4px">'+
-          '<button class="tombol-kecil abu" onclick="keluarDariRoom(\''+esc(r.id||r.nama)+'\')" style="color:var(--oranye);padding:4px 8px;font-size:11px" title="Keluar dari Room">&#128682; Keluar</button>'+
+          '<button class="tombol-kecil abu" data-aksi-room="keluar" data-room="'+esc(r.id||r.nama)+'" style="color:var(--oranye);padding:4px 8px;font-size:11px" title="Keluar dari Room">&#128682; Keluar</button>'+
         '</div>'+
       '</div>';
     }).join('');
@@ -9553,6 +9625,7 @@ function gambarDialogRoom(){
   '<button class="tombol abu" style="margin-top:8px" onclick="tutupDialog()">Tutup</button>';
 
   dialog(html);
+  pasangAksiRoom($('dialogIsi'));
 }
 
 function bukaDialogRoom(){
@@ -9656,11 +9729,15 @@ async function bukaScanQr(){
   }, 300);
 }
 
-function dialogGabungRoom(){
+function dialogGabungRoom(awal) {
+  const tautanAwal = (awal && awal.tautan) ? String(awal.tautan) : '';
+  const kodeAwal = (awal && awal.kode) ? String(awal.kode) : '';
   dialog('<h3>Gabung Room Tim</h3>'+
-    '<p style="font-size:13px;color:var(--teks-2);margin:0 0 10px">Masukkan <b>Kode Room</b> (contoh: <code>DKP-...</code>) atau tempel tautan undangan yang Anda terima dari ketua regu.</p>'+
-    '<label class="f" for="inTokenGabung" style="margin-top:0">Kode Room atau Tautan Undangan</label>'+
-    '<input class="f" id="inTokenGabung" placeholder="DKP-... atau https://…" autocomplete="off">'+
+    '<p style="font-size:13px;color:var(--teks-2);margin:0 0 10px">Tempel <b>tautan undangan</b> dari ketua regu, lalu masukkan <b>kode 5 huruf</b> yang diberikan terpisah. Bisa juga langsung scan QR undangan.</p>'+
+    '<label class="f" for="inTokenGabung" style="margin-top:0">Tautan Undangan</label>'+
+    '<input class="f" id="inTokenGabung" placeholder="https://…?undangan=…" autocomplete="off" value="'+esc(tautanAwal)+'">'+
+    '<label class="f" for="inKodeGabung">Kode Undangan (5 Huruf)</label>'+
+    '<input class="f" id="inKodeGabung" placeholder="Contoh: K7QP2" maxlength="5" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:3px;font-weight:700;text-align:center" value="'+esc(kodeAwal)+'">'+
     '<button class="tombol sekunder" id="btnScanQr" style="width:100%;margin-top:10px">Scan QR Undangan</button>'+
     '<div class="baris-tombol" style="margin-top:12px">'+
       '<button class="tombol sekunder" onclick="tutupDialog()">Batal</button>'+
@@ -9676,11 +9753,13 @@ function dialogGabungRoom(){
 
   $('btnProsesGabungRoom').onclick = async ()=>{
     const token = ($('inTokenGabung').value || '').trim();
-    if(!token){ pesan('Kode atau tautan tidak boleh kosong'); return; }
+    const kode = (($('inKodeGabung') && $('inKodeGabung').value) || '').trim().toUpperCase();
+    if(!token){ pesan('Tautan undangan tidak boleh kosong'); return; }
+    if(!kode && !token.startsWith('DKP-') && !/[?&]kode=/.test(token)){ pesan('Masukkan kode undangan 5 huruf dari ketua regu'); if($('inKodeGabung')) $('inKodeGabung').focus(); return; }
     $('btnProsesGabungRoom').disabled = true;
     $('btnProsesGabungRoom').textContent = 'Menghubungkan…';
     try{
-      const room = await MegaEngine.gabungRoom(token);
+      const room = await MegaEngine.gabungRoom(token, kode);
       S.rooms = MegaEngine.ambilSemuaRoom();
       simpanRooms();
       pilihRoom(room.nama);
@@ -9697,34 +9776,36 @@ function dialogGabungRoom(){
   };
 }
 
-/* Hanya Host yang bisa share undangan (Zoom-style code & link) */
-function bagikanUndanganRoom(namaRoom){
+/* Hanya Host yang bisa share undangan: kode 5 huruf + tautan berkunci. */
+async function bagikanUndanganRoom(namaRoom){
   const r = (typeof MegaEngine !== 'undefined' ? MegaEngine.ambilSemuaRoom() : S.rooms).find(x => x.nama === namaRoom);
   if(r && r.tipe === 'member'){
     pesan('Anda adalah Anggota di room ini. Hanya Pembuat Room (Host) yang bisa membagikan undangan!');
     return;
   }
   try{
-    const kodeToken = MegaEngine.buatTokenUndangan(namaRoom);
-    const link = MegaEngine.buatLinkUndangan(namaRoom);
+    const undangan = await MegaEngine.buatUndangan(namaRoom);
+    const kodeToken = undangan.kode;
+    const link = undangan.link;
+    const linkQr = undangan.linkQr;
 
     dialog('<h3>Undangan Room '+esc(namaRoom)+'</h3>'+
       '<p style="margin:0 0 10px;font-size:13px;color:var(--teks-2)">Bagikan ke anggota regu Anda. Anggota <b>tidak perlu login akun MEGA</b> untuk bergabung dan menyetor foto:</p>'+
 
       '<div style="background:#f8faf8;border:1.5px solid var(--garis);border-radius:10px;padding:12px;margin-bottom:12px">'+
-        '<div style="font-size:11px;font-weight:700;color:var(--hijau);letter-spacing:0.5px;margin-bottom:4px">&#128273; KODE ROOM (TOKEN SEDERHANA)</div>'+
+        '<div style="font-size:11px;font-weight:700;color:var(--hijau);letter-spacing:0.5px;margin-bottom:4px">&#128273; KODE UNDANGAN (5 HURUF)</div>'+
         '<div style="display:flex;gap:6px;align-items:center">'+
-          '<input type="text" readonly value="'+esc(kodeToken)+'" id="inKodeRoom" style="font-family:monospace;font-size:12px;font-weight:700;color:var(--hijau);padding:8px 10px;background:#fff;border:1px solid var(--garis);border-radius:8px;flex:1" onclick="this.select()">'+
+          '<input type="text" readonly value="'+esc(kodeToken)+'" id="inKodeRoom" style="font-family:monospace;font-size:20px;letter-spacing:4px;font-weight:800;color:var(--hijau);padding:8px 10px;background:#fff;border:1px solid var(--garis);border-radius:8px;flex:1;text-align:center" onclick="this.select()">'+
           '<button class="tombol" id="btnSalinKode" style="padding:8px 12px;font-size:12px;white-space:nowrap">Salin Kode</button>'+
         '</div>'+
-        '<small style="color:var(--teks-2);font-size:11px;display:block;margin-top:4px">Anggota cukup memasukkan kode ini pada menu <b>Gabung via Kode</b>.</small>'+
+        '<small style="color:var(--teks-2);font-size:11px;display:block;margin-top:4px">Berikan kode ini <b>terpisah</b> dari tautan (mis. diucapkan atau lewat telepon). Tanpa kode ini tautan tidak bisa dibuka.</small>'+
 
-        '<div style="font-size:11px;font-weight:700;color:var(--teks-2);letter-spacing:0.5px;margin:12px 0 4px">&#128279; TAUTAN LANGSUNG (1-KLIK GABUNG)</div>'+
+        '<div style="font-size:11px;font-weight:700;color:var(--teks-2);letter-spacing:0.5px;margin:12px 0 4px">&#128279; TAUTAN UNDANGAN (WAJIB KODE DI ATAS)</div>'+
         '<div style="display:flex;gap:6px;align-items:center">'+
           '<input type="text" readonly value="'+esc(link)+'" id="inLinkRoom" style="font-family:monospace;font-size:11px;color:var(--teks-2);padding:8px 10px;background:#fff;border:1px solid var(--garis);border-radius:8px;flex:1" onclick="this.select()">'+
           '<button class="tombol sekunder" id="btnSalinLink" style="padding:8px 12px;font-size:12px;white-space:nowrap">Salin Link</button>'+
         '</div>'+
-        '<small style="color:var(--teks-2);font-size:11px;display:block;margin-top:4px">Bisa diklik langsung oleh anggota di WhatsApp tanpa perlu salin kode.</small>'+
+        '<small style="color:var(--teks-2);font-size:11px;display:block;margin-top:4px">Anggota menempel tautan ini di menu <b>Gabung</b>, lalu memasukkan kode 5 huruf.</small>'+
         '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="tombol sekunder" id="btnTampilQr" style="padding:8px 12px;font-size:12px">&#9638; Tampilkan QR</button></div>'+
         '<div id="kotakQrRoom" style="display:none;background:#fff;padding:10px;border-radius:10px;text-align:center;margin-top:10px">'+
           '<div id="isiQrRoom"></div>'+
@@ -9754,7 +9835,7 @@ function bagikanUndanganRoom(namaRoom){
       if(kotak.style.display !== 'none'){ kotak.style.display = 'none'; return; }
       try{
         if(typeof qrcode !== 'function') throw new Error('Pustaka QR belum terpasang');
-        const qr = qrcode(0, 'M'); qr.addData(link); qr.make();
+        const qr = qrcode(0, 'M'); qr.addData(linkQr); qr.make();
         $('isiQrRoom').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4 });
         kotak.style.display = 'block';
       }catch(e){ pesan('QR gagal: ' + e.message); }
@@ -9810,9 +9891,9 @@ function bagikanUndanganRoom(namaRoom){
       const teksWA = '*UNDANGAN ROOM DKPOINT*\n' +
         'Nama Room: *' + namaRoom + '*\n' +
         'Host: ' + (r && r.hostEmail ? r.hostEmail : 'Ketua Regu') + '\n\n' +
-        '🔑 *Kode Room (Masukkan di aplikasi):*\n' + kodeToken + '\n\n' +
-        '👉 *Atau klik tautan langsung ini untuk langsung gabung:*\n' + link + '\n\n' +
-        '_(Anggota tidak perlu login akun MEGA)_';
+        '🔑 *Kode undangan (5 huruf):*\n' + kodeToken + '\n\n' +
+        '👉 *Tautan undangan:*\n' + link + '\n\n' +
+        '_(Buka tautan, lalu masukkan kode di atas. Anggota tidak perlu login akun MEGA.)_';
       window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(teksWA), '_blank');
     };
   }catch(e){
@@ -9934,8 +10015,13 @@ function hapusSatuRoom(idAtauNama){
   dialog('<h3>Hapus Room</h3><p>Apakah Anda yakin ingin menghapus room <b>'+esc(r?r.nama:idAtauNama)+'</b> dari perangkat Anda?</p>'+
     '<div class="baris-tombol">'+
       '<button class="tombol abu" onclick="tutupDialog()">Batal</button>'+
-      '<button class="tombol" style="background:var(--merah)" onclick="MegaEngine.hapusRoom(\''+esc(idAtauNama)+'\'); S.rooms=MegaEngine.ambilSemuaRoom(); simpanRooms(); tutupDialog(); bukaDialogRoom();">Hapus</button>'+
+      '<button class="tombol" id="btnHapusRoomYa" style="background:var(--merah)">Hapus</button>'+
     '</div>');
+  if($('btnHapusRoomYa')) $('btnHapusRoomYa').onclick = ()=>{
+    MegaEngine.hapusRoom(idAtauNama);
+    S.rooms = MegaEngine.ambilSemuaRoom(); simpanRooms();
+    tutupDialog(); bukaDialogRoom();
+  };
 }
 
 /* Keluar dari room (untuk Anggota) */
@@ -9945,8 +10031,13 @@ function keluarDariRoom(idAtauNama){
     '<p>Room <b>'+esc(r?r.nama:idAtauNama)+'</b> akan dihapus dari daftar perangkat Anda. Foto yang sudah tersimpan di HP Anda tetap aman.</p>'+
     '<div class="baris-tombol">'+
       '<button class="tombol abu" onclick="tutupDialog()">Batal</button>'+
-      '<button class="tombol" style="background:var(--oranye)" onclick="MegaEngine.hapusRoom(\''+esc(idAtauNama)+'\'); S.rooms=MegaEngine.ambilSemuaRoom(); simpanRooms(); tutupDialog(); bukaDialogRoom(); pesan(\'Anda telah keluar dari room\');">Keluar</button>'+
+      '<button class="tombol" id="btnKeluarRoomYa" style="background:var(--oranye)">Keluar</button>'+
     '</div>');
+  if($('btnKeluarRoomYa')) $('btnKeluarRoomYa').onclick = ()=>{
+    MegaEngine.hapusRoom(idAtauNama);
+    S.rooms = MegaEngine.ambilSemuaRoom(); simpanRooms();
+    tutupDialog(); bukaDialogRoom(); pesan('Anda telah keluar dari room');
+  };
 }
 
 /* Link undangan dibuka di HP */
@@ -9955,9 +10046,17 @@ async function terimaUndangan(q){
   const namaLegacy = q.get('room');
 
   if(tokenUndangan){
+    const lengkap = location.href;
+    const kode = (q.get('kode') || '').trim().toUpperCase();
+    const kunci = q.get('kunci') || '';
     history.replaceState(history.state, '', location.pathname);
+    // Undangan v2 tanpa kode: minta kode 5 huruf dulu, jangan langsung gagal.
+    if(kunci && !kode){
+      setTimeout(()=>dialogGabungRoom({ tautan: lengkap, kode: '' }), 500);
+      return true;
+    }
     try{
-      const room = await MegaEngine.gabungRoom(tokenUndangan);
+      const room = await MegaEngine.gabungRoom(kunci ? lengkap : tokenUndangan, kode);
       S.rooms = MegaEngine.ambilSemuaRoom();
       simpanRooms();
       S.room = room.nama;
@@ -10110,13 +10209,14 @@ async function muatPengaturan(){
           (aktif ? ' <span style="font-size:10px;background:var(--hijau);color:#fff;padding:1px 5px;border-radius:6px">Aktif</span>' : '')+
           '<br><small style="color:var(--teks-2)">'+(isHost ? 'Host (Penyimpan Data)' : 'Anggota (Host: '+esc(r.hostEmail||'-')+')')+'</small></span>'+
           '<div style="display:flex;gap:4px">'+
-            (isHost ? '<button class="tombol-kecil" onclick="lihatAnggotaRoom(\''+esc(r.nama)+'\')" style="background:#2E7D32;color:#fff;padding:3px 8px;font-size:11px">&#128101; Anggota</button>' : '')+
-            (isHost ? '<button class="tombol-kecil sekunder" onclick="bagikanUndanganRoom(\''+esc(r.nama)+'\')" style="padding:3px 8px;font-size:11px">&#128279; Share</button>' : '')+
-            (isHost ? '<button class="tombol-kecil abu" onclick="hapusSatuRoom(\''+esc(r.id||r.nama)+'\')" style="color:var(--merah);padding:3px 8px;font-size:11px">&#128465;</button>' :
-                      '<button class="tombol-kecil abu" onclick="keluarDariRoom(\''+esc(r.id||r.nama)+'\')" style="color:var(--oranye);padding:3px 8px;font-size:11px">&#128682; Keluar</button>')+
+            (isHost ? '<button class="tombol-kecil" data-aksi-room="anggota" data-room="'+esc(r.nama)+'" style="background:#2E7D32;color:#fff;padding:3px 8px;font-size:11px">&#128101; Anggota</button>' : '')+
+            (isHost ? '<button class="tombol-kecil sekunder" data-aksi-room="bagikan" data-room="'+esc(r.nama)+'" style="padding:3px 8px;font-size:11px">&#128279; Share</button>' : '')+
+            (isHost ? '<button class="tombol-kecil abu" data-aksi-room="hapus" data-room="'+esc(r.id||r.nama)+'" style="color:var(--merah);padding:3px 8px;font-size:11px">&#128465;</button>' :
+                      '<button class="tombol-kecil abu" data-aksi-room="keluar" data-room="'+esc(r.id||r.nama)+'" style="color:var(--oranye);padding:3px 8px;font-size:11px">&#128682; Keluar</button>')+
           '</div></div>';
       }).join('')
     : '<p class="catatan-kecil" style="margin:0">Belum ada room.</p>';
+  pasangAksiRoom($('daftarRoomSetelan'));
 
   if($('btnBukaBuatRoom')){
     $('btnBukaBuatRoom').style.display = terhubungMega ? 'inline-block' : 'none';
@@ -10709,7 +10809,9 @@ async function kirimKlipVideo(id, diam){
       '<button class="tombol abu" onclick="tutupDialog()">Nanti</button>');
     return false;
   }
-  v.status = 'mengunggah'; v.room = room; await simpanVideo(v);
+  v.status = 'mengunggah'; v.room = room;
+  try{ await simpanVideo(v); }
+  catch(e){ if(!diam) pesan('Gagal menyimpan status klip: '+e.message); return false; }
   if(S.mediaGaleri === 'video') muatGaleriVideo();
   try{
     await MegaEngine.unggahVideo({
@@ -10719,7 +10821,11 @@ async function kirimKlipVideo(id, diam){
     });
     v.status = 'terkirim'; v.pesanGagal = '';
     await simpanVideo(v);
+    // Samakan dengan foto: bila pengguna memilih hapus setelah terkirim, klip
+    // tidak menumpuk di memori HP. Pengaturan itu memang untuk menghemat ruang.
+    if(S.hapusSetelahKirim){ try{ await hapusVideo(v.id); }catch(_){} }
     if(S.mediaGaleri === 'video') muatGaleriVideo();
+    perbaruiJumlahVideo(); muatKlipTerbaru();
     if(!diam) pesan('Klip terkirim ke cloud room '+room);
     return true;
   }catch(e){
@@ -10739,7 +10845,7 @@ async function sinkronVideo(diam, paksa){
   }
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — klip tetap aman di HP'); return; }
   if(!paksa && !bolehUploadSekarang()){
-    if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan tombol kirim untuk mengirim sekarang.');
+    if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Klip akan dikirim sendiri saat waktunya tiba.');
     return;
   }
   const semua = await ambilSemuaVideo();
@@ -10754,12 +10860,17 @@ async function sinkronVideo(diam, paksa){
   }
   sedangKirimVideo = true;
   let ok = 0, gagal = 0;
-  if(!diam) pesan('Mengirim '+siap.length+' klip… jangan tutup aplikasi');
-  for(const v of siap){
-    const hasil = await kirimKlipVideo(v.id, true);
-    if(hasil) ok++; else gagal++;
+  try{
+    if(!diam) pesan('Mengirim '+siap.length+' klip… jangan tutup aplikasi');
+    for(const v of siap){
+      const hasil = await kirimKlipVideo(v.id, true);
+      if(hasil) ok++; else gagal++;
+    }
+  }finally{
+    // Kunci harus selalu dilepas; kalau tidak, pengiriman video berhenti permanen
+    // sampai aplikasi dibuka ulang (mis. saat penyimpanan HP penuh).
+    sedangKirimVideo = false;
   }
-  sedangKirimVideo = false;
   if(!diam) pesan(ok+' klip terkirim'+(gagal?', '+gagal+' gagal (dicoba lagi nanti)':''));
 }
 
@@ -11062,7 +11173,7 @@ function konfirmasiMuatUlang(){
   dialog(
     '<h3>Pembaruan PWA Tersedia</h3>'+
     '<p>Versi baru aplikasi (v'+VERSI+') telah siap di perangkat ini. Muat ulang sekarang untuk menerapkan pembaruan?</p>'+
-    '<button class="tombol" onclick="location.reload(true)">Muat Ulang Sekarang</button>'+
+    '<button class="tombol" onclick="location.reload()">Muat Ulang Sekarang</button>'+
     '<button class="tombol abu" onclick="tutupDialog()">Nanti</button>'
   );
 }
@@ -11149,7 +11260,7 @@ function identitasKunci(){
 async function kirimTelemetriPengguna(){
   try{
     if(!navigator.onLine) return;
-    const jmlSesi = catatSesiPengguna();
+    const jmlSesi = parseInt(localStorage.getItem('dkpoint_jml_sesi') || '1', 10);
     await fetch('/api/telemetri', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -11217,6 +11328,7 @@ async function pulihkanRoomLama(){
   perbaruiKoneksi();
   kunciPenyimpanan();
   pasangLabelVersi();
+  catatSesiPengguna();          // dihitung sekali per pembukaan aplikasi, bukan per foreground
   setTimeout(kirimTelemetriPengguna, 1800);
 
   // Muat room yang tersimpan
@@ -11230,6 +11342,7 @@ async function pulihkanRoomLama(){
     }
     if(adaMigrasi) MegaEngine.simpanSemuaRoom(S.rooms);
     try{ await pulihkanRoomLama(); }catch(e){ console.warn('Pemulihan room lama gagal', e); }
+    try{ await migrasiCatatanLama(); }catch(_){}
   }
   terapkanLogo();
   inisialisasiKontrolZoom();
@@ -11256,8 +11369,7 @@ async function pulihkanRoomLama(){
     // Daftarkan diri ke room cloud agar admin melihat anggota yang sudah gabung
     if(typeof daftarkanAnggotaKeRoom === 'function') setTimeout(daftarkanAnggotaKeRoom, 3500);
   }else{
-    if($('inNama') && nama) $('inNama').value = nama;
-    if($('inUserId')) $('inUserId').value = hitungInisialPetugas(nama || ($('inNama') ? $('inNama').value : ''));
+    if($('inUserId')) $('inUserId').value = hitungInisialPetugas($('inNama') ? $('inNama').value : '');
     history.replaceState({layar:'login'},'');
   }
 })();

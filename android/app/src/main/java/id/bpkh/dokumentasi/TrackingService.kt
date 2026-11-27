@@ -40,6 +40,8 @@ class TrackingService : Service() {
         when (intent?.action) {
             AKSI_MULAI -> {
                 berkas.delete()          // jejak baru
+                cacheDari = 0
+                cacheOffset = 0
                 naikkanKeForeground()
                 lanjut()
             }
@@ -113,16 +115,37 @@ class TrackingService : Service() {
         }
 
         /** Titik sejak indeks [dari] (JSON array). */
+        private var cacheDari = 0
+        private var cacheOffset = 0L
+
+        /**
+         * Membaca titik baru saja. Dulu seluruh berkas dibaca dan di-parse ulang
+         * setiap poll, sehingga makin lama tracking makin berat. Sekarang posisi
+         * byte terakhir diingat dan pembacaan melanjutkan dari sana.
+         */
+        @Synchronized
         fun baca(ctx: Context, dari: Int): String {
             val f = File(ctx.filesDir, "track.jsonl")
             val arr = JSONArray()
-            if (!f.exists()) return arr.toString()
-            var no = 0
-            f.forEachLine { baris ->
-                if (no >= dari && baris.isNotBlank()) {
-                    try { arr.put(JSONObject(baris)) } catch (_: Exception) {}
+            if (!f.exists()) { cacheDari = 0; cacheOffset = 0; return arr.toString() }
+
+            val lanjut = dari > 0 && dari == cacheDari
+            var indeks = 0
+            java.io.RandomAccessFile(f, "r").use { raf ->
+                if (lanjut) {
+                    indeks = cacheDari
+                    raf.seek(cacheOffset)
                 }
-                no++
+                var baris = raf.readLine()
+                while (baris != null) {
+                    if (indeks >= dari && baris.isNotBlank()) {
+                        try { arr.put(JSONObject(baris)) } catch (_: Exception) {}
+                    }
+                    indeks++
+                    baris = raf.readLine()
+                }
+                cacheDari = indeks
+                cacheOffset = raf.filePointer
             }
             return arr.toString()
         }

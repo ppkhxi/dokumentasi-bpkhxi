@@ -142,22 +142,92 @@
     return decodeURIComponent(escape(res));
   }
 
-  function bongkarTiket(raw) {
+  /* ------------------------------------------------------------------
+     UNDANGAN v2 — kode 5 huruf + kunci acak 128-bit di tautan.
+     Isi undangan (email & sandi Host) disegel AES-GCM dengan kunci turunan
+     PBKDF2(kode + kunci). Tautan yang diteruskan tanpa kode 5 huruf tidak
+     bisa dibuka, dan sandi tidak lagi bisa dibaca dari tautan/QR.
+     Undangan format lama (DKP-...) tetap dibaca agar yang sudah beredar jalan.
+     ------------------------------------------------------------------ */
+  const ALFABET_KODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // tanpa I, O, 0, 1
+
+  function normalisasiNamaRoom(nama) {
+    return String(nama || '')
+      .replace(/[\\/:*?"<>|\u0000-\u001F]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim().toUpperCase().slice(0, 40);
+  }
+
+  function kodeUndanganAcak() {
+    const b = crypto.getRandomValues(new Uint8Array(5));
+    return Array.from(b).map(x => ALFABET_KODE[x % ALFABET_KODE.length]).join('');
+  }
+
+  function b64urlDari(buf) {
+    const a = new Uint8Array(buf);
+    let s = '';
+    for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function bufDariB64url(str) {
+    let b = String(str || '').replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    const s = atob(b);
+    const a = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+    return a;
+  }
+
+  async function kunciTurunanUndangan(kode, kunci) {
+    if (!window.crypto || !crypto.subtle) throw new Error('Perangkat ini tidak mendukung enkripsi undangan');
+    const enc = new TextEncoder();
+    const bahan = await crypto.subtle.importKey('raw', enc.encode(String(kode).toUpperCase() + '|' + String(kunci)), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: enc.encode('dkpoint-undangan-v2'), iterations: 150000, hash: 'SHA-256' },
+      bahan, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+  }
+
+  async function segelUndangan(data, kode, kunci) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const k = await kunciTurunanUndangan(kode, kunci);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(data)));
+    return 'v2.' + b64urlDari(iv) + '.' + b64urlDari(ct);
+  }
+
+  async function bukaSegelUndangan(token, kode, kunci) {
+    const bagian = String(token || '').split('.');
+    if (bagian.length !== 3 || bagian[0] !== 'v2') throw new Error('Format undangan tidak dikenal');
+    if (!kode) throw new Error('Undangan ini perlu kode 5 huruf dari ketua regu');
+    if (!kunci) throw new Error('Tautan undangan tidak lengkap (kunci hilang)');
+    const k = await kunciTurunanUndangan(kode, kunci);
+    let pt;
+    try {
+      pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bufDariB64url(bagian[1]) }, k, bufDariB64url(bagian[2]));
+    } catch (e) {
+      throw new Error('Kode 5 huruf salah atau tautan undangan tidak cocok');
+    }
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+
+  /* Membaca tiket: objek room, token v2 (butuh kode+kunci), atau format lama. */
+  async function bongkarTiket(raw, kode, kunci) {
     if (!raw) throw new Error('Data undangan kosong');
     if (typeof raw === 'object') return raw;
     raw = String(raw).trim();
-    if (raw.startsWith('DKP-')) {
-      raw = raw.slice(4);
-    }
 
-    // 1. Coba decode format aman baru (xorMask)
+    if (raw.startsWith('DKP2-')) return bukaSegelUndangan(raw.slice(5), kode, kunci);
+    if (raw.startsWith('v2.')) return bukaSegelUndangan(raw, kode, kunci);
+    if (raw.startsWith('DKP-')) raw = raw.slice(4);
+
+    // Format lama (XOR/base64). Hanya untuk undangan yang sudah beredar.
     try {
       const unmasked = xorUnmask(raw);
       const data = JSON.parse(unmasked);
       if (data && (data.n || data.e)) return data;
     } catch(e) {}
 
-    // 2. Fallback decode format base64 lama (kompatibilitas mundur)
     try {
       const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
       const data = JSON.parse(decodeURIComponent(escape(atob(b64))));
@@ -172,13 +242,20 @@
     throw new Error('Kode undangan tidak valid atau rusak');
   }
 
-  async function dapatkanStorageHost(authTicket) {
-    if (_guestStorageMap.has(authTicket)) {
-      const cached = _guestStorageMap.get(authTicket);
+  /* Kredensial Host dari room/tiket. Untuk undangan v2, kode & kunci ikut room. */
+  async function dapatkanStorageHost(roomAtauTiket, kode, kunci) {
+    const adalahRoom = roomAtauTiket && typeof roomAtauTiket === 'object';
+    const tiket = adalahRoom ? roomAtauTiket.authTicket : roomAtauTiket;
+    const kodePakai = adalahRoom ? roomAtauTiket.kodeUndangan : kode;
+    const kunciPakai = adalahRoom ? roomAtauTiket.kunciUndangan : kunci;
+    const cacheKey = String(tiket) + '|' + String(kodePakai || '');
+
+    if (_guestStorageMap.has(cacheKey)) {
+      const cached = _guestStorageMap.get(cacheKey);
       if (cached && cached.status === 'ready') return cached;
-      _guestStorageMap.delete(authTicket);
+      _guestStorageMap.delete(cacheKey);
     }
-    const kred = bongkarTiket(authTicket);
+    const kred = await bongkarTiket(tiket, kodePakai, kunciPakai);
     const email = kred.e || kred.email;
     const password = kred.p || kred.password;
     if (!email || !password) throw new Error('Kredensial Host dalam tiket tidak lengkap');
@@ -186,10 +263,10 @@
     const storageHost = new mega.Storage({ email, password });
     try {
       await withTimeout(storageHost.ready, 45000, 'Gagal menghubungkan sesi ke akun Host MEGA (timeout koneksi 45s).');
-      _guestStorageMap.set(authTicket, storageHost);
+      _guestStorageMap.set(cacheKey, storageHost);
       return storageHost;
     } catch (err) {
-      _guestStorageMap.delete(authTicket);
+      _guestStorageMap.delete(cacheKey);
       throw new Error(petakanErrorMega(err));
     }
   }
@@ -397,7 +474,7 @@
 
     // HANYA Host yang boleh membuat room
     async buatRoom(namaRoom) {
-      const bersih = (namaRoom || '').trim().toUpperCase();
+      const bersih = normalisasiNamaRoom(namaRoom);
       if (!bersih) throw new Error('Nama room tidak boleh kosong');
 
       await this.pastikanTerhubung();
@@ -428,71 +505,60 @@
       return objekRoom;
     },
 
-    // Buat kode token undangan ringkas & aman (format DKP-...)
-    buatTokenUndangan(namaAtauIdRoom) {
+    /* Undangan v2: kode 5 huruf + tautan berkunci. Isi (email & sandi Host)
+       disegel, jadi tautan saja tanpa kode tidak bisa dibuka. */
+    async buatUndangan(namaAtauIdRoom) {
       const target = (namaAtauIdRoom || '').trim().toUpperCase();
       const r = this.ambilSemuaRoom().find(x => (x.nama || '').trim().toUpperCase() === target || x.id === target);
       if (!r) throw new Error('Room tidak ditemukan');
-
-      // Proteksi hak akses: Hanya Host yang berhak membagikan undangan
-      if (r.tipe !== 'host') {
-        throw new Error('Hanya Pembuat Room (Host) yang memiliki hak membagikan undangan!');
-      }
+      if (r.tipe !== 'host') throw new Error('Hanya Pembuat Room (Host) yang memiliki hak membagikan undangan!');
 
       const kred = bacaKredensial();
       if (!kred) throw new Error('Kredensial Host tidak ditemukan. Login ulang ke MEGA.');
 
-      const payload = {
-        n: r.nama,
-        e: kred.email,
-        p: kred.password
-      };
-      
-      // Masking XOR URL-Safe agar tidak mudah dibuka plain-text
-      const token = xorMask(JSON.stringify(payload));
-      return 'DKP-' + token;
+      const kode = kodeUndanganAcak();
+      const kunci = b64urlDari(crypto.getRandomValues(new Uint8Array(16)));
+      const isi = await segelUndangan({ v: 2, n: r.nama, e: kred.email, p: kred.password, t: Date.now() }, kode, kunci);
+      const token = 'DKP2-' + isi;
+      const dasar = location.origin + location.pathname;
+      const link = dasar + '?undangan=' + encodeURIComponent(token) + '&kunci=' + encodeURIComponent(kunci);
+      return { kode, kunci, token, link, linkQr: link + '&kode=' + encodeURIComponent(kode) };
     },
 
-    // Buat link undangan langsung
-    buatLinkUndangan(namaAtauIdRoom) {
-      const token = this.buatTokenUndangan(namaAtauIdRoom);
-      const base = location.origin + location.pathname;
-      return `${base}?undangan=${encodeURIComponent(token)}`;
-    },
+    normalisasiNamaRoom(nama) { return normalisasiNamaRoom(nama); },
 
-    // Anggota regu bergabung via kode token atau link undangan
-    async gabungRoom(inputUndangan) {
+    // Anggota regu bergabung via link/QR undangan + kode 5 huruf
+    async gabungRoom(inputUndangan, kodeAwal) {
       let raw = (inputUndangan || '').trim();
       if (!raw) throw new Error('Kode atau link undangan tidak boleh kosong');
+      let kode = String(kodeAwal || '').trim().toUpperCase();
+      let kunci = '';
 
       if (raw.includes('undangan=')) {
         try {
-          const u = new URL(raw);
+          const u = new URL(raw, location.origin);
           raw = u.searchParams.get('undangan') || raw;
+          kunci = u.searchParams.get('kunci') || '';
+          kode = (u.searchParams.get('kode') || kode).trim().toUpperCase();
         } catch(e) {
-          const idx = raw.indexOf('undangan=');
-          raw = raw.slice(idx + 9).split('&')[0];
+          const ambil = nama => {
+            const m = new RegExp('[?&]' + nama + '=([^&]+)').exec(raw);
+            return m ? decodeURIComponent(m[1]) : '';
+          };
+          raw = ambil('undangan') || raw;
+          kunci = kunci || ambil('kunci');
+          kode = kode || ambil('kode').toUpperCase();
         }
       }
 
       raw = decodeURIComponent(raw).trim();
-      if (raw.startsWith('DKP-')) {
-        raw = raw.slice(4);
-      }
-
-      const data = bongkarTiket(raw);
+      const data = await bongkarTiket(raw, kode, kunci);
       if (!data || !data.n) throw new Error('Format undangan tidak lengkap');
 
-      const namaRoom = String(data.n).trim().toUpperCase();
+      const namaRoom = normalisasiNamaRoom(data.n);
+      if (!namaRoom) throw new Error('Nama room pada undangan tidak valid');
       let hostEmail = data.e || data.h || '';
       let tiketAuth = raw;
-
-      // Verifikasi awal koneksi ke akun Host
-      try {
-        await dapatkanStorageHost(tiketAuth);
-      } catch(testErr) {
-        console.warn('Verifikasi awal akun Host:', testErr);
-      }
 
       const objekRoom = {
         id: 'room_join_' + Date.now(),
@@ -500,8 +566,19 @@
         tipe: 'member', // ANGGOTA (Bukan Host)
         hostEmail: hostEmail,
         authTicket: tiketAuth,
+        kodeUndangan: kode,
+        kunciUndangan: kunci,
         dibuat: Date.now()
       };
+
+      // Verifikasi awal ke akun Host. Kode salah harus ditolak, tetapi gangguan
+      // sinyal tidak boleh menghalangi anggota menyimpan undangan.
+      try {
+        await dapatkanStorageHost(objekRoom);
+      } catch(testErr) {
+        if (/kode|sandi|tidak cocok|tidak valid|tidak lengkap/i.test(testErr.message || '')) throw testErr;
+        console.warn('Verifikasi awal akun Host:', testErr);
+      }
 
       const list = this.ambilSemuaRoom().filter(r => (r.nama || '').trim().toUpperCase() !== namaRoom);
       list.unshift(objekRoom);
@@ -527,13 +604,18 @@
       }
     },
 
-    // Cek apakah room tertentu memiliki otorisasi upload ke Cloud
+    // Cek apakah room tertentu punya otorisasi upload ke Cloud miliknya sendiri.
+    // Room lokal tidak pernah diunggah; room host lain hanya lewat tiket undangan.
     bisaUpload(namaAtauIdRoom) {
-      if (this.punyaSesi()) return true;
       const target = (namaAtauIdRoom || '').trim().toUpperCase();
       const list = this.ambilSemuaRoom();
       const r = (target ? list.find(x => (x.nama || '').trim().toUpperCase() === target || x.id === target) : null) || this.getRoomAktif();
-      return !!(r && (r.authTicket || r.tipe === 'host'));
+      if (!r) return false;
+      if (r.tipe === 'local' || String(r.nama || '').trim().toUpperCase() === 'LOKAL') return false;
+      if (r.authTicket) return true;
+      if (!this.punyaSesi()) return false;
+      if (r.tipe === 'host') return !r.hostEmail || r.hostEmail === this.getEmail();
+      return false;
     },
 
     // -------------------------------------------------------------
@@ -552,7 +634,7 @@
       // masuk ke akun HOST room — bukan akun MEGA pribadi perangkat. Kalau tidak,
       // upload anggota mendarat di akun pribadinya & admin room tidak melihatnya.
       if (roomAktif && roomAktif.authTicket) {
-        storageUntukUpload = await dapatkanStorageHost(roomAktif.authTicket);
+        storageUntukUpload = await dapatkanStorageHost(roomAktif);
       }
       // Room milik sendiri (host) / tanpa tiket: pakai sesi MEGA perangkat ini.
       else if (this.punyaSesi()) {
@@ -624,8 +706,9 @@
       if (sudahAda) {
         const ukuranLama = Number(sudahAda.size || 0);
         const ukuranBaru = bytes.byteLength;
-        const beda = Math.abs(ukuranLama - ukuranBaru);
-        if (!ukuranLama || beda <= Math.max(2048, ukuranBaru * 0.02)) {
+        // Hanya ukuran yang SAMA PERSIS yang dianggap kiriman ulang. Toleransi
+        // 2% dulu bisa membuang foto petugas lain yang namanya kebetulan sama.
+        if (ukuranLama === ukuranBaru) {
           let linkLama = `https://mega.nz/#${sudahAda.nodeId || ''}`;
           if (typeof sudahAda.link === 'function') {
             try { linkLama = await withTimeout(sudahAda.link(), 2000, linkLama); } catch (e) {}
@@ -824,7 +907,7 @@
       const nama = (namaRoom || '').trim().toUpperCase();
       const roomAktif = this.ambilSemuaRoom().find(r => (r.nama || '').trim().toUpperCase() === nama) || this.getRoomAktif();
       // Prioritaskan tiket room (undangan) agar data masuk ke akun HOST room, bukan akun pribadi.
-      if (roomAktif && roomAktif.authTicket) { return { storage: await dapatkanStorageHost(roomAktif.authTicket), roomAktif }; }
+      if (roomAktif && roomAktif.authTicket) { return { storage: await dapatkanStorageHost(roomAktif), roomAktif }; }
       if (this.punyaSesi()) { await this.pastikanTerhubung(); return { storage: _storageInstance, roomAktif }; }
       return { storage: null, roomAktif };
     },
