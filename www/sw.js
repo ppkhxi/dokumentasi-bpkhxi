@@ -2,7 +2,7 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v4.4.0-rapi';
+const VERSI = 'dkpoint-v4.5.0-video-modul';
 const CACHE_TILES = 'dkpoint-tiles-v2';
 const MAKS_TILE = 1200;   // simpan lebih banyak tile basemap agar area kerja tetap bisa dibuka offline berhari-hari
 
@@ -23,6 +23,7 @@ const BERKAS = [
   './periksa.html',
   './peta.js',
   './js/util.js',
+  './js/video.js',
   './js/security.js',
   './js/exif-gps.js',
   './js/shp.min.js',
