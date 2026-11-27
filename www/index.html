@@ -2509,6 +2509,175 @@ body[data-tema="modern"] .tema-pil small{opacity:.7}
 .pemutar-info{color:#A9B8CB;font-size:11.5px;line-height:1.55;margin:0}
 .pemutar-aksi{display:flex;gap:10px;margin-top:auto}
 .pemutar-aksi .tombol{flex:1}
+
+/* =====================================================================
+   MODE RAPI — tampilan datar ala immediate-mode UI (egui/TraceDraw).
+   Lapisan ini hanya mengubah rupa: gloss, glow, bevel, pola latar, dan
+   blur dekoratif dihapus; tata letak, ukuran sentuh, dan warna aksen tiap
+   tema tetap. Diletakkan paling akhir agar menang dari aturan tema.
+   ===================================================================== */
+body, body[data-tema]{
+  --shadow-xs:none;--shadow-sm:none;--shadow-md:none;--shadow-lg:none;--shadow-nav:none;
+  --t-card-shadow:none;--t-btn-shadow:none;--t-nav-shadow:none;--t-appbar-shadow:none;
+  --rad-xs:4px;--rad-sm:6px;--rad-md:8px;--rad-lg:10px;--rad-xl:12px;
+  --tombol-primer:#111318;--tombol-primer-hover:#1B1E24;
+  --tombol-sekunder-bg:var(--surface-subtle);--tombol-sekunder-teks:var(--teks);
+  --fokus-ring:rgba(10,132,255,.28);
+}
+body[data-tema] #app{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",system-ui,sans-serif;
+  letter-spacing:0;
+  /* Kanvas netral, bukan biru bergradien khas tema Flash. */
+  background:#F3F4F6 !important;
+  /* Token tema Flash berisi gradien; di mode rapi semuanya bidang padat. */
+  --tombol-primer:#111318;--tombol-primer-hover:#1B1E24;
+  --tombol-sekunder-bg:#F1F2F4;--tombol-sekunder-teks:#1C1C1E;
+}
+/* Blur latar adalah efek GPU termahal di sini dan tidak diperlukan di UI datar. */
+body[data-tema] #app *{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+
+/* Latar: satu warna, tanpa pinstripe/gradien. */
+body{background:#101318 !important}
+body[data-tema="modern"] #app{background:#111318 !important}
+body[data-tema] #layar{background:transparent !important;box-shadow:none !important}
+
+/* Bilah atas: panel datar dengan garis bawah. */
+body[data-tema] #appbar{
+  background:var(--surface) !important;color:var(--teks) !important;
+  border:0 !important;border-bottom:1px solid var(--garis) !important;
+  box-shadow:none !important;
+}
+body[data-tema] #judulBar{color:var(--teks) !important;text-shadow:none !important;letter-spacing:0 !important;font-weight:650 !important}
+body[data-tema] #btnBack,body[data-tema] .aksi-bar{
+  background:var(--surface-subtle) !important;color:var(--teks) !important;
+  border:1px solid var(--garis) !important;border-radius:8px !important;
+  box-shadow:none !important;text-shadow:none !important;
+}
+body[data-tema] #pilStatus{
+  background:var(--surface-subtle) !important;color:var(--teks-2) !important;
+  border:1px solid var(--garis) !important;border-radius:6px !important;
+  box-shadow:none !important;text-shadow:none !important;letter-spacing:0 !important;
+}
+body[data-tema] #pilStatus.offline{background:var(--oranye) !important;color:#fff !important;border-color:transparent !important}
+
+/* Navigasi bawah: pil datar, item aktif satu warna. */
+body[data-tema] #navbar{
+  background:var(--surface) !important;border:1px solid var(--garis) !important;
+  border-radius:12px !important;box-shadow:none !important;
+}
+body[data-tema] .nav-item{color:var(--teks-2) !important;text-shadow:none !important}
+body[data-tema] .nav-item.aktif{color:var(--teks) !important}
+body[data-tema] .nav-item.aktif .ic{
+  background:#111318 !important;color:#fff !important;border:0 !important;
+  border-radius:8px !important;box-shadow:none !important;
+}
+body[data-tema] .nav-fab button{
+  background:#111318 !important;border:0 !important;
+  box-shadow:none !important;
+}
+
+/* Kartu isi dan panel gelap: permukaan padat, garis 1px, sudut kecil. */
+body[data-tema] .kartu{
+  background:var(--surface) !important;border:1px solid var(--garis) !important;
+  border-radius:10px !important;box-shadow:none !important;background-image:none !important;
+}
+body[data-tema] .kartu-judul{color:var(--teks-2) !important;text-shadow:none !important;letter-spacing:.5px !important}
+body[data-tema] .hero,body[data-tema] .stat,body[data-tema] .menu-kartu,body[data-tema] #spandukPasang{
+  background:#15181E !important;border:1px solid #2B303A !important;
+  border-radius:10px !important;box-shadow:none !important;background-image:none !important;
+}
+body[data-tema] .hero::before,body[data-tema] .hero::after{display:none !important}
+body[data-tema] .hero .nama,body[data-tema] .hero .halo,body[data-tema] .stat b,
+body[data-tema] .menu-kartu b,body[data-tema] .menu-kartu small{text-shadow:none !important}
+body[data-tema] .menu-kartu:active{transform:none !important;background:#1B1F26 !important;border-color:#3A414E !important}
+body[data-tema] .menu-kartu .ic{
+  background:rgba(255,255,255,.06) !important;border:1px solid rgba(255,255,255,.14) !important;
+  border-radius:8px !important;box-shadow:none !important;background-image:none !important;
+}
+body[data-tema] .hero .room-chip{
+  background:rgba(255,255,255,.08) !important;border:1px solid rgba(255,255,255,.18) !important;
+  box-shadow:none !important;text-shadow:none !important;
+}
+
+/* Tombol: bidang padat, tanpa bevel dan bayangan. */
+body[data-tema] .tombol{
+  border-radius:8px !important;box-shadow:none !important;text-shadow:none !important;
+  border-color:transparent !important;font-weight:600 !important;
+  background-image:none !important;
+}
+/* Tombol primer jadi bidang gelap; tombol berwarna (hapus/oranye) memakai
+   style inline dan tidak boleh ditimpa. */
+body[data-tema] .tombol:not([style*="background"]):not(.sekunder):not(.abu){
+  background-color:#111318 !important;color:#fff !important;
+}
+/* Di atas panel gelap, tombol primer memakai aksen biru agar tetap terlihat. */
+body[data-tema] .hero .tombol:not(.sekunder):not(.abu),
+body[data-tema] .menu-kartu .tombol:not(.sekunder):not(.abu),
+body[data-tema] #spandukPasang .tombol:not(.sekunder):not(.abu){
+  background-color:#2F6FEB !important;
+}
+body[data-tema] .tombol:active{transform:none !important;box-shadow:none !important;filter:brightness(.92)}
+body[data-tema] .tombol.sekunder,body[data-tema] .tombol.abu{
+  background:var(--surface-subtle) !important;color:var(--teks) !important;
+  border-color:var(--garis) !important;
+}
+body[data-tema] .tombol-mini{
+  background:var(--surface-subtle) !important;border:1px solid var(--garis) !important;
+  border-radius:6px !important;box-shadow:none !important;
+}
+body[data-tema] .tombol-mini.utama{background:#111318 !important;color:#fff !important;border-color:transparent !important}
+
+/* Kolom isian: bidang datar, fokus berupa garis, bukan glow. */
+body[data-tema] input.f,body[data-tema] select.f,body[data-tema] textarea.f{
+  background:var(--surface) !important;border:1px solid var(--garis) !important;
+  border-radius:6px !important;box-shadow:none !important;color:var(--teks) !important;
+}
+body[data-tema] input.f:focus,body[data-tema] select.f:focus,body[data-tema] textarea.f:focus{
+  border-color:var(--apple-blue) !important;box-shadow:0 0 0 2px var(--fokus-ring) !important;outline:none !important;
+}
+
+/* Dialog: satu bayangan tipis supaya tetap terasa mengambang. */
+body[data-tema] #dialog{background:rgba(0,0,0,.55) !important}
+body[data-tema] .dialog-isi{
+  background:var(--surface) !important;border:1px solid var(--garis) !important;
+  border-radius:10px !important;box-shadow:0 8px 28px rgba(0,0,0,.3) !important;background-image:none !important;
+}
+body[data-tema] .dialog-isi h3{color:var(--teks) !important;text-shadow:none !important}
+body[data-tema] .dialog-isi p{color:var(--teks-2) !important}
+
+/* Login: latar gelap rata, kartu putih datar. */
+body[data-tema] #scLogin{background:#101318 !important}
+body[data-tema] .kotak-login{
+  background:var(--surface) !important;border:1px solid var(--garis) !important;
+  border-radius:12px !important;box-shadow:none !important;background-image:none !important;
+}
+body[data-tema] .login-isi h1{text-shadow:none !important}
+body[data-tema] .login-logo{box-shadow:none !important}
+
+/* Spanduk, tab, dan pil: hilangkan bevel serta bayangan keras. */
+body[data-tema] #spandukCadangan{background:#FFF8E6 !important;border:1px solid #E0C27A !important;border-radius:8px !important;box-shadow:none !important}
+body[data-tema] #spandukSimulasi{background:#F4F6F9 !important;border:1px solid var(--garis) !important;border-radius:8px !important;box-shadow:none !important}
+body[data-tema] .tab-wadah-lapisan{background:var(--surface-subtle) !important;border:1px solid var(--garis) !important;box-shadow:none !important}
+body[data-tema] .tab-btn-lapisan.aktif{background:var(--surface) !important;border:1px solid var(--garis) !important;box-shadow:none !important;color:var(--teks) !important}
+body[data-tema] .aksi-layer{background:var(--surface-subtle) !important;border:1px solid var(--garis) !important;box-shadow:none !important;color:var(--teks) !important}
+body[data-tema] .tema-pil{background:var(--surface-subtle) !important;border:1px solid var(--garis) !important;box-shadow:none !important}
+body[data-tema] .tema-pil.aktif{border-color:var(--teks) !important;box-shadow:none !important}
+body[data-tema] .badge{box-shadow:none !important;text-shadow:none !important;border-radius:4px !important}
+body[data-tema] .chip-tag-catatan{background:rgba(255,255,255,.06) !important;box-shadow:none !important;border-radius:6px !important}
+body[data-tema] .chip-tag-catatan.aktif{background:var(--makior-orange) !important;box-shadow:none !important}
+body[data-tema] #snackbar{background:#1C1F26 !important;border:1px solid #333A45 !important;border-radius:8px !important;box-shadow:none !important;text-shadow:none !important}
+
+/* Scrollbar tipis dan netral, bukan rel bergradien. */
+body[data-tema] ::-webkit-scrollbar{width:8px;height:8px}
+body[data-tema] ::-webkit-scrollbar-thumb{background:#C4C8CF;border-radius:4px}
+body[data-tema] ::-webkit-scrollbar-thumb:hover{background:#A9AEB7}
+body[data-tema] ::-webkit-scrollbar-track{background:transparent}
+
+/* Teks di permukaan UI tidak memakai bayangan; area kamera tetap.
+   (Bayangan di atas foto berguna untuk keterbacaan.) */
+body[data-tema] #appbar *,body[data-tema] #navbar *,body[data-tema] .kartu *,
+body[data-tema] .dialog-isi *,body[data-tema] .hero *,body[data-tema] .stat *,
+body[data-tema] .menu-kartu *,body[data-tema] .tombol *{text-shadow:none !important}
 </style>
 </head>
 <body>
@@ -3270,7 +3439,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
         <p class="catatan-kecil" style="margin-top:0">Pilih rupa aplikasi. Pilihan langsung berlaku dan tersimpan di perangkat ini.</p>
         <div class="grid-tema" id="gridTema" role="radiogroup" aria-label="Gaya tampilan aplikasi">
           <button type="button" class="tema-pil" data-tema="flash" role="radio" aria-checked="false">
-            <span class="swatch sw-flash" aria-hidden="true"></span><b>Kilau Flash</b><small>Glossy, bevel, nostalgia</small>
+            <span class="swatch sw-flash" aria-hidden="true"></span><b>Kilau Flash</b><small>Biru, terang, klasik</small>
           </button>
           <button type="button" class="tema-pil" data-tema="strava" role="radio" aria-checked="false">
             <span class="swatch sw-strava" aria-hidden="true"></span><b>Strava</b><small>Tegas, oranye, bersih</small>
@@ -3279,7 +3448,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
             <span class="swatch sw-instagram" aria-hidden="true"></span><b>Instagram</b><small>Putih, gradien, membulat</small>
           </button>
           <button type="button" class="tema-pil" data-tema="modern" role="radio" aria-checked="false">
-            <span class="swatch sw-modern" aria-hidden="true"></span><b>Modern</b><small>Gelap, kaca, indigo</small>
+            <span class="swatch sw-modern" aria-hidden="true"></span><b>Modern</b><small>Gelap, indigo, tenang</small>
           </button>
         </div>
       </div>
@@ -3424,7 +3593,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.2.0';
+const VERSI = '4.3.0';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
