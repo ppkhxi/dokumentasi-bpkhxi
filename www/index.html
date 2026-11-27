@@ -2496,6 +2496,10 @@ body[data-tema="modern"] .tema-pil small{opacity:.7}
 .sel-video img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
 .sel-video .info{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.88));color:#fff;font-size:10.5px;font-weight:650;padding:18px 8px 7px;display:flex;justify-content:space-between;gap:6px}
 .sel-video .tombol-putar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;text-shadow:0 2px 10px rgba(0,0,0,.7);pointer-events:none}
+.sel-video .stt{position:absolute;top:6px;right:6px;font-size:9.5px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:999px;color:#fff;background:rgba(0,0,0,.62)}
+.sel-video .stt.terkirim{background:#1B7F3B}
+.sel-video .stt.gagal{background:#B3261E}
+.sel-video .stt.mengunggah{background:#B26A00}
 #pemutarVideo{position:fixed;inset:0;z-index:1200;display:none;flex-direction:column;gap:10px;background:rgba(4,7,12,.97);padding:calc(14px + var(--safe-t)) 14px calc(14px + var(--safe-b))}
 #pemutarVideo.tampil{display:flex}
 .pemutar-kepala{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff}
@@ -2831,6 +2835,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
           <button id="vidRekam" class="vid-rana" aria-label="Mulai merekam" title="Mulai merekam" style="display:none"></button>
         </div>
         <p class="vid-nota" id="vidNota">Klip maksimal 10 detik. Hasil tersimpan di Galeri → Video dan menunggu terkirim ke cloud room.</p>
+        <button class="tombol sekunder" id="vidKirim" style="margin:10px 0 0;width:100%">☁️ Kirim Klip ke Cloud</button>
         <div id="vidTerbaru"></div>
       </div>
     </section>
@@ -2859,6 +2864,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
       <video id="pemutarLayar" playsinline controls preload="metadata"></video>
       <div class="pemutar-info" id="pemutarInfo"></div>
       <div class="pemutar-aksi">
+        <button class="tombol sekunder" id="pemutarKirim" style="margin:0">☁️ Kirim</button>
         <button class="tombol sekunder" id="pemutarUnduh" style="margin:0">Unduh</button>
         <button class="tombol" id="pemutarHapus" style="margin:0;background:#C62828">Hapus</button>
       </div>
@@ -4733,6 +4739,8 @@ async function sinkron(diam, paksa){
 
   // Ceklis dikirim di latar belakang supaya unggahan foto tidak ikut menunggu.
   if(typeof dorongCeklistTertunda === 'function') dorongCeklistTertunda(paksa);
+  // Klip video memakai jalur & folder sendiri di cloud (ROOM/VIDEO/PETUGAS).
+  if(typeof sinkronVideo === 'function') sinkronVideo(true, paksa);
 
   const semua = await ambilSemua();
   let antri = semua.filter(f => f.status === 'pending' || f.status === 'gagal');
@@ -10540,6 +10548,7 @@ async function muatGaleriVideo(){
     '<div class="grid-video">'+
     data.map(v=>'<button class="sel-video" data-id="'+v.id+'">'+
       (v.poster?'<img src="'+v.poster+'" alt="">':'<div style="aspect-ratio:16/9;background:#111"></div>')+
+      '<span class="stt '+(v.status||'lokal')+'">'+labelStatusVideo(v.status)+'</span>'+
       '<span class="tombol-putar">▶</span>'+
       '<span class="info"><span>'+durasiTeks(v.durasi)+'</span><span>'+fmtWaktu(v.ts)+'</span></span>'+
       '</button>').join('')+'</div>';
@@ -10558,7 +10567,9 @@ async function bukaPemutarVideo(id){
   pemutarUrl = URL.createObjectURL(v.blob);
   $('pemutarLayar').src = pemutarUrl;
   $('pemutarJudul').textContent = v.nama || 'Video Kegiatan';
+  $('pemutarKirim').textContent = (v.status === 'terkirim') ? '✓ Terkirim' : '☁️ Kirim';
   $('pemutarInfo').innerHTML = fmtWaktu(v.ts)+' · '+durasiTeks(v.durasi)+' · '+(v.ukuran/1048576).toFixed(1)+' MB · '+esc(v.room||'LOKAL')+
+    ' · '+esc(labelStatusVideo(v.status)) +
     (v.namaPetugas?' · '+esc(v.namaPetugas):'')+
     (v.lat!=null?'<br>'+v.lat.toFixed(5)+', '+v.lon.toFixed(5):'');
   $('pemutarVideo').classList.add('tampil');
@@ -10611,6 +10622,85 @@ document.querySelectorAll('#filterMedia button').forEach(b=> b.onclick = ()=>{
   document.querySelectorAll('#filterMedia button').forEach(x=>x.classList.toggle('pilih', x===b));
   if(S.mediaGaleri === 'video') muatGaleriVideo(); else muatGaleri(true);
 });
+/* ---------- Kirim klip ke cloud (MEGA) ---------- */
+function labelStatusVideo(st){
+  return ({terkirim:'✓ Terkirim', mengunggah:'Mengunggah…', gagal:'Gagal kirim'})[st] || 'Di HP';
+}
+
+let sedangKirimVideo = false;
+async function kirimKlipVideo(id, diam){
+  if(typeof MegaEngine === 'undefined' || !MegaEngine.unggahVideo){ if(!diam) pesan('Mesin cloud belum siap'); return false; }
+  const v = (await ambilSemuaVideo()).find(x=>x.id===id);
+  if(!v){ if(!diam) pesan('Klip tidak ditemukan'); return false; }
+  const room = (v.room && v.room !== 'LOKAL') ? v.room : S.room;
+  if(!MegaEngine.bisaUpload(room)){
+    if(!diam) dialog('<h3>Belum Terhubung Cloud MEGA</h3><p>Room "<b>'+esc(room||'Lokal')+'</b>" belum punya otorisasi Cloud.</p>'+
+      '<p class="catatan-kecil">Hubungkan akun MEGA di <b>Setelan</b>, atau masuk room lewat <b>Link/Toket Undangan</b>.</p>'+
+      '<button class="tombol" onclick="tutupDialog(); ke(\'pengaturan\')">Buka Setelan</button>'+
+      '<button class="tombol abu" onclick="tutupDialog()">Nanti</button>');
+    return false;
+  }
+  v.status = 'mengunggah'; v.room = room; await simpanVideo(v);
+  if(S.mediaGaleri === 'video') muatGaleriVideo();
+  try{
+    await MegaEngine.unggahVideo({
+      blob: v.blob, nama: v.nama, room,
+      namaPetugas: v.namaPetugas, ts: v.ts, durasi: v.durasi,
+      lat: v.lat, lon: v.lon
+    });
+    v.status = 'terkirim'; v.pesanGagal = '';
+    await simpanVideo(v);
+    if(S.mediaGaleri === 'video') muatGaleriVideo();
+    if(!diam) pesan('Klip terkirim ke cloud room '+room);
+    return true;
+  }catch(e){
+    v.status = 'gagal'; v.pesanGagal = e.message || 'gagal';
+    await simpanVideo(v);
+    if(S.mediaGaleri === 'video') muatGaleriVideo();
+    if(!diam) pesan('Gagal kirim: '+e.message);
+    return false;
+  }
+}
+
+async function sinkronVideo(diam, paksa){
+  if(sedangKirimVideo) return;
+  if(typeof MegaEngine === 'undefined' || !MegaEngine.unggahVideo){
+    if(!diam) pesan('Mesin cloud belum siap — tutup lalu buka lagi aplikasinya');
+    return;
+  }
+  if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — klip tetap aman di HP'); return; }
+  if(!paksa && !bolehUploadSekarang()){
+    if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan tombol kirim untuk mengirim sekarang.');
+    return;
+  }
+  const semua = await ambilSemuaVideo();
+  const antri = semua.filter(v => v.status === 'lokal' || v.status === 'gagal' || !v.status);
+  const siap = antri.filter(v => MegaEngine.bisaUpload((v.room && v.room!=='LOKAL') ? v.room : S.room));
+  if(!siap.length){
+    if(!diam){
+      if(antri.length) pesan('Klip belum bisa dikirim: room belum terhubung ke Cloud MEGA');
+      else pesan('Semua video sudah terkirim');
+    }
+    return;
+  }
+  sedangKirimVideo = true;
+  let ok = 0, gagal = 0;
+  if(!diam) pesan('Mengirim '+siap.length+' klip… jangan tutup aplikasi');
+  for(const v of siap){
+    const hasil = await kirimKlipVideo(v.id, true);
+    if(hasil) ok++; else gagal++;
+  }
+  sedangKirimVideo = false;
+  if(!diam) pesan(ok+' klip terkirim'+(gagal?', '+gagal+' gagal (dicoba lagi nanti)':''));
+}
+
+$('vidKirim').onclick = ()=>sinkronVideo(false, true);
+$('pemutarKirim').onclick = async ()=>{
+  if(!pemutarId) return;
+  const id = pemutarId;
+  tutupPemutarVideo();
+  await kirimKlipVideo(id, false);
+};
 setTimeout(perbaruiJumlahVideo, 1200);
 
 /* ---------- Nav & login ---------- */

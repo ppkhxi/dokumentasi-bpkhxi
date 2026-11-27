@@ -711,6 +711,81 @@
     },
 
     // -------------------------------------------------------------
+    // VIDEO KEGIATAN (klip maks 10 detik) → <ROOM>/VIDEO/<PETUGAS>/ + indeks
+    // -------------------------------------------------------------
+
+    // Tulis/gabung _video.json di folder VIDEO room agar admin (spacedkpoint)
+    // dapat membaca daftar klip tanpa memindai subfolder.
+    async _tulisIndeksVideo(folderVideo, entri) {
+      try {
+        const lama = (folderVideo.children || []).find(x => !x.directory && x.name === '_video.json');
+        let isi = [];
+        if (lama) {
+          try {
+            const buf = await withTimeout(lama.downloadBuffer(), 30000, 'Indeks video lama tidak terbaca');
+            const j = JSON.parse(new TextDecoder().decode(buf));
+            if (Array.isArray(j.video)) isi = j.video;
+          } catch (e) {}
+        }
+        const peta = new Map(isi.map(x => [x.f, x]));
+        peta.set(entri.f, entri);
+        const bytes = new TextEncoder().encode(JSON.stringify({ v: 1, video: Array.from(peta.values()) }));
+        const aksi = folderVideo.upload({ name: '_video.json', size: bytes.byteLength }, bytes);
+        await withTimeout(new Promise((res, rej) => { aksi.on('error', rej); aksi.complete.then(res).catch(rej); }), 60000, 'Indeks video timeout');
+        if (lama) { try { await lama.delete(true); } catch (e) {} }
+      } catch (e) {
+        // Indeks opsional: klip sudah terunggah walau indeks gagal.
+        console.warn('Indeks video gagal ditulis:', e);
+      }
+    },
+
+    async unggahVideo(klip) {
+      const nama = (klip.room || '').trim().toUpperCase() || 'UMUM';
+      const { storage } = await this._storageRoom(nama);
+      if (!storage) throw new Error('Belum terhubung ke Cloud room. Login MEGA / pakai undangan Host.');
+      if (!klip || !klip.blob) throw new Error('Berkas video tidak ada');
+
+      const master = await this.dapatkanFolderMaster(storage);
+      let folderRoom = master.find(nama);
+      if (!folderRoom) folderRoom = await storage.mkdir({ name: nama, target: master });
+      if (!folderRoom) throw new Error('Folder room tidak tersedia di MEGA');
+
+      let folderVideo = folderRoom.find('VIDEO');
+      if (!folderVideo) folderVideo = await storage.mkdir({ name: 'VIDEO', target: folderRoom });
+      if (!folderVideo) throw new Error('Folder VIDEO tidak bisa dibuat di MEGA');
+
+      const idUser = (klip.namaPetugas || klip.userId || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase() || 'USER';
+      let folderUser = folderVideo.find(idUser);
+      if (!folderUser) folderUser = await storage.mkdir({ name: idUser, target: folderVideo });
+      if (!folderUser) throw new Error('Folder petugas video tidak bisa dibuat');
+
+      const bytes = new Uint8Array(await klip.blob.arrayBuffer());
+      const namaBerkas = klip.nama || `${nama}_${idUser}_${Date.now()}.mp4`;
+      const aksi = folderUser.upload({ name: namaBerkas, size: bytes.byteLength }, bytes);
+      try {
+        await withTimeout(new Promise((res, rej) => {
+          aksi.on('error', rej);
+          aksi.complete.then(res).catch(rej);
+        }), 180000, 'Unggahan video timeout (3 menit) — periksa koneksi internet.');
+      } catch (e) {
+        throw new Error(petakanErrorMega(e));
+      }
+
+      await this._tulisIndeksVideo(folderVideo, {
+        f: namaBerkas,
+        u: idUser,
+        ts: klip.ts || Date.now(),
+        d: Math.round(klip.durasi || 0),
+        uk: bytes.byteLength,
+        lat: klip.lat != null ? Number(klip.lat) : null,
+        lon: klip.lon != null ? Number(klip.lon) : null,
+        room: nama
+      });
+
+      return { ok: true, namaBerkas, ukuran: bytes.byteLength };
+    },
+
+    // -------------------------------------------------------------
     // DATA SPASIAL ROOM (KML dibagikan Host → tampil otomatis di Anggota)
     // Disimpan sebagai _spasial.json di folder room. Read-only bagi anggota.
     // -------------------------------------------------------------
