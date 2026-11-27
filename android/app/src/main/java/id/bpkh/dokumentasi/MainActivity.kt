@@ -36,7 +36,9 @@ class MainActivity : Activity() {
         const val REQ_FILE = 1001
         const val REQ_IZIN = 1002
         const val REQ_VIDEO = 1003
-        const val BATAS_VIDEO_MS = 10_000
+        const val BATAS_VIDEO_MS = 4_000   // bawaan 4 detik
+        const val BATAS_VIDEO_MIN = 2
+        const val BATAS_VIDEO_MAX = 15
     }
 
     /** Satu klip video hasil kamera HP yang siap dibaca halaman web. */
@@ -345,10 +347,15 @@ class MainActivity : Activity() {
 
         /**
          * Rekam satu klip video memakai aplikasi kamera bawaan HP (sensor & stabilizer asli,
-         * tanpa encode ulang). Batas 10 detik dikirim sebagai petunjuk durasi ke aplikasi kamera.
+         * tanpa encode ulang). Batas durasi dikirim sebagai petunjuk ke aplikasi kamera;
+         * bawaan 4 detik, halaman web boleh meminta 2–15 detik lewat rekamVideoDetik().
          */
         @JavascriptInterface
-        fun rekamVideo(): Boolean {
+        fun rekamVideo(): Boolean = rekamVideoDetik(BATAS_VIDEO_MS / 1000)
+
+        @JavascriptInterface
+        fun rekamVideoDetik(detik: Int): Boolean {
+            val batasDetik = detik.coerceIn(BATAS_VIDEO_MIN, BATAS_VIDEO_MAX)
             berkasVideo?.delete()
             berkasVideo = null
             statusVideo = "menunggu"
@@ -360,7 +367,7 @@ class MainActivity : Activity() {
                 try {
                     val niat = Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE).apply {
                         putExtra(android.provider.MediaStore.EXTRA_VIDEO_QUALITY, 1)
-                        putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, BATAS_VIDEO_MS / 1000)
+                        putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, batasDetik)
                         putExtra(
                             android.provider.MediaStore.EXTRA_OUTPUT,
                             FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", tujuan)

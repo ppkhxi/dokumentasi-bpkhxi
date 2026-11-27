@@ -2459,7 +2459,7 @@ body[data-tema="modern"] .tema-pil{background:rgba(255,255,255,.06);color:#F3F6F
 body[data-tema="modern"] .tema-pil small{opacity:.7}
 
 /* =====================================================================
-   VIDEO KEGIATAN — pengganti Kamera Ganda (klip maks 10 detik)
+       VIDEO KEGIATAN — pengganti Kamera Ganda (klip pendek, atur di Setelan)
    ===================================================================== */
 #scGanda{display:none!important}   /* menu lama sudah tidak dipakai */
 .menu-kartu[data-menu="video"] .ic{color:#FF9EC4}
@@ -2643,7 +2643,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
       </div>
       <div class="grid-menu">
         <button class="menu-kartu" data-menu="kamera"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><circle cx="12" cy="13.5" r="3.6"/></svg></span><b>Ambil Foto</b><small>Kamera + watermark otomatis</small></button>
-        <button class="menu-kartu" data-menu="video"><span class="ic"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.2"/><path d="m16.5 11 5-2.6v7.2l-5-2.6Z"/></svg></span><b>Video Kegiatan</b><small>Klip 10 detik, kamera HP</small></button>
+        <button class="menu-kartu" data-menu="video"><span class="ic"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.2"/><path d="m16.5 11 5-2.6v7.2l-5-2.6Z"/></svg></span><b>Video Kegiatan</b><small>Klip singkat, kamera HP</small></button>
         <button class="menu-kartu" data-menu="galeri"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 16l4.5-4.5 3.5 3.5 3-3L21 17"/><circle cx="8.5" cy="9.5" r="1.4"/></svg></span><b>Galeri</b><small>Lihat foto tersimpan</small></button>
         <button class="menu-kartu" data-menu="tabel"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M3.5 9.2h17M9.5 9.2V20M3.5 14.6h17"/></svg></span><b>Tabel Rekap</b><small>Unduh PDF / DOCX</small></button>
         <button class="menu-kartu" data-menu="room"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><b>Room</b><small>Pindah room kerja</small></button>
@@ -2820,11 +2820,11 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
       <div id="videoWadah">
         <div class="vid-atas">
           <span class="vid-badge">🎬 VIDEO KEGIATAN</span>
-          <span class="vid-chip" id="vidChip">Maks 10 detik</span>
+          <span class="vid-chip" id="vidChip">Maks 4 detik</span>
         </div>
         <div id="vidPratinjau">
           <video id="vidKamera" playsinline autoplay muted></video>
-          <div id="vidTimer" class="vid-timer">00:00 / 00:10</div>
+          <div id="vidTimer" class="vid-timer">00:00 / 00:04</div>
           <div id="vidPesan" class="vid-pesan"></div>
         </div>
         <div class="vid-kontrol">
@@ -2834,7 +2834,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
           </button>
           <button id="vidRekam" class="vid-rana" aria-label="Mulai merekam" title="Mulai merekam" style="display:none"></button>
         </div>
-        <p class="vid-nota" id="vidNota">Klip maksimal 10 detik. Tersimpan di Galeri → Video dan terkirim otomatis ke cloud room mulai pukul 16.00 WIB, sama seperti foto.</p>
+        <p class="vid-nota" id="vidNota">Klip maksimal 4 detik (bisa diubah di Setelan). Tersimpan di Galeri → Video dan terkirim otomatis ke cloud room mulai pukul 16.00 WIB, sama seperti foto.</p>
         <div id="vidTerbaru"></div>
       </div>
     </section>
@@ -3253,6 +3253,15 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
         <label class="f" for="inLebar">Lebar maksimal (piksel)</label>
         <input class="f" id="inLebar" type="number" min="800" max="4000" step="100" value="1600">
         <p class="catatan-kecil">Di bawah ~200 KB watermark mulai buram dan foto berkurang nilainya sebagai bukti dokumentasi.</p>
+
+        <label class="f" for="selDurasiVideo">Durasi maksimal klip video</label>
+        <select class="f" id="selDurasiVideo">
+          <option value="3">3 detik</option>
+          <option value="4">4 detik (disarankan)</option>
+          <option value="6">6 detik</option>
+          <option value="10">10 detik</option>
+        </select>
+        <p class="catatan-kecil">Berlaku untuk rekaman berikutnya. Klip lebih pendek menghemat ruang HP dan lebih cepat terkirim.</p>
         
         <button class="tombol" id="btnSimpanSetting">Simpan Setelan</button>
       </div>
@@ -3415,7 +3424,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.1.0';
+const VERSI = '4.2.0';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -10175,6 +10184,7 @@ async function muatPengaturan(){
   $('inKantor').value = S.kantor;
   $('inTarget').value = S.targetKB;
   $('inLebar').value = S.lebarMax;
+  if ($('selDurasiVideo')) $('selDurasiVideo').value = String(vidMaksDetik());
   if ($('cbTanggalWm')) {
     $('cbTanggalWm').checked = localStorage.getItem('dkpoint_tanggal_wm') === 'true';
   }
@@ -10380,6 +10390,10 @@ $('btnSimpanSetting').onclick = ()=>{
   localStorage.setItem('bpkh_kantor',S.kantor);
   localStorage.setItem('bpkh_target',S.targetKB);
   localStorage.setItem('bpkh_lebar',S.lebarMax);
+  if ($('selDurasiVideo')) {
+    const detik = parseInt($('selDurasiVideo').value, 10);
+    if (Number.isFinite(detik)) localStorage.setItem('dkpoint_video_detik', String(Math.min(15, Math.max(2, detik))));
+  }
   
   if ($('cbTanggalWm')) {
     localStorage.setItem('dkpoint_tanggal_wm', $('cbTanggalWm').checked ? 'true' : 'false');
@@ -10391,6 +10405,8 @@ $('btnSimpanSetting').onclick = ()=>{
 
   $('inKantor').value = S.kantor;
   $('inTarget').value=S.targetKB; $('inLebar').value=S.lebarMax;
+  if($('selDurasiVideo')) $('selDurasiVideo').value = String(vidMaksDetik());
+  perbaruiInfoDurasiVideo();
   document.querySelector('#overlayWm .kantor').textContent=S.kantor;
   pesan('Setelan tersimpan');
 };
@@ -10440,12 +10456,24 @@ function keluar(){
 }
 
 /* =====================================================================
-   VIDEO KEGIATAN — rekam klip maksimal 10 detik, simpan ke Galeri → Video
-   Di APK memakai aplikasi kamera bawaan HP (sensor & stabilizer asli);
-   di browser/PWA memakai kamera web dengan bitrate tinggi.
+   VIDEO KEGIATAN — rekam klip pendek (default 4 detik, bisa diubah di Setelan),
+   simpan ke Galeri → Video. Di APK memakai aplikasi kamera bawaan HP
+   (sensor & stabilizer asli); di browser/PWA memakai kamera web bitrate tinggi.
    ===================================================================== */
-const VID_MAKS_MS = 10000;
+const VID_MAKS_DEFAULT = 4;
+function vidMaksDetik(){
+  const n = parseInt(localStorage.getItem('dkpoint_video_detik') || '', 10);
+  return Number.isFinite(n) ? Math.min(15, Math.max(2, n)) : VID_MAKS_DEFAULT;
+}
+function vidMaksMs(){ return vidMaksDetik() * 1000; }
 const V = {stream:null, rec:null, chunks:[], mulai:0, timer:null, mime:''};
+function perbaruiInfoDurasiVideo(){
+  const detik = vidMaksDetik();
+  const native = !!(window.DokumentasiNative && window.DokumentasiNative.rekamVideo);
+  if($('vidChip')) $('vidChip').textContent = (native ? 'Kamera HP' : '1080p') + ' · maks ' + detik + ' detik';
+  if($('vidNota')) $('vidNota').textContent = 'Klip maksimal ' + detik + ' detik (bisa diubah di Setelan). Tersimpan di Galeri → Video dan terkirim otomatis ke cloud room mulai pukul 16.00 WIB, sama seperti foto.';
+  if($('vidTimer') && !(V.rec && V.rec.state === 'recording')) $('vidTimer').textContent = '00:00 / ' + durasiTeks(detik);
+}
 S.mediaGaleri = 'foto';
 
 function tampilPesanVideo(teks){
@@ -10535,12 +10563,12 @@ async function muatKlipTerbaru(){
 async function nyalakanVideo(){
   const N = window.DokumentasiNative;
   const native = !!(N && N.rekamVideo);
-  $('vidChip').textContent = native ? 'Kamera HP · maks 10 detik' : '1080p · maks 10 detik';
+  perbaruiInfoDurasiVideo();
   $('vidNative').style.display = native ? '' : 'none';
   $('vidRekam').style.display = native ? 'none' : '';
   $('vidBalik').style.display = native ? 'none' : '';
   $('vidPratinjau').style.display = native ? 'none' : '';
-  $('vidTimer').textContent = '00:00 / 00:10';
+  $('vidTimer').textContent = '00:00 / ' + durasiTeks(vidMaksDetik());
   $('vidTimer').classList.remove('rekam');
   $('vidRekam').classList.remove('rekam');
   muatKlipTerbaru();
@@ -10570,7 +10598,7 @@ function matikanVideo(){
   const v = $('vidKamera'); if(v) v.srcObject = null;
   V.rec = null; V.chunks = [];
   const r = $('vidRekam'); if(r) r.classList.remove('rekam');
-  const t = $('vidTimer'); if(t){ t.classList.remove('rekam'); t.textContent = '00:00 / 00:10'; }
+  const t = $('vidTimer'); if(t){ t.classList.remove('rekam'); t.textContent = '00:00 / ' + durasiTeks(vidMaksDetik()); }
   tutupPemutarVideo();
 }
 
@@ -10601,8 +10629,8 @@ function mulaiRekamVideo(){
   if(V.timer) clearInterval(V.timer);
   V.timer = setInterval(()=>{
     const lewat = Date.now() - V.mulai;
-    $('vidTimer').textContent = durasiTeks(Math.min(VID_MAKS_MS, lewat)/1000)+' / 00:10';
-    if(lewat >= VID_MAKS_MS) hentikanRekamVideo();
+    $('vidTimer').textContent = durasiTeks(Math.min(vidMaksMs(), lewat)/1000)+' / '+durasiTeks(vidMaksDetik());
+    if(lewat >= vidMaksMs()) hentikanRekamVideo();
   }, 100);
 }
 
@@ -10696,8 +10724,13 @@ async function rekamKameraHp(){
       tampilPesanVideo('Gagal menyimpan klip: '+e.message);
     }finally{ sedangRekamHp = false; }
   }, 350);
-  tampilPesanVideo('Merekam dengan kamera HP… kembali ke aplikasi setelah selesai (maksimal 10 detik).');
-  try{ N.rekamVideo(); }catch(_){}
+  const batasDetik = vidMaksDetik();
+  tampilPesanVideo('Merekam dengan kamera HP… kembali ke aplikasi setelah selesai (maksimal '+batasDetik+' detik).');
+  try{
+    // APK baru menerima durasi dari halaman; APK lama tetap memakai batas bawaannya.
+    if(typeof N.rekamVideoDetik === 'function') N.rekamVideoDetik(batasDetik);
+    else N.rekamVideo();
+  }catch(_){}
 }
 
 /* ---------- Galeri → Video ---------- */
