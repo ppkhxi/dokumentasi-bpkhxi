@@ -54,6 +54,8 @@
   // Cache sesi upload anggota agar tidak re-login setiap foto
   const _guestStorageMap = new Map();
   const _targetFolderCache = new Map();
+  // Pasangan kode+tautan undangan per room, hanya selama aplikasi terbuka.
+  const _undanganSesi = new Map();
 
   // Kumpulkan berkas foto dari folder room: berkas langsung di room (format lama)
   // dan berkas di subfolder per petugas (format baru).
@@ -297,6 +299,7 @@
     _folderMaster = null;
     _guestStorageMap.clear();
     _targetFolderCache.clear();
+    _undanganSesi.clear();
   }
 
   function dataUrlKeUint8Array(dataUrl) {
@@ -335,6 +338,7 @@
         await withTimeout(storage.ready, 30000, 'Gagal login ke MEGA (koneksi timeout).');
         _storageInstance = storage;
         simpanKredensial(email, password);
+        _undanganSesi.clear();   // undangan lama memakai kredensial sebelumnya
         return { ok: true, email: storage.email };
       } catch (err) {
         _storageInstance = null;
@@ -516,13 +520,22 @@
       const kred = bacaKredensial();
       if (!kred) throw new Error('Kredensial Host tidak ditemukan. Login ulang ke MEGA.');
 
+      // Pakai pasangan kode+tautan yang sama selama aplikasi terbuka supaya Host
+      // tidak tertukar ketika menutup lalu membuka lagi dialog undangan. Cache
+      // hanya di memori; tidak ada kredensial tambahan yang ditulis ke HP.
+      const kunciCache = (r.id || r.nama) + '|' + (kred.email || '');
+      const tersimpan = _undanganSesi.get(kunciCache);
+      if (tersimpan && tersimpan.room === r.nama) return { ...tersimpan.hasil };
+
       const kode = kodeUndanganAcak();
       const kunci = b64urlDari(crypto.getRandomValues(new Uint8Array(16)));
       const isi = await segelUndangan({ v: 2, n: r.nama, e: kred.email, p: kred.password, t: Date.now() }, kode, kunci);
       const token = 'DKP2-' + isi;
       const dasar = location.origin + location.pathname;
       const link = dasar + '?undangan=' + encodeURIComponent(token) + '&kunci=' + encodeURIComponent(kunci);
-      return { kode, kunci, token, link, linkQr: link + '&kode=' + encodeURIComponent(kode) };
+      const hasil = { kode, kunci, token, link, linkQr: link + '&kode=' + encodeURIComponent(kode) };
+      _undanganSesi.set(kunciCache, { room: r.nama, hasil });
+      return { ...hasil };
     },
 
     normalisasiNamaRoom(nama) { return normalisasiNamaRoom(nama); },
@@ -598,6 +611,7 @@
       this.simpanSemuaRoom(list);
       this._lupakanDiRegistri(target.nama);
       this._lupakanDiRegistri(idAtauNama);
+      _undanganSesi.clear();   // undangan room yang dihapus tidak dipakai lagi
       const aktif = this.getRoomAktif();
       if (aktif && (aktif.id === idAtauNama || aktif.nama === idAtauNama)) {
         this.setRoomAktif(list.length > 0 ? list[0].id : '');
