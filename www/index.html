@@ -1622,6 +1622,496 @@ input.f:focus,select.f:focus,textarea.f:focus{
   background:linear-gradient(#2C4E7E,#0E2340);color:#fff;border:1px solid #0B1E3C;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 20px rgba(6,24,46,.45);
 }
+
+/* =====================================================================
+   TEMA 4.0 "FLASH NOSTALGIA" — sentuhan era Flash/Skinz tahun 2000-an.
+   Kaca mengkilap (gloss sweep), bevel tebal, garis tepi hitam-navy,
+   bayangan keras, pola pinstripe & titik. Fungsi tidak diubah.
+   ===================================================================== */
+#app{
+  --garis:#5C86B8;
+  --teks:#0A2145;
+  --teks-2:#2F537F;
+  --teks-3:#6A87AA;
+  --rad-md:11px;--rad-lg:14px;--rad-xl:18px;
+  font-family:'Trebuchet MS',Tahoma,Verdana,'Segoe UI',sans-serif;
+  letter-spacing:.1px;
+}
+
+/* --- Latar: panggung biru aqua dengan pinstripe & titik --- */
+body{background:linear-gradient(#0B2A5B,#06152C)}
+#layar{
+  background:
+    radial-gradient(140% 60% at 50% -12%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 1px, rgba(255,255,255,0) 1px 5px),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.20) 0 8px, rgba(255,255,255,0) 8px 18px),
+    linear-gradient(#BFE0FF 0%,#8FC2F2 45%,#6FA8E4 100%);
+  box-shadow:inset 0 0 0 2px rgba(10,33,69,.18), inset 0 14px 26px rgba(10,33,69,.14);
+}
+
+/* --- Bilah atas: logam biru mengkilap, huruf timbul --- */
+#appbar{
+  background:
+    linear-gradient(rgba(255,255,255,.72) 0%, rgba(255,255,255,.10) 42%, rgba(255,255,255,0) 43%),
+    linear-gradient(#6EC3FF 0%,#2C86EA 44%,#1560C4 46%,#0B3C74 100%);
+  border-top:1px solid #9BD6FF;
+  border-bottom:2px solid #06264B;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 -3px 8px rgba(0,0,0,.28),0 6px 16px rgba(6,38,75,.45);
+}
+#judulBar{
+  color:#fff;font-weight:800;font-size:16px;letter-spacing:.6px;
+  text-shadow:0 1px 0 #0B3C74,0 2px 0 rgba(0,0,0,.35),0 0 12px rgba(120,220,255,.55);
+}
+#btnBack,.aksi-bar{
+  border:1px solid #06264B;border-radius:11px;color:#fff;
+  background:
+    radial-gradient(80% 60% at 50% 8%, rgba(255,255,255,.65), rgba(255,255,255,0) 70%),
+    linear-gradient(#7FD0FF 0%,#2E8BE8 48%,#14539E 100%);
+  box-shadow:inset 0 1px 0 #fff,0 2px 0 #06264B,0 4px 10px rgba(6,38,75,.4);
+  text-shadow:0 1px 1px rgba(0,0,0,.45);
+}
+#btnBack:active,.aksi-bar:active{
+  transform:translateY(1px);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.45),0 0 0 #06264B;
+}
+#pilStatus{
+  background:
+    radial-gradient(90% 70% at 50% 0%, #FFFFFF 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(#F7FBFF 0%,#D7E7FA 48%,#AFC8E6 100%);
+  border:1px solid #3C6396;border-radius:11px;color:#0A2145;
+  box-shadow:inset 0 1px 0 #fff,0 2px 0 #6E93C2,0 3px 8px rgba(6,38,75,.28);
+  font-weight:800;letter-spacing:.4px;
+}
+#pilStatus.offline{
+  background:radial-gradient(90% 70% at 50% 0%, #FFE7A8 0%, rgba(255,231,168,0) 70%),linear-gradient(#FFC95B,#F08000);
+  color:#3D2100;border-color:#7A3C00;text-shadow:0 1px 0 rgba(255,255,255,.55);
+}
+
+/* --- Navigasi bawah: lempeng krom berkilau --- */
+#navbar{
+  background:
+    radial-gradient(120% 90% at 50% -30%, #FFFFFF 0%, rgba(255,255,255,.35) 40%, rgba(255,255,255,0) 62%),
+    linear-gradient(#FDFEFF 0%,#DCEBFB 46%,#B7CEEA 100%);
+  border:2px solid #33567F;border-radius:20px;
+  box-shadow:inset 0 2px 0 #fff,inset 0 -3px 6px rgba(10,33,69,.22),0 4px 0 #8AA8C9,0 12px 22px rgba(6,38,75,.32);
+}
+.nav-item{color:#2A4A72;font-weight:700}
+.nav-item.aktif{color:#08203F}
+.nav-item.aktif .ic{
+  background:
+    radial-gradient(80% 70% at 50% 6%, rgba(255,255,255,.95), rgba(255,255,255,0) 62%),
+    linear-gradient(#5FC4FF 0%,#1C79D8 50%,#0B4C9B 100%);
+  color:#fff;border:1px solid #05264B;border-radius:10px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 0 #05264B,0 0 10px rgba(60,180,255,.55);
+}
+.nav-fab button{
+  background:
+    radial-gradient(70% 60% at 50% 12%, #FFF2C4 0%, rgba(255,242,196,0) 60%),
+    radial-gradient(circle at 50% 42%, #FFB43C 0%, #F07800 62%, #B24C00 100%);
+  border:2px solid #7A3400;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 4px 0 #7A3400,0 10px 20px rgba(122,52,0,.45),0 0 18px rgba(255,150,20,.45);
+}
+
+/* --- Hero & kartu menu: panel kaca gelap bergaya Flash --- */
+.hero{
+  background:
+    radial-gradient(120% 70% at 50% -16%, rgba(150,220,255,.55), rgba(150,220,255,0) 62%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 10px, rgba(255,255,255,0) 10px 20px),
+    linear-gradient(170deg,#2F6FBF 0%,#123A72 55%,#081A33 100%);
+  border:2px solid #05142B;border-radius:18px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -4px 10px rgba(0,0,0,.45),0 5px 0 rgba(5,20,43,.55),0 14px 26px rgba(5,20,43,.45);
+}
+.hero .nama{text-shadow:0 2px 0 rgba(0,0,0,.5),0 0 16px rgba(110,200,255,.5)}
+.hero .halo{color:#FFD37A;text-shadow:0 1px 0 rgba(0,0,0,.55)}
+.hero .room-chip{
+  border:1px solid #0B3C74;border-radius:999px;
+  background:radial-gradient(90% 70% at 50% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 68%),linear-gradient(#5AA9EE,#1C63B8);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 0 #0B3C74,0 4px 10px rgba(0,0,0,.35);
+  text-shadow:0 1px 1px rgba(0,0,0,.45);
+}
+.stat,.menu-kartu,#spandukPasang{
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(150,220,255,.35), rgba(150,220,255,0) 65%),
+    linear-gradient(#2A5590 0%,#16345F 52%,#0B1F3D 100%);
+  border:2px solid #05142B;border-radius:16px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.42),inset 0 -3px 8px rgba(0,0,0,.4),0 4px 0 rgba(5,20,43,.55),0 10px 20px rgba(5,20,43,.35);
+}
+.stat b{text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 14px rgba(120,200,255,.45)}
+.menu-kartu:active{transform:translateY(2px) scale(.99);box-shadow:inset 0 2px 8px rgba(0,0,0,.55),0 1px 0 #05142B}
+.menu-kartu b{letter-spacing:.2px;text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.menu-kartu small{color:#A9C6E6}
+.menu-kartu .ic{
+  border:1px solid rgba(255,255,255,.5);border-radius:12px;
+  background-image:radial-gradient(75% 65% at 50% 8%, rgba(255,255,255,.85), rgba(255,255,255,0) 70%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 0 rgba(0,0,0,.35),0 0 12px rgba(120,200,255,.25);
+}
+.menu-kartu .ic svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.menu-kartu[data-menu="kamera"] .ic{color:#FFB15C}
+.menu-kartu[data-menu="ganda"] .ic{color:#DDA6FF}
+.menu-kartu[data-menu="galeri"] .ic{color:#8CF0A8}
+.menu-kartu[data-menu="tabel"] .ic{color:#FFD37A}
+.menu-kartu[data-menu="room"] .ic{color:#8FD0FF}
+.menu-kartu[data-menu="peta"] .ic{color:#9FE8FF}
+.menu-kartu[data-menu="antrian"] .ic{color:#FF9E94}
+.menu-kartu[data-menu="pengaturan"] .ic{color:#D8E6F6}
+
+/* --- Kartu isi: panel putih mengkilap dengan bingkai berlapis --- */
+.kartu{
+  background:
+    radial-gradient(120% 60% at 50% -10%, #FFFFFF 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(#FFFFFF 0%,#EAF3FF 100%);
+  border:2px solid #3B6396;border-radius:16px;
+  box-shadow:inset 0 2px 0 #fff,inset 0 -3px 0 rgba(59,99,150,.18),0 4px 0 #A9C3E0,0 10px 22px rgba(10,33,69,.22);
+}
+.kartu-judul{
+  color:#0A2145;font-weight:800;letter-spacing:1.1px;font-size:11.5px;
+  text-transform:uppercase;text-shadow:0 1px 0 #fff;
+}
+
+/* --- Tombol kaca: pisau cahaya di atas, bevel bawah, bayangan keras --- */
+#app .tombol{
+  background:
+    radial-gradient(90% 68% at 50% -6%, rgba(255,255,255,.92) 0%, rgba(255,255,255,.28) 44%, rgba(255,255,255,0) 62%),
+    linear-gradient(#6FC6FF 0%,#2C86EA 47%,#1663C6 49%,#0B4088 100%);
+  border:2px solid #05264B;border-radius:13px;color:#fff;font-weight:800;letter-spacing:.4px;
+  text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 10px rgba(120,210,255,.35);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 -3px 6px rgba(0,0,0,.28),0 3px 0 #05264B,0 7px 14px rgba(6,38,75,.35);
+}
+#app .tombol:active{
+  background:linear-gradient(#3E9BEA 0%,#1466C0 48%,#0A3E80 100%);
+  transform:translateY(2px);
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.55),0 1px 0 #05264B;
+}
+#app .tombol.sekunder,#app .tombol.abu,#app .tombol-mini{
+  background:
+    radial-gradient(90% 68% at 50% -6%, #FFFFFF 0%, rgba(255,255,255,.55) 46%, rgba(255,255,255,0) 64%),
+    linear-gradient(#FFFFFF 0%,#E7F0FB 46%,#CBDCEE 100%);
+  color:#0A2145;border:2px solid #3B6396;border-radius:13px;
+  text-shadow:0 1px 0 #fff;
+  box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 rgba(59,99,150,.22),0 3px 0 #A9C3E0,0 6px 12px rgba(10,33,69,.18);
+}
+#app .tombol.sekunder:active,#app .tombol.abu:active,#app .tombol-mini:active{
+  background:linear-gradient(#DFEAF7 0%,#FFFFFF 100%);transform:translateY(2px);
+  box-shadow:inset 0 2px 5px rgba(10,33,69,.3),0 1px 0 #A9C3E0;
+}
+#app .tombol-mini{font-weight:800;padding:8px 15px}
+#app .tombol-mini.utama{
+  background:linear-gradient(#6FC6FF 0%,#2C86EA 47%,#0B4088 100%);color:#fff;
+  border-color:#05264B;text-shadow:0 1px 0 rgba(0,0,0,.5);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 3px 0 #05264B;
+}
+
+/* --- Kolom isian: cekung dengan bevel terang-gelap --- */
+label.f{color:#20456F;font-weight:800}
+input.f,select.f,textarea.f{
+  background:linear-gradient(#DDE9F7 0%,#FFFFFF 22%,#FFFFFF 100%);
+  border:2px solid #6B8FBC;border-radius:11px;color:#0A2145;
+  box-shadow:inset 0 3px 6px rgba(10,33,69,.22),inset 0 -1px 0 #fff,0 1px 0 #fff;
+}
+input.f:focus,select.f:focus,textarea.f:focus{
+  border-color:#0F5BB5;
+  box-shadow:inset 0 3px 6px rgba(10,33,69,.16),0 0 0 3px rgba(94,180,255,.45),0 0 12px rgba(94,180,255,.5);
+}
+
+/* --- Filter, chip, tab, aksi: kancing kaca --- */
+.filter button,.room-chip,.aksi-layer,.tab-btn-lapisan,.bar-aksi-tabel .btn-aksi-tabel{
+  border:2px solid #3B6396;border-radius:999px;font-weight:800;
+  background:
+    radial-gradient(90% 68% at 50% -8%, #FFFFFF 0%, rgba(255,255,255,.5) 48%, rgba(255,255,255,0) 66%),
+    linear-gradient(#FFFFFF 0%,#E6F0FB 50%,#C8DBEF 100%);
+  color:#12335C;
+  box-shadow:inset 0 2px 0 #fff,0 2px 0 #A9C3E0,0 4px 10px rgba(10,33,69,.16);
+}
+.filter button.pilih,.tab-btn-lapisan.aktif{
+  background:
+    radial-gradient(90% 68% at 50% -8%, rgba(255,255,255,.85) 0%, rgba(255,255,255,.2) 46%, rgba(255,255,255,0) 64%),
+    linear-gradient(#5FB6FF 0%,#1C79D8 48%,#0B4C9B 100%);
+  color:#fff;border-color:#05264B;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 2px 0 #05264B,0 0 14px rgba(60,180,255,.55);
+  text-shadow:0 1px 0 rgba(0,0,0,.45);
+}
+.tab-wadah-lapisan{
+  background:linear-gradient(#B9CEE6,#DDE9F7);border:2px solid #3B6396;
+  box-shadow:inset 0 3px 7px rgba(10,33,69,.28);
+}
+
+/* --- Dialog & snackbar --- */
+#dialog{background:rgba(4,16,32,.7)}
+.dialog-isi{
+  background:
+    radial-gradient(120% 70% at 50% -12%, #FFFFFF 0%, rgba(255,255,255,0) 68%),
+    linear-gradient(#FFFFFF 0%,#E4EFFC 100%);
+  border:2px solid #234E80;border-radius:18px;
+  box-shadow:inset 0 2px 0 #fff,0 6px 0 rgba(4,16,32,.35),0 24px 44px rgba(4,16,32,.6);
+}
+#snackbar{
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgba(255,255,255,.35), rgba(255,255,255,0) 70%),
+    linear-gradient(#2F5E96 0%,#0B2549 100%);
+  border:2px solid #04101F;border-radius:14px;color:#fff;font-weight:700;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 8px 22px rgba(4,16,32,.55);
+}
+
+/* --- Login: panggung bintang + panel kaca --- */
+#scLogin{
+  background:
+    radial-gradient(70% 50% at 50% 6%, rgba(255,255,255,.55), rgba(255,255,255,0) 62%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 9px, rgba(255,255,255,0) 9px 20px),
+    radial-gradient(circle at 50% 0%, #4FA8F5 0%, #1B5CAE 48%, #06122A 100%);
+}
+.login-logo{
+  background:
+    radial-gradient(80% 65% at 50% 8%, #FFFFFF 0%, rgba(255,255,255,.35) 42%, rgba(255,255,255,0) 60%),
+    linear-gradient(#FFCC66 0%,#FF9A1F 46%,#D96600 100%);
+  border:2px solid #7A3400;border-radius:16px;color:#4A1F00;font-weight:900;
+  text-shadow:0 1px 0 rgba(255,255,255,.7);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.85),0 4px 0 #7A3400,0 10px 22px rgba(0,0,0,.45),0 0 26px rgba(255,150,20,.5);
+}
+.login-isi h1{
+  color:#fff;letter-spacing:1.2px;
+  text-shadow:0 2px 0 #0B3C74,0 4px 0 rgba(0,0,0,.35),0 0 22px rgba(120,210,255,.6);
+}
+.login-isi .sub{color:#DCEBFF;text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.kotak-login{
+  background:
+    radial-gradient(120% 60% at 50% -10%, #FFFFFF 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(#FFFFFF 0%,#E6F0FC 100%);
+  border:2px solid #234E80;border-radius:18px;
+  box-shadow:inset 0 2px 0 #fff,0 6px 0 rgba(4,16,32,.35),0 22px 40px rgba(4,16,32,.55);
+}
+
+/* ============ KAMERA: gadget krom gelap era Flash ============ */
+#scKamera{
+  background:
+    radial-gradient(120% 70% at 50% -18%, #2B3648 0%, #10151E 55%, #05070A 100%);
+}
+#wadahVideo{
+  background:
+    radial-gradient(100% 50% at 50% 0%, rgba(120,180,255,.10), rgba(120,180,255,0) 60%),
+    linear-gradient(#11161F 0%,#05070A 100%);
+}
+.makior-header{
+  background:
+    radial-gradient(120% 120% at 50% -60%, rgba(255,255,255,.45), rgba(255,255,255,0) 65%),
+    linear-gradient(#39465C 0%,#1B2331 52%,#0B0F16 100%);
+  border-bottom:2px solid #000;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.28),0 4px 12px rgba(0,0,0,.65);
+  border-radius:0 0 14px 14px;
+}
+.makior-title{
+  color:#fff;font-weight:900;letter-spacing:.5px;
+  text-shadow:0 1px 0 #000,0 0 12px rgba(120,200,255,.55);
+}
+.makior-badge{
+  background:radial-gradient(80% 70% at 50% 0%, #FFD79A 0%, rgba(255,215,154,0) 65%),linear-gradient(#FFA83C,#F07800);
+  color:#3D1C00;border:1px solid #7A3400;border-radius:6px;font-weight:900;
+  text-shadow:0 1px 0 rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 2px 0 #7A3400,0 0 12px rgba(255,140,20,.55);
+}
+.btn-makior-top{
+  border:1px solid #000;border-radius:50%;color:#EAF4FF;
+  background:
+    radial-gradient(70% 60% at 50% 10%, rgba(255,255,255,.85), rgba(255,255,255,0) 62%),
+    linear-gradient(#4A5A73 0%,#232C3B 54%,#0C1118 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 2px 0 #000,0 4px 10px rgba(0,0,0,.55);
+}
+.btn-makior-top:active{transform:translateY(1px) scale(.96);box-shadow:inset 0 3px 7px rgba(0,0,0,.7)}
+.btn-makior-top.aktif{
+  border-color:#7A3400;color:#FFD9A0;
+  background:
+    radial-gradient(70% 60% at 50% 10%, #FFE1B0, rgba(255,225,176,0) 62%),
+    linear-gradient(#F79A2A 0%,#D96600 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 0 #7A3400,0 0 14px rgba(255,150,20,.6);
+}
+.makior-chip-gps{
+  border:1px solid #000;border-radius:999px;
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgba(255,255,255,.35), rgba(255,255,255,0) 70%),
+    linear-gradient(#2A3648 0%,#0B1119 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #000,0 4px 10px rgba(0,0,0,.5);
+  color:#CFE9FF;
+}
+.makior-chip-gps.kunci{color:#B4FFCB;border-color:#0B4B22;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 14px rgba(48,209,88,.55)}
+.makior-status-grid{gap:5px}
+.makior-stat-item{
+  background:
+    radial-gradient(90% 80% at 50% -10%, rgba(255,255,255,.3), rgba(255,255,255,0) 68%),
+    linear-gradient(#2A3547 0%,#0C1219 100%);
+  border:1px solid #000;border-radius:8px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 0 rgba(0,0,0,.85),0 3px 8px rgba(0,0,0,.45);
+}
+.makior-stat-lbl{color:#8FA6C2}
+.makior-stat-val{color:#F2FAFF;text-shadow:0 0 8px rgba(120,200,255,.45)}
+#bingkai34{
+  border:2px solid #000;border-radius:18px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 0 2px #3A4A63,0 10px 30px rgba(0,0,0,.85),0 0 26px rgba(70,150,255,.22);
+}
+.bar-zoom{
+  border:1px solid #000;border-radius:999px;
+  background:radial-gradient(90% 80% at 50% 0%, rgba(255,255,255,.3), rgba(255,255,255,0) 70%),linear-gradient(#2C3849,#0A0F16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 0 #000,0 6px 14px rgba(0,0,0,.55);
+}
+.btn-zoom{color:#CFE1F5;font-weight:900}
+.btn-zoom.aktif{
+  background:radial-gradient(80% 70% at 50% 10%, #FFE0AE, rgba(255,224,174,0) 62%),linear-gradient(#F79A2A,#D96600);
+  color:#3D1C00;text-shadow:0 1px 0 rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 0 12px rgba(255,150,20,.6);
+}
+#overlayWm{
+  border:1px solid #000;border-radius:12px;
+  background:radial-gradient(120% 90% at 50% -20%, rgba(255,255,255,.22), rgba(255,255,255,0) 65%),linear-gradient(#1B2430,#070B10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 rgba(0,0,0,.7),0 8px 18px rgba(0,0,0,.6);
+}
+#overlayLogo{border:1px solid #000;border-radius:8px;background:linear-gradient(#FFFFFF,#DCE7F6);box-shadow:inset 0 1px 0 #fff,0 2px 0 #000}
+#inCatatanKamera{
+  border:1px solid #000;border-radius:999px;color:#EAF4FF;
+  background:radial-gradient(90% 80% at 50% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 70%),linear-gradient(#222C3A,#080D13);
+  box-shadow:inset 0 3px 7px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.14);
+}
+#inCatatanKamera:focus{border-color:#F07C00;box-shadow:inset 0 3px 7px rgba(0,0,0,.6),0 0 0 2px rgba(240,124,0,.55),0 0 14px rgba(255,150,20,.45)}
+.chip-tag-catatan{
+  border:1px solid #000;border-radius:999px;color:#D6E6F7;
+  background:radial-gradient(90% 80% at 50% 0%, rgba(255,255,255,.3), rgba(255,255,255,0) 70%),linear-gradient(#2C3849,#0A0F16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #000;
+}
+.chip-tag-catatan.aktif{
+  background:radial-gradient(80% 70% at 50% 8%, #FFE0AE, rgba(255,224,174,0) 62%),linear-gradient(#F79A2A,#D96600);
+  color:#3D1C00;border-color:#7A3400;text-shadow:0 1px 0 rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 2px 0 #7A3400,0 0 14px rgba(255,150,20,.6);
+}
+.btn-opsi-wm{
+  border:1px solid #000;border-radius:999px;color:#CFE1F5;
+  background:radial-gradient(90% 80% at 50% 0%, rgba(255,255,255,.28), rgba(255,255,255,0) 70%),linear-gradient(#2C3849,#0A0F16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #000;
+}
+.btn-opsi-wm.aktif{
+  background:radial-gradient(80% 70% at 50% 8%, #E9FFD6, rgba(233,255,214,0) 62%),linear-gradient(#5BC46A,#178A34);
+  color:#06240C;border-color:#04440F;font-weight:800;text-shadow:0 1px 0 rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 2px 0 #04440F,0 0 12px rgba(48,209,88,.55);
+}
+.btn-opsi-wm.aktif .indikator-titik{background:#EAFFEF;box-shadow:0 0 8px #EAFFEF}
+.makior-bar-kamera{
+  border-top:2px solid #000;
+  background:
+    radial-gradient(120% 120% at 50% -60%, rgba(255,255,255,.35), rgba(255,255,255,0) 65%),
+    linear-gradient(#39465C 0%,#1B2331 52%,#080B11 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 -6px 18px rgba(0,0,0,.6);
+}
+.btn-makior-kontrol{
+  border:1px solid #000;color:#EAF4FF;
+  background:radial-gradient(70% 60% at 50% 10%, rgba(255,255,255,.85), rgba(255,255,255,0) 62%),linear-gradient(#4A5A73 0%,#232C3B 54%,#0C1118 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 #000,0 6px 12px rgba(0,0,0,.55);
+}
+.btn-makior-kontrol:active{transform:translateY(2px) scale(.96);box-shadow:inset 0 3px 8px rgba(0,0,0,.75),0 1px 0 #000}
+#shutter{
+  border:3px solid #05080C;
+  background:
+    radial-gradient(70% 60% at 50% 8%, rgba(255,255,255,.55), rgba(255,255,255,0) 62%),
+    linear-gradient(#4C5C76 0%,#1B2331 55%,#080B11 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 0 0 3px #2C3849,0 0 0 5px #000,0 0 22px rgba(90,180,255,.45),0 8px 18px rgba(0,0,0,.7);
+}
+#shutter .shutter-dalam{
+  background:
+    radial-gradient(70% 60% at 50% 12%, #FFFFFF 0%, #EAF2FB 45%, #B9CBE0 100%);
+  box-shadow:inset 0 2px 0 #fff,inset 0 -3px 8px rgba(10,33,69,.35);
+}
+#shutter:active .shutter-dalam{background:radial-gradient(70% 60% at 50% 12%,#FFE7C2 0%,#FFB655 45%,#D96600 100%)}
+
+/* ============ KAMERA GANDA: bingkai krom ============ */
+#scGanda{background:radial-gradient(120% 70% at 50% -18%, #2B3648 0%, #10151E 55%, #05070A 100%)}
+#gandaWadah{background:linear-gradient(#11161F,#05070A)}
+.ganda-sel{
+  border:2px solid #000;border-radius:16px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 0 2px #3A4A63,0 8px 22px rgba(0,0,0,.75);
+}
+.ganda-tag{
+  background:radial-gradient(80% 70% at 50% 0%, #FFE0AE, rgba(255,224,174,0) 62%),linear-gradient(#F79A2A,#D96600);
+  color:#3D1C00;border:1px solid #7A3400;border-radius:999px;font-weight:900;
+  text-shadow:0 1px 0 rgba(255,255,255,.6);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 2px 0 #7A3400;
+}
+#gandaChipGps{border:1px solid #000;border-radius:999px;background:radial-gradient(90% 70% at 50% 0%, rgba(255,255,255,.3), rgba(255,255,255,0) 70%),linear-gradient(#2A3648,#0B1119);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 0 #000}
+#barGanda{
+  border-top:2px solid #000;
+  background:radial-gradient(120% 120% at 50% -60%, rgba(255,255,255,.3), rgba(255,255,255,0) 65%),linear-gradient(#39465C 0%,#1B2331 52%,#080B11 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 -6px 18px rgba(0,0,0,.6);
+}
+#gandaModeRow{
+  background:linear-gradient(#1D2632,#080D13);border:1px solid #000;border-radius:999px;
+  box-shadow:inset 0 3px 6px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);
+}
+.ganda-mode{color:#9BB4D0;font-weight:900}
+.ganda-mode.aktif{
+  background:radial-gradient(80% 70% at 50% 8%, #FFE0AE, rgba(255,224,174,0) 62%),linear-gradient(#F79A2A,#D96600);
+  color:#3D1C00;text-shadow:0 1px 0 rgba(255,255,255,.6);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 2px 0 #7A3400,0 0 12px rgba(255,150,20,.55);
+}
+.ganda-bulat{
+  border:1px solid #000;
+  background:radial-gradient(70% 60% at 50% 10%, rgba(255,255,255,.8), rgba(255,255,255,0) 62%),linear-gradient(#4A5A73 0%,#232C3B 54%,#0C1118 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 #000,0 5px 10px rgba(0,0,0,.5);
+}
+.ganda-bulat:active{transform:translateY(2px);box-shadow:inset 0 3px 7px rgba(0,0,0,.75),0 1px 0 #000}
+.ganda-bulat.nyala{
+  background:radial-gradient(70% 60% at 50% 10%, #FFE0AE, rgba(255,224,174,0) 62%),linear-gradient(#F79A2A,#D96600);
+  color:#3D1C00;border-color:#7A3400;box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 2px 0 #7A3400,0 0 14px rgba(255,150,20,.6);
+}
+#gandaRana{
+  background:radial-gradient(70% 60% at 50% 12%, #FFFFFF 0%, #EAF2FB 45%, #B9CBE0 100%);
+  border:4px solid #000;
+  box-shadow:inset 0 2px 0 #fff,inset 0 -3px 8px rgba(10,33,69,.35),0 0 0 3px #2C3849,0 0 0 5px #000,0 0 20px rgba(90,180,255,.45),0 8px 16px rgba(0,0,0,.7);
+}
+#gandaRana:active{transform:translateY(2px) scale(.97)}
+#gandaRana.video,#gandaRana.rekam{
+  background:radial-gradient(70% 60% at 50% 12%, #FFB0A8 0%, #F4443A 45%, #A8140C 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 0 0 3px #2C3849,0 0 0 5px #000,0 0 22px rgba(255,59,48,.6),0 8px 16px rgba(0,0,0,.7);
+}
+/* --- Tabel rekap: kepala logam + baris zebra --- */
+.bungkus-tabel{
+  border:2px solid #3B6396;border-radius:14px;
+  box-shadow:inset 0 2px 0 #fff,0 4px 0 #A9C3E0,0 10px 20px rgba(10,33,69,.2);
+}
+th{
+  background:
+    radial-gradient(120% 90% at 50% -40%, #FFFFFF 0%, rgba(255,255,255,0) 62%),
+    linear-gradient(#6FB6F2 0%,#2F7BCB 52%,#1B5799 100%);
+  color:#fff;border-bottom:2px solid #0B3C74;
+  text-shadow:0 1px 0 rgba(0,0,0,.45);
+}
+tr.baris-data:nth-child(odd) td{background:#F4F9FF}
+tr.baris-data:hover td{background:#E3F0FF}
+tr.baris-data.baris-terpilih td{background:#D3EAFF !important}
+
+/* --- Galeri: ubin foto berbingkai --- */
+.sel-galeri{
+  border:2px solid #3B6396;border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 0 #A9C3E0,0 5px 12px rgba(10,33,69,.22);
+}
+.sel-galeri.terpilih{border-color:#0B3C74;box-shadow:0 0 0 3px rgba(94,180,255,.65),0 4px 12px rgba(6,38,75,.35)}
+
+/* --- Tombol bulat capture cepat: kancing hijau berkilau --- */
+#bubbleCapture{
+  background:
+    radial-gradient(70% 60% at 50% 10%, #D6FFE0 0%, rgba(214,255,224,0) 62%),
+    linear-gradient(#5BC46A 0%,#1F9E43 52%,#0D6A2A 100%);
+  border:2px solid #0A4A1E;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.75),0 4px 0 #0A4A1E,0 10px 20px rgba(10,74,30,.45),0 0 16px rgba(48,209,88,.45);
+}
+#bubbleCapture:active{transform:translateY(2px) scale(.96);box-shadow:inset 0 3px 8px rgba(0,0,0,.5),0 1px 0 #0A4A1E}
+
+/* --- Spanduk mode lokal: panel kaca putih --- */
+#spandukSimulasi{
+  background:
+    radial-gradient(120% 70% at 50% -10%, #FFFFFF 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(#FFFFFF 0%,#E7F1FD 100%);
+  border:2px solid #3B6396;border-radius:14px;
+  box-shadow:inset 0 2px 0 #fff,0 3px 0 #A9C3E0,0 8px 16px rgba(10,33,69,.18);
+}
+
+/* panel hasil & galeri: bingkai kaca */
+.hasil-item{background:linear-gradient(#2A3547,#0C1219);border:1px solid #000;border-radius:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 0 #000,0 8px 16px rgba(0,0,0,.5)}
+#gandaHasil{background:radial-gradient(120% 70% at 50% -18%, #2B3648 0%, #10151E 55%, #05070A 100%)}
+#gandaHasilKepala,#gandaHasilKaki{background:linear-gradient(#2A3547 0%,#101821 100%);border-color:#000;box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
 </style>
 </head>
 <body>
