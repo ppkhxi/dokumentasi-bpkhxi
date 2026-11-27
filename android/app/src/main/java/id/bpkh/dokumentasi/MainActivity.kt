@@ -40,8 +40,8 @@ class MainActivity : Activity() {
     }
 
     /** Satu klip video hasil kamera HP yang siap dibaca halaman web. */
-    private var berkasVideo: File? = null
-    private var statusVideo: String = "menunggu"   // menunggu | siap | batal
+    @Volatile private var berkasVideo: File? = null
+    @Volatile private var statusVideo: String = "menunggu"   // menunggu | siap | batal
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -341,6 +341,7 @@ class MainActivity : Activity() {
             berkasVideo = null
             statusVideo = "menunggu"
             var berhasil = false
+            val selesai = java.util.concurrent.CountDownLatch(1)
             runOnUiThread {
                 try {
                     val niat = Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE).apply {
@@ -352,8 +353,14 @@ class MainActivity : Activity() {
                     berhasil = true
                 } catch (e: Exception) {
                     statusVideo = "batal"
+                } finally {
+                    selesai.countDown()
                 }
             }
+            // Metode @JavascriptInterface berjalan di thread lain, jadi runOnUiThread hanya
+            // menitipkan pekerjaan: tanpa menunggu di sini hasilnya selalu false walau kamera
+            // sudah terbuka, dan halaman web berhenti memantau rekaman.
+            try { selesai.await(3, java.util.concurrent.TimeUnit.SECONDS) } catch (_: InterruptedException) { }
             return berhasil
         }
 

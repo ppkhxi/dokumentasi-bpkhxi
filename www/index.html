@@ -10383,7 +10383,7 @@ async function buatPosterVideo(blob){
   });
 }
 
-async function simpanKlipVideo(blob, sumber){
+async function simpanKlipVideo(blob, sumber, namaBerkas){
   const info = await buatPosterVideo(blob);
   const ts = Date.now();
   const stempel = new Date(ts).toISOString().slice(0,19).replace(/[:T-]/g,'');
@@ -10403,6 +10403,7 @@ async function simpanKlipVideo(blob, sumber){
     status: 'lokal',
     sumber: sumber || 'web'
   };
+  if(namaBerkas) rec.berkasRekam = namaBerkas;
   await simpanVideo(rec);
   perbaruiJumlahVideo();
   muatKlipTerbaru();
@@ -10446,6 +10447,7 @@ async function nyalakanVideo(){
   perbaruiJumlahVideo();
   if(native){
     tampilPesanVideo('Tekan “Rekam dengan Kamera HP”. Perekaman memakai kamera bawaan HP: stabilizer dan sensor bekerja penuh, tanpa kompresi tambahan dari aplikasi.');
+    pulihkanRekamanHp(N);
     return;
   }
   tampilPesanVideo('Menyalakan kamera…');
@@ -10512,43 +10514,90 @@ function hentikanRekamVideo(){
 }
 
 /* ---------- Rekaman memakai kamera bawaan HP (APK) ---------- */
+let sedangRekamHp = false;
+function statusRekamHp(N){
+  try{ return JSON.parse(N.statusRekam()); }catch(_){ return null; }
+}
+
+/* Salin berkas rekaman dari cache aplikasi Android per potongan 512 KB. */
+async function bacaBerkasRekam(N, ukuran, onProgres){
+  const bagian = [];
+  const potong = 512*1024;
+  let off = 0;
+  while(off < ukuran){
+    const b64 = N.bacaRekam(off, potong);
+    if(!b64) break;
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    bagian.push(arr);
+    off += arr.length;
+    if(onProgres) onProgres(off / ukuran);
+    await new Promise(r=>setTimeout(r, 0));   // biarkan layar tetap responsif
+  }
+  return new Blob(bagian, {type:'video/mp4'});
+}
+
+/* Simpan berkas rekaman yang sudah siap dibaca menjadi klip di Galeri → Video. */
+async function pakaiBerkasRekam(N, st){
+  tampilPesanVideo('Menyimpan klip… 0%');
+  const blob = await bacaBerkasRekam(N, st.ukuran, p=>tampilPesanVideo('Menyimpan klip… '+Math.round(p*100)+'%'));
+  if(!blob.size) throw new Error('berkas rekaman kosong');
+  await simpanKlipVideo(blob, 'native', st.nama);
+  try{ N.hapusRekam(); }catch(_){}
+  tampilPesanVideo('Klip tersimpan di Galeri → Video.');
+}
+
+/* Klip yang sudah direkam tapi belum tersalin (mis. halaman sempat dimuat ulang). */
+async function pulihkanRekamanHp(N){
+  if(sedangRekamHp || !N || !N.statusRekam) return;
+  const st = statusRekamHp(N);
+  if(!st || st.status !== 'siap' || !st.ukuran) return;
+  sedangRekamHp = true;
+  try{
+    if(st.nama){
+      const sudahAda = (await ambilSemuaVideo()).some(v=>v.berkasRekam === st.nama);
+      if(sudahAda){ try{ N.hapusRekam(); }catch(_){} return; }
+    }
+    tampilPesanVideo('Menyimpan klip rekaman terakhir…');
+    await pakaiBerkasRekam(N, st);
+  }catch(e){
+    tampilPesanVideo('Gagal menyimpan klip: '+e.message);
+  }finally{ sedangRekamHp = false; }
+}
+
 async function rekamKameraHp(){
   const N = window.DokumentasiNative;
   if(!N || !N.rekamVideo){ pesan('Fitur ini hanya tersedia di aplikasi Android'); return; }
-  if(!N.rekamVideo()){ pesan('Kamera HP tidak bisa dibuka'); return; }
-  tampilPesanVideo('Merekam dengan kamera HP… kembali ke aplikasi setelah selesai (maksimal 10 detik).');
+  if(sedangRekamHp){ pesan('Klip sebelumnya masih disimpan, tunggu sebentar'); return; }
+  sedangRekamHp = true;
   const mulai = Date.now();
+  /* Pantau status SEBELUM membuka kamera. Hasil rekaman hanya terbaca lewat statusRekam(),
+     jadi nilai balik rekamVideo() tidak dipakai untuk memutuskan apa pun. */
   const cek = setInterval(async ()=>{
-    let st = null;
-    try{ st = JSON.parse(N.statusRekam()); }catch(_){ return; }
+    const st = statusRekamHp(N);
+    if(!st) return;
     if(st.status === 'menunggu'){
-      if(Date.now() - mulai > 240000){ clearInterval(cek); tampilPesanVideo('Perekaman terlalu lama. Silakan coba lagi.'); }
+      if(Date.now() - mulai > 240000){
+        clearInterval(cek); sedangRekamHp = false;
+        tampilPesanVideo('Perekaman terlalu lama. Silakan coba lagi.');
+      }
       return;
     }
     clearInterval(cek);
-    if(st.status === 'batal' || !st.ukuran){ tampilPesanVideo('Perekaman dibatalkan.'); return; }
-    tampilPesanVideo('Menyimpan klip…');
+    if(st.status === 'batal' || !st.ukuran){
+      sedangRekamHp = false;
+      tampilPesanVideo('Perekaman dibatalkan.');
+      return;
+    }
     try{
-      const bagian = [];
-      const potong = 512*1024;
-      let off = 0;
-      while(off < st.ukuran){
-        const b64 = N.bacaRekam(off, potong);
-        if(!b64) break;
-        const bin = atob(b64);
-        const arr = new Uint8Array(bin.length);
-        for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
-        bagian.push(arr);
-        off += arr.length;
-      }
-      const blob = new Blob(bagian, {type:'video/mp4'});
-      try{ N.hapusRekam(); }catch(_){}
-      await simpanKlipVideo(blob, 'native');
-      tampilPesanVideo('Klip tersimpan di Galeri → Video.');
+      await pakaiBerkasRekam(N, st);
     }catch(e){
       tampilPesanVideo('Gagal menyimpan klip: '+e.message);
-    }
+    }finally{ sedangRekamHp = false; }
   }, 350);
+  tampilPesanVideo('Merekam dengan kamera HP… kembali ke aplikasi setelah selesai (maksimal 10 detik).');
+  try{ N.rekamVideo(); }catch(_){}
 }
 
 /* ---------- Galeri → Video ---------- */
