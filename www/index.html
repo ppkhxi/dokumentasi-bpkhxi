@@ -4657,7 +4657,10 @@ async function simpanLangsung(hasil){
   // Hitung nomor urut dan nama berkas cerdas: [KODE_ROOM]_[ID_USER]_[NO_URUT]_[LAT]_[LON].jpg
   const semuaFoto = await ambilSemua();
   const fotoRoom = semuaFoto.filter(f => (f.room || 'LOKAL').trim().toUpperCase() === namaRoom.toUpperCase());
-  const noUrut = fotoRoom.length + 1;
+  // Nomor urut diambil dari nomor tertinggi yang pernah dipakai, BUKAN dari jumlah foto.
+  // Dulu: jumlah foto + 1. Setelah foto terkirim dihapus dari HP, jumlahnya menyusut dan
+  // nomor lama dipakai lagi → nama berkas sama untuk foto berbeda → duplikat di server.
+  const noUrut = fotoRoom.reduce((m, f) => Math.max(m, Number(f.noUrut) || 0), 0) + 1;
   const noUrutStr = String(noUrut).padStart(3, '0');
   const kodeRoom = namaRoom.replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
   const idUser = (S.userId || S.nama || 'USER').trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '').toUpperCase();
@@ -4719,6 +4722,7 @@ const adaServer = ()=> typeof MegaEngine !== 'undefined' && MegaEngine.punyaSesi
 /* ---------- Sinkronisasi ke MEGA Cloud ---------- */
 let sedangSinkron = false;
 let _sinkronWdTimer = null;
+let _sinkronTerakhirProgres = 0;
 /* Upload ke cloud hanya dibuka mulai pukul 16.00 WIB, supaya saat bekerja tidak terganggu. */
 const JAM_BUKA_UPLOAD = 16;
 function jamWIB(){
@@ -4730,9 +4734,14 @@ function bolehUploadSekarang(){ return jamWIB() >= JAM_BUKA_UPLOAD; }
 /* paksa=true: dipicu tombol manual (Kirim Sekarang), tidak menunggu pukul 16.00. Pengiriman otomatis tetap menunggu. */
 async function sinkron(diam, paksa){
   if(sedangSinkron) return;
-  if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
+  // Kunci dipasang SEBELUM await apa pun: dua pemicu yang datang hampir bersamaan
+  // (timer, event online, buka aplikasi) tidak boleh menjalankan dua antrean sekaligus.
+  sedangSinkron = true;
+  _sinkronTerakhirProgres = Date.now();
+  if(!navigator.onLine){ sedangSinkron = false; if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
   if(typeof daftarkanAnggotaKeRoom === 'function') daftarkanAnggotaKeRoom();
   if(!paksa && !bolehUploadSekarang()){
+    sedangSinkron = false;
     if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan Kirim Sekarang di menu Antrian untuk mengirim lebih awal.');
     return;
   }
@@ -4760,6 +4769,7 @@ async function sinkron(diam, paksa){
   const antriCloud = antri.filter(f => typeof MegaEngine !== 'undefined' && MegaEngine.bisaUpload(f.room));
 
   if(!antriCloud.length){
+    sedangSinkron = false;
     if(!diam){
       const adaPending = antri.length > 0;
       if(adaPending){
@@ -4780,26 +4790,33 @@ async function sinkron(diam, paksa){
     return;
   }
 
-  sedangSinkron = true;
+  // Watchdog hanya melepas kunci bila benar-benar TIDAK ADA kemajuan selama 90 detik.
+  // Versi lama melepas kunci setelah 60 detik walau foto sedang diunggah di jaringan
+  // lambat — akibatnya sinkron berikutnya mengunggah ulang foto yang sama (duplikat).
   clearTimeout(_sinkronWdTimer);
-  _sinkronWdTimer = setTimeout(() => {
-    if (sedangSinkron) {
-      console.warn('Watchdog timeout: me-reset antrean upload yang tersangkut.');
+  const jagaSinkron = () => {
+    if (!sedangSinkron) return;
+    if (Date.now() - _sinkronTerakhirProgres > 90000) {
+      console.warn('Watchdog: antrean upload tanpa kemajuan 90 detik — kunci dilepas.');
       sedangSinkron = false;
+      return;
     }
-  }, 60000);
+    _sinkronWdTimer = setTimeout(jagaSinkron, 15000);
+  };
+  _sinkronWdTimer = setTimeout(jagaSinkron, 15000);
 
   try{
-    let sukses=0, gagal=0, pesanGagal='';
+    let sukses=0, gagal=0, dilewati=0, pesanGagal='';
     for(let i=0;i<antriCloud.length;i++){
       const f=antriCloud[i];
+      _sinkronTerakhirProgres = Date.now();
       pesan('Mengunggah '+(i+1)+' dari '+antriCloud.length+' ke Cloud MEGA…');
       try{
         const hasil = await MegaEngine.unggahFoto(f);
         f.status='terkirim';
-        f.linkDrive=hasil.linkDrive || '';
+        f.linkDrive=hasil.linkDrive || f.linkDrive || '';
         f.pesanGagal='';
-        sukses++;
+        if(hasil.dilewati) dilewati++; else sukses++;
         if(S.hapusSetelahKirim){ await hapusFoto(f.id); continue; }
       }catch(err){
         f.status='gagal';
@@ -4808,11 +4825,17 @@ async function sinkron(diam, paksa){
         pesanGagal=err.message;
         gagal++;
         console.error('Gagal upload ke MEGA:', err);
+      }finally{
+        _sinkronTerakhirProgres = Date.now();
       }
-      await simpanFoto(f);
+      // Simpan status walau penyimpanan menipis: kalau ini gagal, foto akan dianggap
+      // belum terkirim dan diunggah lagi (sumber duplikat), jadi kegagalannya dicatat.
+      try{ await simpanFoto(f); }
+      catch(e){ console.warn('Status foto gagal disimpan (penyimpanan HP penuh?):', e); }
       segarkanLayar();
     }
     if(gagal) pesan(sukses+' terkirim ke MEGA, '+gagal+' tertunda: '+pesanGagal);
+    else if(dilewati) pesan(sukses+' foto terkirim, '+dilewati+' sudah ada di server (dilewati)');
     else pesan(sukses+' foto berhasil terunggah ke folder MEGA');
     try{ await MegaEngine.tulisIndeks(); }catch(_){}
   }finally{

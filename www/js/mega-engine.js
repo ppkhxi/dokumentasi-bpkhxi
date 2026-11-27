@@ -614,11 +614,40 @@
         throw new Error('Gagal menyiapkan folder petugas di akun MEGA');
       }
 
+      // --- ANTI-DUPLIKAT ---
+      // Sebelum mengunggah, periksa apakah berkas dengan nama yang sama sudah ada
+      // di folder petugas. Bila ukurannya sama (toleransi kecil karena pembulatan),
+      // foto dianggap SUDAH terkirim: tidak diunggah ulang. Ini mencegah duplikat
+      // akibat retry, jam ganda, unggahan ganda, maupun nomor urut yang dipakai ulang.
+      let namaFinal = namaBerkas;
+      const sudahAda = (userFolder.children || []).find(x => !x.directory && x.name === namaBerkas);
+      if (sudahAda) {
+        const ukuranLama = Number(sudahAda.size || 0);
+        const ukuranBaru = bytes.byteLength;
+        const beda = Math.abs(ukuranLama - ukuranBaru);
+        if (!ukuranLama || beda <= Math.max(2048, ukuranBaru * 0.02)) {
+          let linkLama = `https://mega.nz/#${sudahAda.nodeId || ''}`;
+          if (typeof sudahAda.link === 'function') {
+            try { linkLama = await withTimeout(sudahAda.link(), 2000, linkLama); } catch (e) {}
+          }
+          return {
+            ok: true,
+            dilewati: true,
+            namaBerkas: namaBerkas,
+            linkDrive: linkLama,
+            ukuran: ukuranLama || ukuranBaru
+          };
+        }
+        // Nama sama tetapi isi berbeda (nomor urut dipakai ulang untuk foto lain):
+        // beri akhiran unik agar foto lama tidak tertimpa / tercampur.
+        namaFinal = namaBerkas.replace(/\.(\w+)$/, '_' + String(Date.now()).slice(-6) + '.$1');
+      }
+
       // Upload file ke folder target dengan penanganan error stream langsung
       let uploadAction;
       try {
         uploadAction = userFolder.upload({
-          name: namaBerkas,
+          name: namaFinal,
           size: bytes.byteLength
         }, bytes);
       } catch (syncErr) {
@@ -647,7 +676,7 @@
         _indeksTertunda.push({
           folder: userFolder,
           entri: {
-            f: namaBerkas,
+            f: namaFinal,
             no: foto.noUrut || 1,
             lat: foto.lat != null ? Number(foto.lat) : null,
             lon: foto.lon != null ? Number(foto.lon) : null,
@@ -669,7 +698,7 @@
 
       return {
         ok: true,
-        namaBerkas: namaBerkas,
+        namaBerkas: namaFinal,
         linkDrive: linkPublik,
         ukuran: bytes.byteLength
       };
