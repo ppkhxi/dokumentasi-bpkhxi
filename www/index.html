@@ -3574,12 +3574,14 @@ function bolehUploadSekarang(){ return jamWIB() >= JAM_BUKA_UPLOAD; }
 async function sinkron(diam, paksa){
   if(sedangSinkron) return;
   if(!navigator.onLine){ if(!diam) pesan('Tidak ada koneksi — foto tetap aman di antrian HP'); return; }
-  if(typeof dorongCeklistTertunda === 'function') dorongCeklistTertunda();
   if(typeof daftarkanAnggotaKeRoom === 'function') daftarkanAnggotaKeRoom();
   if(!paksa && !bolehUploadSekarang()){
     if(!diam) pesan('Upload otomatis dibuka mulai pukul 16.00 WIB. Tekan Kirim Sekarang di menu Antrian untuk mengirim lebih awal.');
     return;
   }
+
+  // Ceklis dikirim di latar belakang supaya unggahan foto tidak ikut menunggu.
+  if(typeof dorongCeklistTertunda === 'function') dorongCeklistTertunda(paksa);
 
   const semua = await ambilSemua();
   let antri = semua.filter(f => f.status === 'pending' || f.status === 'gagal');
@@ -6856,35 +6858,74 @@ window.gantiSubTabel = (sub) => {
   if (!foto) muatCeklist();
 };
 
-async function muatCeklist(){
+/* Ceklis memakai pola LOKAL-DULU: panel selalu dirender dari IndexedDB (instan, tanpa
+   menunggu jaringan). Penarikan dari cloud berjalan di latar belakang dengan jeda, lalu
+   panel dirender ulang hanya bila datanya benar-benar berubah. */
+let _sedangTarikCeklist = false;
+let _tarikCeklistTerakhir = 0;
+const JEDA_TARIK_CEKLIST = 5 * 60 * 1000;   // tarik data tim maksimal sekali per 5 menit
+
+function sedangEditCeklist(){ return !!$('inItemsCeklist'); }
+
+async function muatCeklist(opsi){
   const wrap = $('panelCeklist');
   if (!wrap) return;
   const room = (S.room || 'LOKAL').trim().toUpperCase();
   const info = infoRoomSpasial();
-  wrap.innerHTML = '<p class="catatan-kecil" style="text-align:center;padding:16px 0">Memuat ceklist…</p>';
 
-  let def = await ambilCeklist(idDefCeklist());
-  let agg = [];
-  if (navigator.onLine && info.cloud) {
-    try {
-      const cloudDef = await MegaEngine.tarikCeklistDef(S.room);
-      if (cloudDef && cloudDef.items) {
-        def = { id: idDefCeklist(), room, judul: cloudDef.judul, items: cloudDef.items, oleh: cloudDef.oleh, diperbarui: cloudDef.diperbarui };
-        await simpanCeklist(def);
-      }
-      agg = await MegaEngine.tarikProgresCeklist(S.room) || [];
-      await simpanCeklist({ id: 'agg_' + room, room, anggota: agg, diperbarui: Date.now() });
-    } catch(e){ console.warn('sync ceklist:', e); }
-  }
-  if (!agg.length) { const cache = await ambilCeklist('agg_' + room); if (cache) agg = cache.anggota || []; }
-
+  const def = await ambilCeklist(idDefCeklist());
   const prog = await ambilCeklist(idProgCeklist());
+  const cacheAgg = await ambilCeklist('agg_' + room);
+  const agg = (cacheAgg && cacheAgg.anggota) || [];
   const mySelesai = new Set(((prog && prog.selesai) || []).map(s => Number(s.no)));
-  wrap.innerHTML = renderCeklist(def, agg, info, mySelesai);
+
+  wrap.innerHTML = renderCeklist(def, agg, info, mySelesai, prog);
   if (petaAktif && typeof muatStatusCeklistPeta === 'function') muatStatusCeklistPeta();
+
+  if (!(opsi && opsi.tanpaCloud)) tarikCeklistLatar(info);
 }
 
-function renderCeklist(def, agg, info, mySelesai){
+/* Penarikan data ceklist dari cloud — tidak pernah memblokir tampilan. */
+async function tarikCeklistLatar(info){
+  if (_sedangTarikCeklist) return;
+  try {
+    info = info || infoRoomSpasial();
+    if (!navigator.onLine || !info.cloud) return;
+    if (typeof MegaEngine === 'undefined') return;
+    if (Date.now() - _tarikCeklistTerakhir < JEDA_TARIK_CEKLIST) return;
+    _sedangTarikCeklist = true;
+    _tarikCeklistTerakhir = Date.now();
+    const room = (S.room || 'LOKAL').trim().toUpperCase();
+    let berubah = false;
+
+    const cloudDef = await MegaEngine.tarikCeklistDef(S.room);
+    if (cloudDef && cloudDef.items && cloudDef.items.length) {
+      const lokal = await ambilCeklist(idDefCeklist());
+      const baru = { id: idDefCeklist(), room, judul: cloudDef.judul, items: cloudDef.items, oleh: cloudDef.oleh, diperbarui: cloudDef.diperbarui };
+      if (!lokal || JSON.stringify(lokal.items || []) !== JSON.stringify(baru.items) || (lokal.judul || '') !== (baru.judul || '')) {
+        await simpanCeklist(baru);
+        berubah = true;
+      }
+    }
+
+    const agg = await MegaEngine.tarikProgresCeklist(S.room) || [];
+    const cacheLama = await ambilCeklist('agg_' + room);
+    if (!cacheLama || JSON.stringify(cacheLama.anggota || []) !== JSON.stringify(agg)) {
+      await simpanCeklist({ id: 'agg_' + room, room, anggota: agg, diperbarui: Date.now() });
+      berubah = true;
+    }
+
+    // Jangan timpa formulir yang sedang diisi, dan hanya render bila panel ceklist aktif.
+    const panel = $('panelCeklist');
+    if (berubah && panel && !panel.hidden && !sedangEditCeklist()) await muatCeklist({ tanpaCloud: true });
+  } catch(e){
+    console.warn('tarikCeklistLatar:', e);
+  } finally {
+    _sedangTarikCeklist = false;
+  }
+}
+
+function renderCeklist(def, agg, info, mySelesai, prog){
   const doneBy = {};
   (agg || []).forEach(a => (a.selesai || []).forEach(s => { const n = Number(s.no); (doneBy[n] = doneBy[n] || []).push(a.nama || a.userId); }));
   const namaSaya = S.nama || uidSaya();
@@ -6911,12 +6952,19 @@ function renderCeklist(def, agg, info, mySelesai){
     '</label>';
   }).join('');
 
+  // Perubahan ceklis yang belum terkirim ke cloud (sinkron otomatis pukul 16.00 WIB).
+  // Satu perubahan pun dihitung walau hasil akhirnya berupa penghapusan centang.
+  const tsSync = Number((prog && prog.tsSync) || 0);
+  const belumTerkirim = ((prog && prog.selesai) || []).filter(s => (Number(s.ts) || 0) > tsSync).length;
+  const tertunda = (prog && prog.perluSync) ? Math.max(belumTerkirim, 1) : belumTerkirim;
+
   const tombolHost = info.host ? '<button class="tombol sekunder" onclick="window.editCeklist()" style="margin:0 0 10px">✏️ Edit Daftar Lokasi</button>' : '';
   return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
       '<b style="flex:1;font-size:15px">' + esc(def.judul || 'Ceklist Lokasi') + '</b>' +
       '<span style="font-size:12px;font-weight:700;color:#15803D">' + selesai + '/' + total + ' (' + persen + '%)</span></div>' +
     '<div style="height:8px;background:#E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:12px"><div style="height:100%;width:' + persen + '%;background:#34C759"></div></div>' +
     tombolHost +
+    (tertunda ? '<p class="catatan-kecil" style="color:var(--oranye);margin:0 0 8px">🕓 ' + tertunda + ' perubahan ceklis menunggu sinkron' + (!navigator.onLine ? ' — offline, ceklis tetap bisa dilakukan.' : ' — dikirim otomatis pukul 16.00 WIB.') + '</p>' : '') +
     (!info.cloud ? '<p class="catatan-kecil" style="color:var(--oranye);margin:0 0 8px">Mode lokal — centang Anda tersimpan & terkirim ke room saat online.</p>' : '') +
     '<div>' + baris + '</div>';
 }
@@ -6968,14 +7016,13 @@ window.toggleCeklistItem = async (no, checked) => {
   prog.diperbarui = Date.now();
   prog.perluSync = true;
   await simpanCeklist(prog);
-  muatCeklist();
-  if (typeof muatStatusCeklistPeta === 'function') muatStatusCeklistPeta();
-  const info = infoRoomSpasial();
-  if (navigator.onLine && info.cloud) {
-    try {
-      await MegaEngine.simpanProgresCeklist(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'), prog.selesai);
-      prog.perluSync = false; await simpanCeklist(prog);
-    } catch(e){ console.warn('kirim progres ceklist:', e); }
+
+  // Tampilkan perubahan seketika dari data lokal — tidak menunggu jaringan sama sekali.
+  await muatCeklist({ tanpaCloud: true });
+
+  // Pengiriman mengikuti jadwal 16.00 WIB; sebelum itu cukup ditandai tertunda.
+  if (navigator.onLine && infoRoomSpasial().cloud && bolehUploadSekarang() && typeof dorongCeklistTertunda === 'function') {
+    dorongCeklistTertunda();
   }
 };
 
@@ -6992,14 +7039,21 @@ window.simpanDefCeklist = async () => {
   if (!items.length) { pesan('Daftar lokasi masih kosong'); return; }
   window._ceklistImport = null;
   const room = (S.room || 'LOKAL').trim().toUpperCase();
-  await simpanCeklist({ id: idDefCeklist(), room, judul, items, diperbarui: Date.now() });
-  pesan('Menyimpan ceklist…');
   const info = infoRoomSpasial();
-  if (info.host && info.cloud) {
-    try { const r = await MegaEngine.unggahCeklistDef(S.room, { judul, items }); pesan('Ceklist dibagikan ke room (' + r.jumlah + ' lokasi)'); }
-    catch(e){ pesan('Tersimpan lokal; gagal unggah ke room: ' + (e.message || e)); }
+  // Simpan lokal lebih dulu; unggahan ke room ditandai perluSync bila belum waktunya/jaringan belum ada.
+  await simpanCeklist({ id: idDefCeklist(), room, judul, items, diperbarui: Date.now(), perluSync: !!(info.host && info.cloud) });
+  muatCeklist({ tanpaCloud: true });
+  if (info.host && info.cloud && bolehUploadSekarang() && navigator.onLine) {
+    pesan('Menyimpan ceklist…');
+    try {
+      const r = await MegaEngine.unggahCeklistDef(S.room, { judul, items });
+      const defTersimpan = await ambilCeklist(idDefCeklist());
+      if (defTersimpan) { defTersimpan.perluSync = false; await simpanCeklist(defTersimpan); }
+      pesan('Ceklist dibagikan ke room (' + r.jumlah + ' lokasi)');
+    } catch(e){ pesan('Tersimpan di HP; akan dibagikan ke room saat sinkron: ' + (e.message || e)); }
+  } else if (info.host && info.cloud) {
+    pesan('Ceklist tersimpan di HP — dibagikan ke room otomatis pukul 16.00 WIB');
   } else { pesan('Ceklist tersimpan lokal'); }
-  muatCeklist();
 };
 
 window.editCeklist = async () => {
@@ -7025,16 +7079,34 @@ async function muatStatusCeklistPeta(){
   } catch(e){ console.warn('muatStatusCeklistPeta:', e); }
 }
 
-// Dorong progres ceklist yang belum tersinkron saat kembali online (dipanggil dari sinkron)
-async function dorongCeklistTertunda(){
+// Kirim ceklist yang tertunda. paksa=true hanya dari tombol Kirim Sekarang.
+// Selain itu menunggu jadwal 16.00 WIB supaya pemeriksaan lapangan tidak terganggu buffering.
+async function dorongCeklistTertunda(paksa){
+  if (!navigator.onLine) return;
+  const info = infoRoomSpasial();
+  if (!info.cloud || typeof MegaEngine === 'undefined') return;
+  if (!paksa && !bolehUploadSekarang()) return;
+  const room = (S.room || 'LOKAL').trim().toUpperCase();
   try {
-    const room = (S.room || 'LOKAL').trim().toUpperCase();
-    const prog = await ambilCeklist('prog_' + room);
-    const info = infoRoomSpasial();
-    if (prog && prog.perluSync && navigator.onLine && info.cloud){
-      await MegaEngine.simpanProgresCeklist(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'), prog.selesai || []);
-      prog.perluSync = false; await simpanCeklist(prog);
+    // 1) Definisi ceklist (host) bila belum terbagikan
+    const def = await ambilCeklist(idDefCeklist());
+    if (def && def.perluSync && info.host && def.items && def.items.length) {
+      await MegaEngine.unggahCeklistDef(S.room, { judul: def.judul, items: def.items });
+      def.perluSync = false; await simpanCeklist(def);
     }
+    // 2) Progres centang milik perangkat ini
+    const prog = await ambilCeklist(idProgCeklist());
+    if (prog && prog.perluSync) {
+      await MegaEngine.simpanProgresCeklist(S.room, (S.userId || S.nama || 'USER'), (S.nama || 'Petugas'), prog.selesai || []);
+      prog.perluSync = false;
+      prog.tsSync = Date.now();
+      await simpanCeklist(prog);
+    }
+    // 3) Segarkan progres tim supaya centang anggota lain ikut tampil
+    const agg = await MegaEngine.tarikProgresCeklist(S.room) || [];
+    await simpanCeklist({ id: 'agg_' + room, room, anggota: agg, diperbarui: Date.now() });
+    const panel = $('panelCeklist');
+    if (panel && !panel.hidden && !sedangEditCeklist()) await muatCeklist({ tanpaCloud: true });
   } catch(e){ console.warn('dorongCeklistTertunda:', e); }
 }
 
