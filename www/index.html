@@ -1427,7 +1427,201 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
 #flyTirai.kilat{animation:kilatFly .18s ease-out}
 @keyframes kilatFly{0%{opacity:.8}100%{opacity:0}}
 #flyTirai.kilat{animation:kilatFly .18s ease-out}
-@keyframes kilatFly{0%{opacity:.8}100%{opacity:0}}
+@keyframes kilatFly{0%{opacity:.8}100%{opacity:0}
+}
+
+/* =====================================================================
+   TEMA 4.0 "FLASH GLOSSY" — penyegaran tampilan, fungsi tidak diubah.
+   Gaya: tombol berkilau, bevel tegas, gradien warna, bingkai berlapis
+   seperti aplikasi kreatif era Flash/Web 2.0, dengan perilaku modern.
+   ===================================================================== */
+#app{
+  font-family:'Trebuchet MS',Tahoma,Verdana,'Segoe UI',sans-serif;
+  --bg:#DCE9FB;
+  --surface:#FFFFFF;
+  --surface-subtle:#EEF4FF;
+  --teks:#0E2340;
+  --teks-2:#4C6483;
+  --teks-3:#7C93B0;
+  --garis:#8FB0D9;
+  --garis-tebal:#5C86B8;
+  --tombol-primer:linear-gradient(#5FB0FF 0%,#2C86EA 45%,#1560C4 100%);
+  --tombol-primer-hover:linear-gradient(#4E9FF0 0%,#2276D8 45%,#0E51AE 100%);
+  --tombol-sekunder-bg:linear-gradient(#FFFFFF 0%,#DCE7F6 100%);
+  --tombol-sekunder-teks:#123055;
+  --rad-md:10px;--rad-lg:12px;--rad-xl:14px;
+  --hijau:#12A150;--oranye:#FF8A00;
+}
+
+/* Latar bertekstur garis miring tipis khas aplikasi lama */
+#layar{
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,.5) 0 6px, rgba(255,255,255,0) 6px 14px),
+    linear-gradient(#DCE9FB 0%,#C6DCF6 100%);
+}
+.screen{background:transparent}
+
+/* --- Bilah atas: gradien biru berkilau --- */
+#appbar{
+  background:
+    linear-gradient(rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 44%),
+    linear-gradient(#3E93F0 0%,#1E6FD1 55%,#14509B 100%);
+  color:#fff;
+  border-bottom:2px solid #0B3C74;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 4px 12px rgba(11,60,116,.35);
+}
+#judulBar{color:#fff;font-weight:700;text-shadow:0 1px 1px rgba(0,0,0,.4)}
+#btnBack,.aksi-bar{
+  color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:10px;
+  background:linear-gradient(rgba(255,255,255,.30),rgba(255,255,255,.04));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6);
+}
+#btnBack:active,.aksi-bar:active{background:linear-gradient(rgba(0,0,0,.10),rgba(0,0,0,.22))}
+#pilStatus{
+  background:linear-gradient(#FFFFFF,#DCE7F6);color:#123055;border:1px solid #6E93C2;
+  box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(11,60,116,.3);font-weight:700;
+}
+#pilStatus.offline{background:linear-gradient(#FFB44C,#F07C00);color:#fff;border-color:#A34A00}
+
+/* --- Navigasi bawah: pil berkilau dengan bevel --- */
+#navbar{
+  background:linear-gradient(#FFFFFF 0%,#DCE9F9 55%,#C3D6EE 100%);
+  border:2px solid #6E93C2;
+  box-shadow:inset 0 1px 0 #fff,0 5px 0 rgba(110,147,194,.35),0 12px 24px rgba(11,60,116,.28);
+}
+.nav-item{color:#3B567A;font-weight:600}
+.nav-item.aktif{color:#0E2340}
+.nav-item.aktif .ic{
+  background:linear-gradient(#5FB0FF,#1560C4);color:#fff;border:1px solid #0B3C74;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 2px 6px rgba(11,60,116,.4);
+}
+.nav-fab button{
+  background:radial-gradient(circle at 50% 24%, #FFC46B 0%, #FF8A00 48%, #D85F00 100%);
+  border:2px solid #A34A00;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 3px 0 #8A3E00,0 8px 18px rgba(163,74,0,.4);
+}
+
+/* --- Panel beranda: kartu gelap berkilau --- */
+.hero{
+  background:
+    linear-gradient(rgba(255,255,255,.26) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(160deg,#2A5DA8 0%,#123160 55%,#0B1E3C 100%);
+  border:2px solid #0B1E3C;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 5px 0 rgba(11,30,60,.35),0 12px 22px rgba(11,30,60,.3);
+}
+.hero::after{
+  content:'';position:absolute;left:0;right:0;top:0;height:46%;pointer-events:none;
+  background:linear-gradient(rgba(255,255,255,.20),rgba(255,255,255,0));
+}
+.stat,.menu-kartu,#spandukPasang{
+  background:linear-gradient(#1E4478 0%,#12294A 100%);
+  border:1px solid #0B1E3C;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 rgba(11,30,60,.42),0 8px 16px rgba(11,30,60,.22);
+}
+/* Spanduk peringatan: panel kuning berkilau dengan teks gelap agar tetap terbaca */
+#spandukCadangan{
+  background:linear-gradient(#FFE3B8 0%,#FFC46B 100%);
+  border:2px solid #B96A00;border-radius:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 3px 0 #B96A00,0 8px 16px rgba(185,106,0,.28);
+}
+#spandukCadangan b{color:#5A3300}
+#spandukCadangan p{color:#6B4210}
+/* Spanduk mode lokal: panel putih berbingkai */
+#spandukSimulasi{
+  background:linear-gradient(#FFFFFF 0%,#EAF2FD 100%);
+  border:1px solid #8FB0D9;
+  box-shadow:inset 0 1px 0 #fff,0 2px 0 #C3D6EE,0 6px 14px rgba(18,48,85,.12);
+}
+#spandukSimulasi b{color:#0E2340}
+#spandukSimulasi p{color:#3B567A}
+.menu-kartu:active{background:linear-gradient(#25508A,#162F55)}
+.menu-kartu .ic{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 1px 2px rgba(0,0,0,.35)}
+
+/* --- Kartu isi: panel putih dengan bingkai berlapis --- */
+.kartu{
+  background:linear-gradient(#FFFFFF 0%,#F1F7FF 100%);
+  border:1px solid #8FB0D9;border-radius:12px;
+  box-shadow:inset 0 1px 0 #fff,0 2px 0 #C3D6EE,0 8px 18px rgba(18,48,85,.12);
+}
+.kartu-judul{color:#3B567A;letter-spacing:.8px}
+
+/* --- Tombol: kaca berkilau, bevel bawah --- */
+.tombol{
+  background:var(--tombol-primer);
+  border:1px solid #0B3C74;border-radius:10px;color:#fff;font-weight:700;
+  text-shadow:0 1px 1px rgba(0,0,0,.35);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65),inset 0 -2px 0 rgba(0,0,0,.18),0 3px 0 #0B3C74,0 6px 14px rgba(11,60,116,.26);
+}
+.tombol:active{
+  background:var(--tombol-primer-hover);transform:translateY(2px);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.45),0 1px 0 #0B3C74;
+}
+.tombol.sekunder,.tombol.abu{
+  background:var(--tombol-sekunder-bg);color:var(--tombol-sekunder-teks);
+  border:1px solid #6E93C2;text-shadow:0 1px 0 #fff;
+  box-shadow:inset 0 1px 0 #fff,0 3px 0 #B9CDE6,0 5px 10px rgba(18,48,85,.12);
+}
+.tombol.sekunder:active,.tombol.abu:active{
+  background:linear-gradient(#D7E3F3,#FFFFFF);transform:translateY(2px);
+  box-shadow:inset 0 2px 4px rgba(18,48,85,.28),0 1px 0 #B9CDE6;
+}
+.tombol:disabled{filter:grayscale(.55) opacity(.7);box-shadow:none}
+.tombol-mini{background:linear-gradient(#FFFFFF,#DAE6F5);border:1px solid #6E93C2;border-radius:9px;box-shadow:inset 0 1px 0 #fff,0 2px 0 #B9CDE6}
+.tombol-mini.utama{background:linear-gradient(#5FB0FF,#1560C4);border-color:#0B3C74;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 0 #0B3C74}
+
+/* --- Kolom isian: cekung seperti panel lama --- */
+label.f{color:#2A4A72;text-transform:uppercase;font-size:10.5px;letter-spacing:.7px;font-weight:700}
+input.f,select.f,textarea.f{
+  background:linear-gradient(#EFF5FF 0%,#FFFFFF 100%);
+  border:1px solid #7E9FC5;border-radius:9px;color:#0E2340;
+  box-shadow:inset 0 2px 5px rgba(18,48,85,.16),0 1px 0 #fff;
+}
+input.f:focus,select.f:focus,textarea.f:focus{
+  border-color:#1E6FD1;
+  box-shadow:inset 0 2px 4px rgba(18,48,85,.12),0 0 0 3px rgba(30,111,209,.3);
+}
+
+/* --- Dialog & tab --- */
+#dialog{background:rgba(6,24,46,.62)}
+.dialog-isi{
+  background:linear-gradient(#FFFFFF 0%,#EAF2FD 100%);
+  border:2px solid #4D7CB0;border-radius:14px;
+  box-shadow:inset 0 1px 0 #fff,0 8px 0 rgba(11,60,116,.2),0 22px 40px rgba(6,24,46,.45);
+}
+.dialog-isi h3{color:#0E2340;text-shadow:0 1px 0 #fff}
+.dialog-isi p{color:#3B567A}
+.tab-wadah-lapisan{
+  background:linear-gradient(#C9D9EC,#E8F1FB);border:1px solid #8FB0D9;
+  box-shadow:inset 0 2px 4px rgba(18,48,85,.18);
+}
+.tab-btn-lapisan{color:#3B567A;font-weight:700}
+.tab-btn-lapisan.aktif{
+  background:linear-gradient(#FFFFFF,#D9E7F8);color:#0E2340;border:1px solid #6E93C2;
+  box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(18,48,85,.2);
+}
+.aksi-layer{
+  background:linear-gradient(#FFFFFF,#DAE6F5);border:1px solid #6E93C2;border-radius:9px;color:#123055;
+  box-shadow:inset 0 1px 0 #fff,0 2px 0 #B9CDE6;
+}
+
+/* --- Login: panggung gradien --- */
+#scLogin{
+  background:
+    radial-gradient(circle at 50% 0%, #3E93F0 0%, #1B5CAE 45%, #0B1E3C 100%);
+}
+.kotak-login{
+  background:linear-gradient(#FFFFFF 0%,#EAF2FD 100%);
+  border:2px solid #4D7CB0;border-radius:16px;
+  box-shadow:inset 0 1px 0 #fff,0 10px 0 rgba(11,60,116,.25),0 24px 44px rgba(6,24,46,.45);
+}
+.login-isi h1{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+.login-isi .sub{color:#DCE9FB}
+
+/* --- Snackbar --- */
+#snackbar{
+  background:linear-gradient(#2C4E7E,#0E2340);color:#fff;border:1px solid #0B1E3C;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 20px rgba(6,24,46,.45);
+}
 </style>
 </head>
 <body>
@@ -1522,7 +1716,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
           </div>
 
           <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:600">
-            Dokumentasi <span id="loginVersi">v3.9.98</span>
+            Dokumentasi <span id="loginVersi">v4.0.0</span>
           </div>
         </div>
       </div>
@@ -2271,7 +2465,7 @@ body.modo-flyout #flyCapture{position:fixed;left:0;right:0;top:0;bottom:0;transf
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '3.9.98';
+const VERSI = '4.0.0';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
