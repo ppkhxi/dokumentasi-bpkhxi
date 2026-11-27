@@ -23,7 +23,8 @@
   const BARU = { trimAwal: 0, trimAkhir: 0, teks: '', posisi: 'bawah', warna: '#ffffff' };
   const ST = {
     cloud: null, muat: false, pilih: [], terpilih: null, backsound: null,
-    ff: null, memuatFF: null, log: [], renderJalan: false
+    ff: null, memuatFF: null, log: [], renderJalan: false,
+    putar: false, pos: 0, idx: -1, geserIdx: null, temp: []
   };
 
   /* ---------------- util ---------------- */
@@ -111,6 +112,7 @@
 
   /* ---------------- berkas lokal ---------------- */
   function tambahLokal(files) {
+    const baru = [];
     Array.from(files || []).forEach(f => {
       const k = {
         id: 'l:' + f.name + ':' + f.size + ':' + (f.lastModified || 0),
@@ -120,44 +122,179 @@
       Object.assign(k, BARU);
       ST.pilih.push(k);
       ST.terpilih = k;
+      baru.push(k);
     });
     renderPlaylist(); renderDaftar();
     if (ST.terpilih) bukaKlip(ST.terpilih);
+    // Baca durasi semua berkas lokal supaya total di timeline langsung benar.
+    Promise.all(baru.map(k => pastikanDurasi(k))).then(() => { renderPlaylist(); if (ST.terpilih) sinkronForm(); }).catch(() => {});
   }
 
   /* ---------------- urutan & pratinjau ---------------- */
+  const PX_DETIK = 26;
+  function durasiKlip(k) { return Math.max(0, (Number(k.trimAkhir) || Number(k.durasi) || 0) - (Number(k.trimAwal) || 0)); }
+  function totalDurasi() { return ST.pilih.reduce((a, k) => a + durasiKlip(k), 0); }
+  function lebarKlip(d) { return Math.max(72, Math.min(260, Math.round((Number(d) || 1) * PX_DETIK))); }
+  function posisiMulai(i) { let a = 0; for (let j = 0; j < i; j++) a += durasiKlip(ST.pilih[j]); return a; }
+  function idxTerpilih() { return ST.pilih.indexOf(ST.terpilih); }
+  function klipPada(t) {
+    let a = 0;
+    for (let i = 0; i < ST.pilih.length; i++) {
+      const k = ST.pilih[i], d = durasiKlip(k);
+      if (t < a + d - 1e-6 || i === ST.pilih.length - 1) {
+        return { i, k, mulai: a, dur: d, lokal: (Number(k.trimAwal) || 0) + Math.max(0, Math.min(d, t - a)) };
+      }
+      a += d;
+    }
+    return null;
+  }
+  function perbaruiWaktu() {
+    const total = totalDurasi();
+    const r = $('stSeqRange');
+    if (!r) return;
+    r.max = total.toFixed(2);
+    r.value = Math.min(total, Math.max(0, ST.pos)).toFixed(2);
+    $('stSeqWaktu').textContent = detik(ST.pos) + ' / ' + detik(total);
+  }
   function renderPlaylist() {
     const box = $('stTimeline'); if (!box) return;
     if (!ST.pilih.length) {
       box.innerHTML = '<p class="kecil" style="margin:0">Urutan masih kosong. Pilih klip di kiri; urutan di sini menentukan hasil video.</p>';
       $('stTotal').textContent = '0 klip';
+      perbaruiWaktu();
       return;
     }
-    box.innerHTML = ST.pilih.map((k, i) =>
-      '<div class="stItem' + (ST.terpilih === k ? ' pilih' : '') + '" data-i="' + i + '">' +
-        '<span class="stNo">' + (i + 1) + '</span>' +
-        '<span class="stKet"><b>' + esc(k.nama) + '</b>' +
-        '<span class="kecil">' + esc(k.room) + ' · ' + detik((k.trimAkhir || k.durasi) - k.trimAwal) + (k.teks ? ' · "' + esc(k.teks.slice(0, 28)) + '"' : '') + '</span></span>' +
-        '<span class="stAksi"><button data-a="naik" title="Naikkan">↑</button><button data-a="turun" title="Turunkan">↓</button>' +
-        '<button data-a="buang" title="Keluarkan">✕</button></span></div>').join('');
-    const total = ST.pilih.reduce((a, k) => a + Math.max(0, (k.trimAkhir || k.durasi) - k.trimAwal), 0);
+    box.innerHTML = ST.pilih.map((k, i) => {
+      const d = durasiKlip(k) || Number(k.durasi) || 0;
+      return '<div class="stKlipTL' + (k === ST.terpilih ? ' pilih' : '') + (ST.putar && ST.idx === i ? ' aktif' : '') + '" data-i="' + i + '" draggable="true" style="width:' + lebarKlip(d) + 'px" title="' + esc(k.nama) + '">' +
+        (k.thumb ? '<img src="' + esc(k.thumb) + '" alt="" draggable="false">' : '<div class="stTanpaThumb">🎞</div>') +
+        '<span class="stDur">' + detik(d) + '</span>' +
+        '<span class="stHandle kiri" data-h="awal" title="Tarik untuk memotong awal"></span>' +
+        '<span class="stHandle kanan" data-h="akhir" title="Tarik untuk memotong akhir"></span>' +
+        '<span class="stInfoTL"><b>' + (i + 1) + '. ' + esc(k.nama) + '</b><span>' + esc(k.teks ? k.teks.slice(0, 24) : (k.room || 'LOKAL')) + '</span></span>' +
+        '<span class="stAksiTL">' +
+          '<button data-a="kiri" title="Geser ke kiri"' + (i === 0 ? ' disabled' : '') + '>←</button>' +
+          '<button data-a="kanan" title="Geser ke kanan"' + (i === ST.pilih.length - 1 ? ' disabled' : '') + '>→</button>' +
+          '<button data-a="buang" title="Keluarkan">✕</button></span></div>';
+    }).join('');
+    const total = totalDurasi();
     $('stTotal').textContent = ST.pilih.length + ' klip · ' + detik(total) + ' · ' + ukuranTeks(ST.pilih.reduce((a, k) => a + (k.ukuran || 0), 0));
-    box.querySelectorAll('.stItem').forEach(el => {
-      const i = +el.dataset.i;
-      el.onclick = e => {
-        const b = e.target.closest('button');
-        if (!b) { ST.terpilih = ST.pilih[i]; renderPlaylist(); bukaKlip(ST.terpilih); return; }
-        const a = b.dataset.a;
-        if (a === 'buang') { const [x] = ST.pilih.splice(i, 1); if (ST.terpilih === x) ST.terpilih = ST.pilih[Math.min(i, ST.pilih.length - 1)] || null; }
-        else {
-          const j = a === 'naik' ? i - 1 : i + 1;
-          if (j < 0 || j >= ST.pilih.length) return;
-          const t = ST.pilih[i]; ST.pilih[i] = ST.pilih[j]; ST.pilih[j] = t;
-        }
-        renderPlaylist(); renderDaftar();
-        if (ST.terpilih) sinkronForm();
-      };
-    });
+    perbaruiWaktu();
+  }
+  function gantiUrutan(from, to) {
+    if (from == null || to == null || from === to || from < 0 || to < 0 || from >= ST.pilih.length || to >= ST.pilih.length) return;
+    const [x] = ST.pilih.splice(from, 1);
+    ST.pilih.splice(to, 0, x);
+    ST.terpilih = x;
+    ST.idx = ST.pilih.indexOf(x);
+    ST.pos = posisiMulai(ST.idx);
+    renderPlaylist(); renderDaftar(); sinkronForm();
+  }
+  function pilihKlip(i) {
+    const k = ST.pilih[i]; if (!k) return;
+    jedaSequence();
+    ST.terpilih = k; ST.idx = i;
+    ST.pos = posisiMulai(i);
+    sinkronForm(); renderPlaylist(); renderDaftar(); perbaruiWaktu();
+    tampilkanKlip({ i, k, mulai: ST.pos, dur: durasiKlip(k), lokal: Number(k.trimAwal) || 0 }, true);
+  }
+  function pecahDiPosisi() {
+    if (!ST.pilih.length) { status('Tambahkan klip dulu.', true); return; }
+    let p = ST.putar ? klipPada(ST.pos) : null;
+    if (!p && ST.terpilih) p = { i: idxTerpilih(), k: ST.terpilih, lokal: $('stVideo').currentTime || 0 };
+    if (!p || p.i < 0) { status('Pilih klip yang ingin dipecah.', true); return; }
+    const k = p.k, a = Number(k.trimAwal) || 0, b = Number(k.trimAkhir) || Number(k.durasi) || 0, lokal = Number(p.lokal) || 0;
+    if (lokal - a < 0.3 || b - lokal < 0.3) { status('Posisi pemutar terlalu dekat ujung klip (minimal 0,3 detik).', true); return; }
+    const baru = Object.assign({}, k, { id: k.id + '-p' + Date.now(), trimAwal: lokal, trimAkhir: b, teks: '', thumb: k.thumb });
+    k.trimAkhir = lokal;
+    ST.pilih.splice(p.i + 1, 0, baru);
+    jedaSequence();
+    ST.terpilih = k; ST.idx = p.i; ST.pos = posisiMulai(p.i);
+    renderPlaylist(); renderDaftar(); sinkronForm(); perbaruiWaktu();
+    status('Klip dipecah di ' + detik(lokal) + '.');
+  }
+
+  let seqToken = 0;
+  function jedaSequence() {
+    const v = $('stVideo');
+    const sedang = ST.putar;
+    ST.putar = false;
+    seqToken++;   // batalkan pemuatan klip yang masih berjalan
+    if (v) v.pause();
+    if (sedang) { $('stPutar').textContent = '▶'; renderPlaylist(); }
+  }
+  async function siapkanUrl(k) {
+    if (k.url) return k.url;
+    const bytes = await bytesKlip(k);
+    k.url = URL.createObjectURL(new Blob([bytes], { type: /\.webm$/i.test(k.nama) ? 'video/webm' : 'video/mp4' }));
+    return k.url;
+  }
+  async function buatThumb(k) {
+    if (!k || k.thumb || k.thumbJalan) return;
+    k.thumbJalan = true;
+    try {
+      await siapkanUrl(k);
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = k.url;
+      await new Promise(res => { v.onloadeddata = res; v.onerror = res; setTimeout(res, 4000); });
+      const target = Math.max(0, Math.min((Number(k.trimAwal) || 0) + 0.12, (v.duration || 1) - 0.1));
+      await new Promise(res => { v.onseeked = res; try { v.currentTime = target; } catch (_) { res(); } setTimeout(res, 2500); });
+      const c = document.createElement('canvas'); c.width = 160; c.height = 90;
+      const g = c.getContext('2d');
+      const vw = v.videoWidth || 160, vh = v.videoHeight || 90;
+      const skala = Math.max(160 / vw, 90 / vh);
+      g.drawImage(v, (160 - vw * skala) / 2, (90 - vh * skala) / 2, vw * skala, vh * skala);
+      k.thumb = c.toDataURL('image/jpeg', 0.62);
+    } catch (_) { /* thumbnail opsional */ }
+    k.thumbJalan = false;
+  }
+  async function tampilkanKlip(p, autoplay) {
+    const token = ++seqToken;
+    const k = p.k;
+    ST.idx = p.i; ST.terpilih = k;
+    sinkronForm();
+    try {
+      const url = await siapkanUrl(k);
+      if (token !== seqToken) return false;
+      const v = $('stVideo');
+      if (v.dataset.klip !== k.id) {
+        v.dataset.klip = k.id;
+        v.src = url;
+        await new Promise(res => {
+          const selesai = () => { v.removeEventListener('loadedmetadata', selesai); res(); };
+          v.addEventListener('loadedmetadata', selesai);
+          setTimeout(res, 4000);
+        });
+        if (token !== seqToken) return false;
+      }
+      if (isFinite(v.duration) && v.duration > 0) {
+        if (!k.durasi) k.durasi = v.duration;
+        if (!k.trimAkhir || k.trimAkhir > k.durasi) k.trimAkhir = k.durasi;
+        sinkronForm(); renderPlaylist(); perbaruiWaktu();
+      }
+      try { v.currentTime = Math.max(0, Math.min(p.lokal, (v.duration || p.lokal || 0) - 0.03)); } catch (_) {}
+      tampilTeksPratinjau(k);
+      renderPlaylist();
+      buatThumb(k).then(() => { if (ST.terpilih === k) renderPlaylist(); });
+      if (autoplay) await v.play().catch(() => {});
+      return true;
+    } catch (e) {
+      status('Klip tidak bisa diputar: ' + (e.message || e), true);
+      return false;
+    }
+  }
+  async function mainkanDari(t) {
+    const total = totalDurasi();
+    if (!total) return;
+    if (t >= total - 0.05) t = 0;
+    const p = klipPada(t);
+    if (!p) return;
+    ST.putar = true;
+    $('stPutar').textContent = '⏸';
+    ST.pos = t;
+    perbaruiWaktu();
+    const ok = await tampilkanKlip(p, true);
+    if (!ok) jedaSequence();
   }
 
   async function bytesKlip(k) {
@@ -197,21 +334,18 @@
     sinkronForm();
     const v = $('stVideo');
     try {
-      let url = k.url;
-      if (!url) {
-        const bytes = await bytesKlip(k);
-        url = k.url = URL.createObjectURL(new Blob([bytes], { type: /\.webm$/i.test(k.nama) ? 'video/webm' : 'video/mp4' }));
-      }
-      v.src = url;
+      const url = await siapkanUrl(k);
+      if (v.dataset.klip !== k.id) { v.dataset.klip = k.id; v.src = url; }
       v.onloadedmetadata = () => {
         if (!isFinite(v.duration)) return;
         if (!k.durasi) { k.durasi = v.duration; renderPlaylist(); renderDaftar(); }
         if (!k.trimAkhir) k.trimAkhir = v.duration;
-        sinkronForm();
+        sinkronForm(); perbaruiWaktu();
       };
-      v.currentTime = k.trimAwal || 0;
+      try { v.currentTime = k.trimAwal || 0; } catch (_) {}
       v.play().catch(() => {});
       tampilTeksPratinjau(k);
+      buatThumb(k).then(() => renderPlaylist());
     } catch (e) { status('Klip tidak bisa dibuka: ' + (e.message || e), true); }
   }
 
@@ -246,6 +380,7 @@
 
   function bacaForm() {
     const k = ST.terpilih; if (!k) return;
+    jedaSequence();
     const a = Math.max(0, Number($('stAwal').value) || 0);
     const b = Math.max(0, Number($('stAkhir').value) || 0);
     k.trimAwal = Math.min(a, Math.max(0, (k.durasi || b) - 0.3));
@@ -256,6 +391,9 @@
     k.warna = $('stWarnaTeks').value;
     tampilTeksPratinjau(k);
     renderPlaylist(); renderDaftar();
+    const i = idxTerpilih();
+    if (i >= 0) ST.pos = posisiMulai(i);
+    perbaruiWaktu();
   }
 
   /* ---------------- ffmpeg.wasm ---------------- */
@@ -347,121 +485,120 @@
   }
 
   /* ---------------- render ---------------- */
-  async function render() {
-    if (ST.renderJalan) return;
-    if (!ST.pilih.length) { status('Tambahkan klip dulu sebelum menggabungkan.', true); return; }
-    if (ST.pilih.length > 30) { status('Maksimal 30 klip per render. Bagi menjadi beberapa video.', true); return; }
-    const c = ctx();
-    ST.renderJalan = true;
-    $('stRender').disabled = true;
+  async function renderSekali(ff, pakaiMusik) {
     const { W, H } = ukuranRasio();
+    const total = totalDurasi();
     const judul = $('stJudul').value.trim();
     const penutup = $('stPenutup').value.trim();
     const volKlip = (Number($('stVolKlip').value) || 100) / 100;
     const volMusik = (Number($('stVol').value) || 35) / 100;
+    const args = ['-y'];
+    const graf = [];
+    let inputIdx = 0;
+
+    const font = await fetch('js/Roboto-Regular.ttf');
+    if (!font.ok) throw new Error('Font teks tidak ditemukan (js/Roboto-Regular.ttf)');
+    await ff.writeFile('font.ttf', new Uint8Array(await font.arrayBuffer()));
+    ST.temp.push('font.ttf');
+
+    for (let i = 0; i < ST.pilih.length; i++) {
+      const k = ST.pilih[i];
+      const D = Math.max(0.3, durasiKlip(k));
+      const bytes = await bytesKlip(k);
+      const ext = /\.webm$/i.test(k.nama) ? '.webm' : '.mp4';
+      const masuk = 'in' + i + ext;
+      await ff.writeFile(masuk, bytes);
+      ST.temp.push(masuk);
+      args.push('-ss', String(Number(k.trimAwal) || 0), '-t', String(D), '-i', masuk);
+      const vIdx = inputIdx++;
+      let aIdx;
+      if (await punyaAudio(ff, masuk)) {
+        aIdx = vIdx;              // audio menempel pada berkas yang sama
+      } else {
+        args.push('-f', 'lavfi', '-t', String(D), '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100');
+        aIdx = inputIdx++;        // input terpisah untuk audio senyap
+      }
+      let vf = '[' + vIdx + ':v]scale=' + W + ':' + H + ':force_original_aspect_ratio=increase,crop=' + W + ':' + H + ',setsar=1,fps=30,format=yuv420p,setpts=PTS-STARTPTS';
+      if (k.teks) {
+        const tf = 'teks' + i + '.txt';
+        await ff.writeFile(tf, new TextEncoder().encode(k.teks));
+        ST.temp.push(tf);
+        vf += ',' + drawtext({ file: tf, fontsize: Math.round(W * 0.038), pos: k.posisi, warna: k.warna, H, dari: 0, sampai: D });
+      }
+      vf += '[v' + i + ']';
+      graf.push(vf);
+      graf.push('[' + aIdx + ':a]volume=' + volKlip.toFixed(2) + ',aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS,atrim=0:' + D + '[a' + i + ']');
+    }
+
+    graf.push(ST.pilih.map((_, i) => '[v' + i + '][a' + i + ']').join('') + 'concat=n=' + ST.pilih.length + ':v=1:a=1[gabungv][gabunga]');
+    let vout = 'gabungv', aout = 'gabunga';
+    if (judul) {
+      await ff.writeFile('judul.txt', new TextEncoder().encode(judul));
+      ST.temp.push('judul.txt');
+      graf.push('[gabungv]' + drawtext({ file: 'judul.txt', fontsize: Math.round(W * 0.05), pos: 'atas', warna: '#ffffff', H, dari: 0, sampai: Math.min(4, Math.max(1.5, total * 0.25)) }) + '[vjudul]');
+      vout = 'vjudul';
+    }
+    if (penutup) {
+      await ff.writeFile('penutup.txt', new TextEncoder().encode(penutup));
+      ST.temp.push('penutup.txt');
+      const mulai = Math.max(0, total - Math.min(4.5, Math.max(2, total * 0.25)));
+      graf.push('[' + vout + ']' + drawtext({ file: 'penutup.txt', fontsize: Math.round(W * 0.042), pos: 'bawah', warna: '#ffffff', H, dari: mulai, sampai: total }) + '[vpenutup]');
+      vout = 'vpenutup';
+    }
+    if (pakaiMusik && ST.backsound) {
+      const ekst = (/\.(\w+)$/.exec(ST.backsound.name) || [, 'mp3'])[1].toLowerCase();
+      const mf = 'musik.' + ekst;
+      await ff.writeFile(mf, new Uint8Array(await ST.backsound.arrayBuffer()));
+      ST.temp.push(mf);
+      args.push('-stream_loop', '-1', '-i', mf);
+      const mIdx = inputIdx++;
+      graf.push('[' + mIdx + ':a]volume=' + volMusik.toFixed(2) + ',afade=t=in:st=0:d=1.2,afade=t=out:st=' + Math.max(0, total - 2).toFixed(2) + ':d=2[musik]');
+      graf.push('[gabunga][musik]amix=inputs=2:duration=first:dropout_transition=3[aout]');
+      aout = 'aout';
+    }
+
+    args.push('-filter_complex', graf.join(';'), '-map', '[' + vout + ']', '-map', '[' + aout + ']',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', String(total), 'hasil.mp4');
+    ST.temp.push('hasil.mp4');
+    const kode = await ff.exec(args);
+    if (kode !== 0) {
+      console.error('ffmpeg gagal:', ST.log.slice(-12));
+      throw new Error('Render gagal (kode ' + kode + '). Coba kurangi jumlah klip atau backsound.');
+    }
+  }
+
+  async function render() {
+    if (ST.renderJalan) return;
+    if (!ST.pilih.length) { status('Tambahkan klip dulu sebelum menggabungkan.', true); return; }
+    if (ST.pilih.length > 30) { status('Maksimal 30 klip per render. Bagi menjadi beberapa video.', true); return; }
+    ST.renderJalan = true;
+    $('stRender').disabled = true;
+    jedaSequence();
+    const c = ctx();
+    ST.temp = [];
+    let ff = null;
     let hasilNama = '';
     try {
-      const ff = await siapkanFF();
+      ff = await siapkanFF();
       for (const k of ST.pilih) await pastikanDurasi(k);
       renderPlaylist();
-      targetProgres = ST.pilih.reduce((a, k) => a + Math.max(0, (k.trimAkhir || k.durasi) - k.trimAwal), 0);
+      targetProgres = totalDurasi();
       capaianProgres = 0;
-
-      // font untuk drawtext
-      const font = await fetch('js/Roboto-Regular.ttf');
-      if (!font.ok) throw new Error('Font teks tidak ditemukan (js/Roboto-Regular.ttf)');
-      await ff.writeFile('font.ttf', new Uint8Array(await font.arrayBuffer()));
-
-      const berkas = [];
-      for (let i = 0; i < ST.pilih.length; i++) {
-        const k = ST.pilih[i];
-        const bytes = await bytesKlip(k);
-        const ext = /\.webm$/i.test(k.nama) ? '.webm' : '.mp4';
-        const masuk = 'in' + i + ext;
-        await ff.writeFile(masuk, bytes);
-        const D = Math.max(0.3, (k.trimAkhir || k.durasi) - k.trimAwal);
-        let vf = 'scale=' + W + ':' + H + ':force_original_aspect_ratio=increase,crop=' + W + ':' + H + ',setsar=1,fps=30';
-        if (k.teks) {
-          const namaTeks = 'teks' + i + '.txt';
-          await ff.writeFile(namaTeks, new TextEncoder().encode(k.teks));
-          vf += ',' + drawtext({ file: namaTeks, fontsize: Math.round(W * 0.038), pos: k.posisi, warna: k.warna, H, dari: 0, sampai: D });
-        }
-        const adaAudio = await punyaAudio(ff, masuk);
-        const enc = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
-        let args;
-        if (adaAudio) {
-          args = ['-ss', String(k.trimAwal || 0), '-t', String(D), '-i', masuk, '-vf', vf,
-            '-af', 'volume=' + volKlip.toFixed(2), '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-ac', '2', ...enc, 'p' + i + '.mp4'];
-        } else {
-          args = ['-ss', String(k.trimAwal || 0), '-t', String(D), '-i', masuk,
-            '-f', 'lavfi', '-t', String(D), '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-            '-vf', vf, '-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '160k', ...enc, 'p' + i + '.mp4'];
-        }
-        const kode = await ff.exec(args);
-        if (kode !== 0) throw new Error('Klip ' + (i + 1) + ' (' + k.nama + ') gagal diproses. Coba klip lain atau turunkan jumlah klip.');
-        berkas.push('p' + i + '.mp4');
-        await ff.deleteFile(masuk).catch(() => {});
+      progres('Merender ' + ST.pilih.length + ' klip dalam satu proses…');
+      const musikAwal = !!ST.backsound;
+      try {
+        await renderSekali(ff, musikAwal);
+      } catch (e) {
+        if (musikAwal) {
+          progres('Backsound gagal diproses — mencoba tanpa backsound…');
+          for (const n of ST.temp) await ff.deleteFile(n).catch(() => {});
+          ST.temp = [];
+          await renderSekali(ff, false);
+        } else throw e;
       }
 
-      await ff.writeFile('list.txt', new TextEncoder().encode(berkas.map(n => "file '" + n + "'").join('\n')));
-      progres('Menyambung ' + berkas.length + ' klip…');
-      let kode = await ff.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'gabung.mp4']);
-      if (kode !== 0) throw new Error('Penyambungan klip gagal.');
-      for (const n of berkas) await ff.deleteFile(n).catch(() => {});
-
-      const total = targetProgres;
-      const adaJudul = !!judul, adaPenutup = !!penutup;
-      let hasil = 'gabung.mp4';
-      if (adaJudul || adaPenutup || ST.backsound) {
-        progres('Menambahkan ' + [adaJudul ? 'judul' : '', adaPenutup ? 'penutup' : '', ST.backsound ? 'backsound' : ''].filter(Boolean).join(', ') + '…');
-        const args = ['-i', 'gabung.mp4'];
-        const graf = [];
-        const rantaiV = [];
-        if (adaJudul || adaPenutup) {
-          if (adaJudul) {
-            await ff.writeFile('judul.txt', new TextEncoder().encode(judul));
-            rantaiV.push('[0:v]' + drawtext({ file: 'judul.txt', fontsize: Math.round(W * 0.05), pos: 'atas', warna: '#ffffff', H, dari: 0, sampai: Math.min(4, Math.max(1.5, total * 0.25)) }) + '[v1]');
-          }
-          if (adaPenutup) {
-            await ff.writeFile('penutup.txt', new TextEncoder().encode(penutup));
-            const mulai = Math.max(0, total - Math.min(4.5, Math.max(2, total * 0.25)));
-            rantaiV.push('[' + (adaJudul ? 'v1' : '0:v') + ']' + drawtext({ file: 'penutup.txt', fontsize: Math.round(W * 0.042), pos: 'bawah', warna: '#ffffff', H, dari: mulai, sampai: total }) + '[vout]');
-          } else {
-            rantaiV.push('[v1]null[vout]');
-          }
-        }
-        if (ST.backsound) {
-          const ekst = (/\.(\w+)$/.exec(ST.backsound.name) || [, 'mp3'])[1].toLowerCase();
-          await ff.writeFile('musik.' + ekst, new Uint8Array(await ST.backsound.arrayBuffer()));
-          args.push('-stream_loop', '-1', '-i', 'musik.' + ekst);
-          graf.push('[1:a]volume=' + volMusik.toFixed(2) + ',afade=t=in:st=0:d=1.2,afade=t=out:st=' + Math.max(0, total - 2).toFixed(2) + ':d=2[a1]');
-          graf.push('[0:a][a1]amix=inputs=2:duration=first:dropout_transition=3[aout]');
-        }
-        if (rantaiV.length) graf.push(...rantaiV);
-        const adaV = rantaiV.length > 0;
-        if (adaV) args.push('-filter_complex', graf.join(';'), '-map', '[vout]');
-        else args.push('-filter_complex', graf.join(';'));
-        if (ST.backsound) args.push('-map', '[aout]');
-        else if (!adaV) args.push('-map', '0:v:0', '-map', '0:a?');
-        if (adaV) args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
-        else args.push('-c:v', 'copy');
-        args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', 'akhir.mp4');
-        kode = await ff.exec(args);
-        if (kode !== 0) {
-          // backsound bermasalah atau klip tanpa audio: ulangi tanpa backsound
-          if (ST.backsound) {
-            progres('Backsound gagal diproses — merender tanpa backsound…');
-            ST.backsound = null;
-            await ff.deleteFile('gabung.mp4').catch(() => {});
-            ST.renderJalan = false; $('stRender').disabled = false;
-            return render();
-          }
-          throw new Error('Penambahan judul/backsound gagal (kode ' + kode + ').');
-        }
-        hasil = 'akhir.mp4';
-      }
-
-      const data = await ff.readFile(hasil);
+      const data = await ff.readFile('hasil.mp4');
       const blob = new Blob([data.buffer ? data : new Uint8Array(data)], { type: 'video/mp4' });
       const cap = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
       const room = (ctx().roomDipilih ? ctx().roomDipilih() : '') || 'UMUM';
@@ -487,20 +624,120 @@
           }
         } catch (e) { status('Video jadi, tetapi gagal disimpan ke cloud: ' + (e.message || e), true); }
       }
-      progres('Selesai: ' + hasilNama + ' (' + ukuranTeks(blob.size) + ')');
+      progres('Selesai: ' + hasilNama + ' (' + ukuranTeks(blob.size) + ', ' + detik(totalDurasi()) + ')');
       status('Video selesai dibuat: ' + hasilNama);
-      for (const n of ['gabung.mp4', 'akhir.mp4', 'list.txt', 'font.ttf', 'judul.txt', 'penutup.txt', 'musik.mp3']) await ff.deleteFile(n).catch(() => {});
     } catch (e) {
       console.error('Render video gagal:', e);
       progres('Gagal: ' + (e.message || e), true);
       status('Render video gagal: ' + (e.message || e), true);
     } finally {
+      if (ff) for (const n of ST.temp) await ff.deleteFile(n).catch(() => {});
+      ST.temp = [];
       ST.renderJalan = false;
       $('stRender').disabled = false;
     }
   }
 
   /* ---------------- pemasangan kendali ---------------- */
+  function pasangTimeline() {
+    const box = $('stTimeline'); if (!box) return;
+    let baruGeser = 0;
+
+    box.addEventListener('click', e => {
+      const el = e.target.closest('.stKlipTL'); if (!el) return;
+      const i = +el.dataset.i; const k = ST.pilih[i]; if (!k) return;
+      const b = e.target.closest('button[data-a]');
+      if (b) {
+        e.preventDefault(); e.stopPropagation();
+        if (b.dataset.a === 'buang') {
+          const [x] = ST.pilih.splice(i, 1);
+          if (ST.terpilih === x) { ST.terpilih = ST.pilih[Math.min(i, ST.pilih.length - 1)] || null; ST.idx = idxTerpilih(); }
+          renderPlaylist(); renderDaftar();
+          if (ST.terpilih) { sinkronForm(); ST.pos = posisiMulai(idxTerpilih()); perbaruiWaktu(); }
+          else { $('stTotal').textContent = '0 klip'; tampilTeksPratinjau(null); }
+        } else {
+          gantiUrutan(i, b.dataset.a === 'kiri' ? i - 1 : i + 1);
+        }
+        return;
+      }
+      if (e.target.closest('.stHandle')) return;
+      if (Date.now() - baruGeser < 350) return;
+      pilihKlip(i);
+    });
+
+    let geser = null;
+    box.addEventListener('pointerdown', e => {
+      const h = e.target.closest('.stHandle'); if (!h) return;
+      const el = h.closest('.stKlipTL'); if (!el) return;
+      const i = +el.dataset.i; const k = ST.pilih[i]; if (!k) return;
+      e.preventDefault();
+      if (ST.putar) { ST.putar = false; $('stPutar').textContent = '▶'; $('stVideo').pause(); }
+      ST.terpilih = k; ST.idx = i; sinkronForm();
+      box.querySelectorAll('.stKlipTL.pilih').forEach(x => x.classList.remove('pilih'));
+      el.classList.add('pilih');
+      try { h.setPointerCapture(e.pointerId); } catch (_) {}
+      geser = { i, sisi: h.dataset.h, x0: e.clientX, a0: Number(k.trimAwal) || 0, b0: Number(k.trimAkhir) || Number(k.durasi) || 0, el, k };
+      ST.pos = posisiMulai(i); perbaruiWaktu();
+    });
+    box.addEventListener('pointermove', e => {
+      if (!geser) return;
+      const k = geser.k;
+      const dt = (e.clientX - geser.x0) / PX_DETIK;
+      if (geser.sisi === 'awal') {
+        k.trimAwal = Math.round(Math.max(0, Math.min(geser.b0 - 0.3, geser.a0 + dt)) * 10) / 10;
+      } else {
+        const maks = Number(k.durasi) || geser.b0;
+        k.trimAkhir = Math.round(Math.min(maks, Math.max(geser.a0 + 0.3, geser.b0 + dt)) * 10) / 10;
+      }
+      const d = durasiKlip(k);
+      geser.el.style.width = lebarKlip(d) + 'px';
+      const durEl = geser.el.querySelector('.stDur'); if (durEl) durEl.textContent = detik(d);
+      $('stAwal').value = angka(k.trimAwal);
+      $('stAkhir').value = angka(k.trimAkhir);
+      ST.pos = posisiMulai(geser.i);
+      $('stSeqRange').max = totalDurasi().toFixed(2);
+      perbaruiWaktu();
+    });
+    const akhiriGeser = () => {
+      if (!geser) return;
+      const k = geser.k;
+      geser = null;
+      baruGeser = Date.now();
+      const a = Math.max(0, Number(k.trimAwal) || 0);
+      const b = Math.min(Number(k.durasi) || Number(k.trimAkhir) || 0, Number(k.trimAkhir) || 0);
+      k.trimAwal = Math.min(a, Math.max(0, b - 0.3));
+      k.trimAkhir = Math.max(k.trimAwal + 0.3, b);
+      bacaForm();
+    };
+    box.addEventListener('pointerup', akhiriGeser);
+    box.addEventListener('pointercancel', akhiriGeser);
+
+    box.addEventListener('dragstart', e => {
+      const el = e.target.closest('.stKlipTL'); if (!el) return;
+      ST.geserIdx = +el.dataset.i;
+      try { e.dataTransfer.setData('text/plain', String(ST.geserIdx)); e.dataTransfer.effectAllowed = 'move'; } catch (_) {}
+      el.classList.add('geser');
+    });
+    box.addEventListener('dragover', e => {
+      if (ST.geserIdx == null) return;
+      const el = e.target.closest('.stKlipTL'); if (!el) return;
+      e.preventDefault();
+      box.querySelectorAll('.stKlipTL.masuk').forEach(x => x.classList.remove('masuk'));
+      el.classList.add('masuk');
+    });
+    box.addEventListener('drop', e => {
+      const el = e.target.closest('.stKlipTL'); if (!el || ST.geserIdx == null) return;
+      e.preventDefault();
+      const from = ST.geserIdx, to = +el.dataset.i;
+      ST.geserIdx = null;
+      gantiUrutan(from, to);
+    });
+    box.addEventListener('dragend', () => {
+      ST.geserIdx = null;
+      box.querySelectorAll('.geser,.masuk').forEach(x => x.classList.remove('geser', 'masuk'));
+    });
+  }
+
   function pasang() {
     $('stFile').onchange = e => {
       const f = Array.from(e.target.files || []);   // salin dulu: mengosongkan input ikut mengosongkan FileList
@@ -528,16 +765,62 @@
       $('stAkhir').value = angka(Math.max(Number($('stAwal').value) + 0.3, $('stVideo').currentTime || 0));
       bacaForm();
     };
+    $('stPutar').onclick = async () => {
+      if (ST.putar) { jedaSequence(); return; }
+      if (!ST.pilih.length) { status('Tambahkan klip dulu.', true); return; }
+      status('Menyiapkan klip…');
+      for (const k of ST.pilih) await pastikanDurasi(k);
+      renderPlaylist();
+      mainkanDari(ST.pos >= totalDurasi() - 0.05 ? 0 : ST.pos);
+    };
+    $('stSeqRange').oninput = () => {
+      jedaSequence();
+      ST.pos = Number($('stSeqRange').value) || 0;
+      perbaruiWaktu();
+      const p = klipPada(ST.pos); if (p) tampilkanKlip(p, false);
+    };
+    $('stPecah').onclick = pecahDiPosisi;
+    $('stRasio').onchange = () => {
+      const { W, H } = ukuranRasio();
+      $('stPratinjau').style.aspectRatio = W + ' / ' + H;
+    };
     $('stVideo').ontimeupdate = () => {
-      const k = ST.terpilih; if (!k) return;
       const v = $('stVideo');
-      if (k.trimAkhir && v.currentTime >= k.trimAkhir) { v.pause(); v.currentTime = k.trimAwal || 0; }
+      if (ST.putar) {
+        const p = klipPada(ST.pos);
+        if (!p) return;
+        if (v.currentTime >= (Number(p.k.trimAkhir) || 0) - 0.06) {
+          const total = totalDurasi();
+          const next = p.mulai + p.dur + 0.001;
+          v.pause();
+          if (next >= total - 0.05) {
+            ST.putar = false; $('stPutar').textContent = '▶';
+            ST.pos = total; perbaruiWaktu(); renderPlaylist();
+          } else {
+            mainkanDari(next);
+          }
+          return;
+        }
+        ST.pos = p.mulai + Math.max(0, v.currentTime - (Number(p.k.trimAwal) || 0));
+        perbaruiWaktu();
+      } else if (ST.terpilih) {
+        const k = ST.terpilih;
+        if (k.trimAkhir && v.currentTime >= k.trimAkhir) { v.pause(); v.currentTime = k.trimAwal || 0; }
+      }
+    };
+    $('stVideo').onended = () => {
+      if (!ST.putar) return;
+      const p = klipPada(ST.pos); if (!p) return;
+      const next = p.mulai + p.dur + 0.001;
+      if (next >= totalDurasi() - 0.05) { ST.putar = false; $('stPutar').textContent = '▶'; perbaruiWaktu(); renderPlaylist(); }
+      else mainkanDari(next);
     };
     $('stRender').onclick = render;
     $('stVol').oninput = () => { $('stVolNilai').textContent = $('stVol').value + '%'; };
     $('stVolKlip').oninput = () => { $('stVolKlipNilai').textContent = $('stVolKlip').value + '%'; };
     $('stVolNilai').textContent = $('stVol').value + '%';
     $('stVolKlipNilai').textContent = $('stVolKlip').value + '%';
+    pasangTimeline();
   }
 
   /* ---------------- API untuk app.js ---------------- */
@@ -545,6 +828,9 @@
     async tampilkan() {
       if (!ST.muat) await muatDaftar();
       renderDaftar(); renderPlaylist(); sinkronForm();
+      const { W, H } = ukuranRasio();
+      $('stPratinjau').style.aspectRatio = W + ' / ' + H;
+      perbaruiWaktu();
     },
     muatUlang: async () => { ST.muat = false; await muatDaftar(); }
   };

@@ -110,7 +110,32 @@ tr.diedit-baris td{background:#1b231c}
 .stKontrol input[type=number]{width:92px}
 .stBaris{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--redup);margin-bottom:8px}
 .stBaris b{color:var(--teks)}
-.stTimeline{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow:auto}
+.stTimelineKepala{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 4px}
+.stTimelineKepala h3{margin:0;font-size:14px}
+.stSeqKontrol{display:flex;align-items:center;gap:6px;flex:1;min-width:240px}
+.stSeqKontrol input[type=range]{flex:1;min-width:90px;accent-color:var(--hijau2)}
+.stSeqKontrol .kecil{white-space:nowrap;font-variant-numeric:tabular-nums}
+.stTimeline{display:flex;gap:7px;overflow-x:auto;padding:7px 2px 10px;min-height:104px;align-items:stretch}
+.stKlipTL{position:relative;flex:none;width:120px;border:1px solid var(--garis);border-radius:9px;overflow:hidden;background:#111;cursor:pointer;user-select:none;touch-action:pan-x;display:flex;flex-direction:column}
+.stKlipTL.pilih{outline:2px solid var(--hijau2);outline-offset:-1px}
+.stKlipTL.aktif{border-color:var(--hijau2);box-shadow:inset 0 0 0 2px var(--hijau2)}
+.stKlipTL.geser{opacity:.45}
+.stKlipTL.masuk{outline:2px dashed var(--hijau2);outline-offset:2px}
+.stKlipTL img{width:100%;height:56px;object-fit:cover;display:block;background:#000;pointer-events:none}
+.stTanpaThumb{height:56px;display:grid;place-items:center;font-size:20px;background:#1a1f1b;color:#6b756d}
+.stDur{position:absolute;left:6px;top:5px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;padding:1px 5px;border-radius:5px;font-variant-numeric:tabular-nums;pointer-events:none}
+.stInfoTL{display:flex;flex-direction:column;min-width:0;padding:4px 6px 28px;gap:1px}
+.stInfoTL b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stInfoTL span{font-size:10px;color:var(--redup);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stHandle{position:absolute;top:0;bottom:0;width:14px;cursor:ew-resize;touch-action:none;background:linear-gradient(rgba(255,255,255,.18),rgba(255,255,255,.05));z-index:2}
+.stHandle.kiri{left:0;border-right:1px solid rgba(255,255,255,.35)}
+.stHandle.kanan{right:0;border-left:1px solid rgba(255,255,255,.35)}
+.stHandle::after{content:'';position:absolute;top:50%;left:50%;width:2px;height:18px;margin:-9px 0 0 -1px;border-radius:2px;background:rgba(255,255,255,.75)}
+.stAksiTL{position:absolute;right:3px;bottom:3px;display:flex;gap:2px;z-index:3}
+.stAksiTL button{padding:1px 5px;font-size:11px;line-height:1.5;min-width:0}
+.stAksiTL button:disabled{opacity:.35}
+.stPetunjuk{margin:0 0 4px}
+@media(max-width:1120px){.stTimeline{min-height:96px}}
 .stItem{display:flex;align-items:center;gap:8px;border:1px solid var(--garis);border-radius:9px;padding:6px 8px;cursor:pointer}
 .stItem.pilih{border-color:var(--hijau2);background:#1b231c}
 .stNo{width:20px;height:20px;border-radius:50%;background:#232a24;display:grid;place-items:center;font-size:11px;flex:none}
