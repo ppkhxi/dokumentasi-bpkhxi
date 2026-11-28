@@ -985,6 +985,16 @@
     } catch (e) { status('Gagal menyimpan centang: ' + (e.message || e), true); }
   }
 
+  // Muat ulang panel ceklist dari MEGA tanpa memuat ulang seluruh dashboard.
+  const ckMuatUlang = $('ckMuatUlang');
+  if (ckMuatUlang) ckMuatUlang.onclick = async () => {
+    if ($('ckItems') && !confirm('Muat ulang ceklist? Perubahan yang belum disimpan akan hilang.')) return;
+    window._ckEdit = false;
+    ckMuatUlang.disabled = true;
+    try { await muatCeklistSpace(); }
+    finally { ckMuatUlang.disabled = false; }
+  };
+
   /* ---------------- API untuk modul lain (Studio Video) ---------------- */
   window.SpaceCtx = {
     get storage() { return S.storage; },
