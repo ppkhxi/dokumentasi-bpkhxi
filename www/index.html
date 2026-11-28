@@ -164,16 +164,6 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
         <button class="menu-kartu" data-menu="antrian"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span><b>Antrian Upload</b><small>Status kirim ke MEGA</small></button>
         <button class="menu-kartu" data-menu="pengaturan"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.9 1.9 0 1 1-2.69 2.69l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47v.17a1.9 1.9 0 1 1-3.8 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a1.9 1.9 0 1 1-2.69-2.69l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97h-.17a1.9 1.9 0 1 1 0-3.8h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.9 1.9 0 1 1 2.69-2.69l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10.05 3.13V3a1.9 1.9 0 1 1 3.8 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a1.9 1.9 0 1 1 2.69 2.69l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.97h.17a1.9 1.9 0 1 1 0 3.8h-.09a1.6 1.6 0 0 0-1.47.97Z"/></svg></span><b>Pengaturan</b><small>Logo, kompresi, akun</small></button>
       </div>
-
-      <!-- Widget capture: kamera HP + portal spacedkpoint (hanya tampil di APK) -->
-      <div class="ccWidgetCapture" id="ccWidgetCapture" style="margin:12px 0;display:none">
-        <div class="ccWidgetBaris">
-          <button type="button" class="menu-kartu" id="wCaptureVideo" style="min-height:72px"><span class="ic">🎬</span><b>Capture Video</b><small>Buka kamera HP</small></button>
-          <button type="button" class="menu-kartu" id="wCaptureFoto" style="min-height:72px"><span class="ic">📷</span><b>Capture Foto</b><small>Buka kamera HP</small></button>
-        </div>
-        <button type="button" class="tombol" id="wFotoUntukVideo" style="width:100%;margin-top:8px">📸 Capture foto untuk video</button>
-        <a class="tombol" id="wPortal" href="https://spacedkpoint.pages.dev" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1d3a5f">Masuk portal spacedkpoint</a>
-      </div>
     </section>
 
     <!-- KAMERA (MAKIOR PRO FIELD CAMERA) -->
@@ -8186,29 +8176,6 @@ function keluar(){
 
 /* Modul Video Kegiatan ada di js/video.js; kendalinya dipasang di sini. */
 mulaiVideoUI();
-
-/* ---------- Widget capture di beranda (kamera HP + portal spacedkpoint) ---------- */
-(function(){
-  const portal = 'https://spacedkpoint.pages.dev';
-  const btnVid = $('wCaptureVideo');
-  const btnFoto = $('wCaptureFoto');
-  const btnFotoVid = $('wFotoUntukVideo');
-  const kotak = $('ccWidgetCapture');
-  const portalLink = $('wPortal');
-  if(portalLink) portalLink.href = portal;
-  /* Widget capture hanya untuk APK (native Android). Di PWA/browser blok ini
-     disembunyikan dan tombolnya tidak dipasang sama sekali. */
-  const nativeVid = !!(window.DokumentasiNative && window.DokumentasiNative.rekamVideo);
-  if(kotak) kotak.style.display = nativeVid ? '' : 'none';
-  if(nativeVid && btnVid){
-    btnVid.onclick = () => {
-      try{ rekamKameraHp(); }
-      catch(e){ pesan('Gagal membuka kamera HP: ' + (e && e.message || e)); }
-    };
-  }
-  if(btnFoto){ btnFoto.onclick = () => ke('kamera'); }
-  if(btnFotoVid){ btnFotoVid.onclick = () => ke('kamera'); }
-})();
 
 /* ---------- Nav & login ---------- */
 document.querySelectorAll('.nav-item').forEach(b=> b.onclick=()=>ke(b.dataset.nav));

@@ -41,6 +41,7 @@
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -56,6 +57,17 @@
             android:name=".TrackingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <receiver
+            android:name=".WidgetCapture"
+            android:exported="false"
+            android:label="Capture DKPoint">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_capture_info" />
+        </receiver>
         <receiver
             android:name=".PengingatReceiver"
             android:exported="false">

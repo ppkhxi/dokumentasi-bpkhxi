@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="#0F2A44">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Dokumentasi"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:paddingBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/wvVideo"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:text="Video"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:background="#2E7D32" />
+
+        <Button
+            android:id="@+id/wvFoto"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Foto"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:background="#1565C0" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/wvPortal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Portal spacedkpoint"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:background="#1D3A5F" />
+</LinearLayout>

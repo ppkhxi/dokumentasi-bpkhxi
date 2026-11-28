@@ -39,11 +39,16 @@ class MainActivity : Activity() {
         const val BATAS_VIDEO_MS = 4_000   // bawaan 4 detik
         const val BATAS_VIDEO_MIN = 2
         const val BATAS_VIDEO_MAX = 15
+        const val EXTRA_AKSI = "aksi_widget"
+        const val AKSI_VIDEO = "video"
+        const val AKSI_FOTO = "foto"
     }
 
     /** Satu klip video hasil kamera HP yang siap dibaca halaman web. */
     @Volatile private var berkasVideo: File? = null
     @Volatile private var statusVideo: String = "menunggu"   // menunggu | siap | batal
+    private var aksiWidget: String? = null
+    private var halamanSiap = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +60,15 @@ class MainActivity : Activity() {
             tampilkanTeks("Crash pada pembukaan sebelumnya:\n\n" + crash)
             return
         }
+        bacaAksi(intent)
         aman { mulai() }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        bacaAksi(intent)
+        jalankanAksiWidget()
     }
 
     private fun tampilkanError(e: Throwable) {
@@ -88,7 +101,13 @@ class MainActivity : Activity() {
             mediaPlaybackRequiresUserGesture = false
             userAgentString = "${userAgentString} DokumentasiApp/1"
         }
-        web.webViewClient = AsetWebClient(this)
+        web.webViewClient = object : AsetWebClient(this) {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                halamanSiap = true
+                jalankanAksiWidget()
+            }
+        }
         web.addJavascriptInterface(JembatanApp(), "DokumentasiNative")
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -190,6 +209,26 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         if (web.canGoBack()) web.goBack() else super.onBackPressed()
+    }
+
+    /** Aksi yang diminta widget layar utama (video/foto). */
+    private fun bacaAksi(intent: Intent?) {
+        aksiWidget = intent?.getStringExtra(EXTRA_AKSI)
+    }
+
+    /** Jalankan aksi widget setelah halaman web selesai dimuat. */
+    private fun jalankanAksiWidget() {
+        val aksi = aksiWidget ?: return
+        if (!halamanSiap || !::web.isInitialized) return
+        aksiWidget = null
+        val js = when (aksi) {
+            AKSI_VIDEO -> "if(typeof rekamKameraHp==='function')rekamKameraHp()"
+            AKSI_FOTO -> "if(typeof ke==='function')ke('kamera')"
+            else -> return
+        }
+        web.postDelayed({
+            try { web.evaluateJavascript(js, null) } catch (_: Exception) {}
+        }, 600)
     }
 
     private fun bubbleAktif(): Boolean = prefs.getBoolean("bubble_aktif", true)
