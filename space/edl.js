@@ -167,9 +167,17 @@
           else alasan = adegan.alasan.trim();
         }
 
+        let narasi = '';
+        if (adegan.narasi !== undefined && adegan.narasi !== null) {
+          if (typeof adegan.narasi !== 'string') tolak(path + '.narasi', 'narasi harus berupa teks.');
+          else if (adegan.narasi.trim().length > 500) tolak(path + '.narasi', 'narasi maksimal 500 karakter.');
+          else narasi = adegan.narasi.trim();
+        }
+
         urutan.push({
           id, klip, masuk, keluar, teks, posisiTeks, warnaTeks,
-          ...(alasan ? { alasan } : {})
+          ...(alasan ? { alasan } : {}),
+          ...(narasi ? { narasi } : {})
         });
       });
     }

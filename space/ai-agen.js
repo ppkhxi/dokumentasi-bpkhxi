@@ -33,13 +33,13 @@
     const sisa = Math.ceil((S.siap - Date.now()) / 1000);
     if (S.sibuk) {
       t.disabled = true;
-      t.textContent = 'Menyusun storyboard…';
+      t.textContent = 'Menyusun potongan…';
     } else if (sisa > 0) {
       t.disabled = true;
       t.textContent = 'Tunggu ' + sisa + ' dtk';
     } else {
       t.disabled = false;
-      t.textContent = '✨ Buat storyboard';
+      t.textContent = '✨ Susun video';
     }
     const u = $('stAiUlang');
     if (u) u.disabled = S.sibuk || sisa > 0;
@@ -129,7 +129,7 @@
       'Balas HANYA satu objek JSON valid. Jangan memakai markdown, komentar, atau teks di luar JSON.',
       '',
       'Bentuk JSON yang wajib:',
-      '{"judul":"...","penutup":"...","rasio":"16:9","urutan":[{"klipId":"ID PERSIS","masuk":0,"keluar":3.2,"teks":"...","alasan":"..."}]}',
+      '{"judul":"...","penutup":"...","rasio":"16:9","urutan":[{"klipId":"ID PERSIS","masuk":0,"keluar":3.2,"teks":"...","narasi":"...","alasan":"..."}]}',
       '',
       'Aturan:',
       '- klipId wajib persis salah satu id pada katalog. Jangan mengarang id.',
@@ -138,6 +138,8 @@
       '- Gunakan 2–30 adegan. Jika katalog sedikit, cukup 2–6 adegan; boleh memakai klip yang sama lebih dari sekali bila perlu.',
       '- Susun alur: pembuka suasana, kegiatan utama, lalu penutup. Ikuti urutan peristiwa pada deskripsi.',
       '- teks adalah caption layar berbahasa Indonesia, maksimal 90 karakter, singkat dan faktual. Jangan mengarang nama orang, tempat, atau angka yang tidak ada di deskripsi/katalog.',
+      '- narasi adalah teks voiceover untuk adegan ini, bahasa Indonesia, 1–2 kalimat singkat yang menceritakan adegan sesuai alur deskripsi. Boleh kosong jika tidak perlu.',
+      '- Susun adegan sesuai urutan peristiwa yang diceritakan dalam deskripsi, bukan hanya menampilkan teks; pilih klip yang memperlihatkan tiap tahap cerita.',
       '- alasan maksimal 240 karakter, jelaskan singkat mengapa klip itu dipilih.',
       '- rasio harus salah satu: 16:9, 9:16, 1:1, 4:5. Pilih yang paling cocok dengan deskripsi; jika tidak jelas pakai 16:9.',
       '- judul dan penutup maksimal 80 karakter.',
@@ -296,6 +298,8 @@
 
       let teks = String(adegan.teks !== undefined ? adegan.teks : (adegan.caption !== undefined ? adegan.caption : (adegan.text !== undefined ? adegan.text : '')) || '').trim();
       if (teks.length > 90) { teks = teks.slice(0, 90); disesuaikan++; }
+      let narasi = String(adegan.narasi !== undefined ? adegan.narasi : (adegan.narration !== undefined ? adegan.narration : (adegan.voiceover !== undefined ? adegan.voiceover : (adegan.vo !== undefined ? adegan.vo : ''))) || '').trim();
+      if (narasi.length > 500) { narasi = narasi.slice(0, 500); disesuaikan++; }
       let alasan = String(adegan.alasan !== undefined ? adegan.alasan : (adegan.reason !== undefined ? adegan.reason : '') || '').trim();
       if (alasan.length > 240) alasan = alasan.slice(0, 240);
       let posisi = String(adegan.posisiTeks || adegan.posisi || 'bawah').toLowerCase();
@@ -317,7 +321,8 @@
         teks,
         posisiTeks: posisi,
         warnaTeks: warna,
-        ...(alasan ? { alasan } : {})
+        ...(alasan ? { alasan } : {}),
+        ...(narasi ? { narasi } : {})
       });
     }
 
@@ -353,32 +358,21 @@
   function renderKartu() {
     const e = S.edl;
     if (!e) return;
-    const kartu = e.urutan.map((a, i) => {
+    const daftar = e.urutan.map((a, i) => {
       const dur = Math.max(0, Number(a.keluar) - Number(a.masuk));
       const nama = a.klip.nama || 'Klip ' + (i + 1);
-      return '<div class="ai-kartu" data-i="' + i + '">' +
-        '<div class="ai-kartu-kepala">' +
-          '<span class="ai-kartu-no">' + String(i + 1).padStart(2, '0') + '</span>' +
-          '<span class="ai-kartu-nama" title="' + esc(nama) + '">' + esc(nama) + '</span>' +
-          '<span class="ai-kartu-dur">' + tampil(dur) + ' dtk</span>' +
-        '</div>' +
-        '<input class="ai-caption" data-i="' + i + '" maxlength="90" value="' + esc(a.teks || '') + '" placeholder="Teks layar (opsional)" aria-label="Teks adegan ' + (i + 1) + '">' +
-        '<div class="ai-kartu-meta"><span><b>' + tampil(a.masuk) + '–' + tampil(a.keluar) + '</b> dtk</span>' +
-          (a.alasan ? '<span>· ' + esc(a.alasan) + '</span>' : '') +
-        '</div>' +
-      '</div>';
+      return '<li>' +
+          '<span class="ai-baris-kepala"><b>' + String(i + 1).padStart(2, '0') + '</b> ' + esc(nama) + '<i>' + tampil(dur) + ' dtk</i></span>' +
+          (a.teks ? '<span class="ai-baris-teks">' + esc(a.teks) + '</span>' : '') +
+          (a.narasi ? '<span class="ai-baris-narasi">' + esc(a.narasi) + '</span>' : '') +
+        '</li>';
     }).join('');
 
-    const judul = e.keluaran.judul || 'Storyboard';
+    const judul = e.keluaran.judul || 'Susunan video';
     $('stAiHasil').innerHTML = '<div class="ai-ringkas"><b>' + esc(judul) + '</b><br>' +
-      e.urutan.length + ' adegan · ' + tampil(totalDetik(e)) + ' dtk · ' + esc(e.keluaran.rasio) + '</div>' + kartu;
+      e.urutan.length + ' potongan · ' + tampil(totalDetik(e)) + ' dtk · ' + esc(e.keluaran.rasio) + '</div>' +
+      '<ol class="ai-daftar">' + daftar + '</ol>';
     $('stAiAksi').hidden = false;
-    $('stAiHasil').querySelectorAll('.ai-caption').forEach(inp => {
-      inp.addEventListener('input', () => {
-        const i = Number(inp.dataset.i);
-        if (S.edl && S.edl.urutan[i]) S.edl.urutan[i].teks = inp.value.slice(0, 90);
-      });
-    });
   }
 
   async function buat() {
@@ -416,10 +410,32 @@
       const hasil = normalisasi(raw, katalog, deskripsi);
       S.edl = hasil.edl;
       renderKartu();
-      let pesan = hasil.edl.urutan.length + ' adegan siap · ' + tampil(totalDetik(hasil.edl)) + ' dtk.';
+      const narasiGabung = (hasil.edl.urutan || []).map(a => String(a.narasi || a.teks || '').trim()).filter(Boolean).join(' ');
+      const elNarasi = $('stNarasi');
+      if (elNarasi && narasiGabung) elNarasi.value = narasiGabung;
+
+      // Langsung potong ke timeline: pergantian clip-to-clip, bukan kartu perantara.
+      let potong = null;
+      try {
+        let sekarang = null;
+        try { sekarang = window.StudioVideo.edl.ambil(); } catch (_) {}
+        const sudahAda = sekarang && Array.isArray(sekarang.urutan) && sekarang.urutan.length;
+        const lanjut = !sudahAda || window.confirm('Timeline sekarang akan diganti dengan ' + hasil.edl.urutan.length + ' potongan dari cerita ini. Lanjut?');
+        if (lanjut) potong = await window.StudioVideo.edl.terapkan(hasil.edl);
+      } catch (_) {
+        potong = null;
+      }
+
+      let pesan;
+      if (potong && potong.ok) {
+        pesan = 'Video dipotong menjadi ' + potong.jumlah + ' adegan · ' + tampil(potong.totalDetik) + ' dtk. Narasi sudah terisi di tab Hasil.';
+        const tabKlip = document.querySelector('[data-cctab="klip"]');
+        if (tabKlip) setTimeout(() => tabKlip.click(), 350);
+      } else {
+        pesan = hasil.edl.urutan.length + ' adegan siap · ' + tampil(totalDetik(hasil.edl)) + ' dtk. Tekan "Terapkan ulang ke timeline" untuk memotongnya.';
+      }
       if (hasil.dilewati) pesan += ' ' + hasil.dilewati + ' adegan dilewati karena klipnya tidak ada.';
       if (hasil.disesuaikan) pesan += ' ' + hasil.disesuaikan + ' potongan disesuaikan ke durasi klip.';
-      pesan += ' Periksa kartu sebelum diterapkan.';
       kabar(pesan, 'sukses');
       mulaiSiap(BATAS_GRATIS);
     } catch (err) {
@@ -458,13 +474,16 @@
         throw new Error(pesan || 'EDL tidak bisa diterapkan.');
       }
       const pesan = 'Storyboard diterapkan: ' + hasil.jumlah + ' adegan · ' + tampil(hasil.totalDetik) + ' dtk.';
+      const narasiGabung = (S.edl && S.edl.urutan ? S.edl.urutan : []).map(a => String(a.narasi || a.teks || '').trim()).filter(Boolean).join(' ');
+      const elNarasi = $('stNarasi');
+      if (elNarasi && narasiGabung) elNarasi.value = narasiGabung;
       kabar(pesan, 'sukses');
       const tab = document.querySelector('[data-cctab="klip"]');
       if (tab) setTimeout(() => tab.click(), 350);
     } catch (err) {
       kabar((err && err.message) || 'Gagal menerapkan storyboard.', 'galat');
     } finally {
-      if (tombol) { tombol.disabled = false; tombol.textContent = 'Terapkan ke timeline'; }
+      if (tombol) { tombol.disabled = false; tombol.textContent = 'Terapkan ulang ke timeline'; }
     }
   }
 
