@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spacedkpoint.pages.dev/space/edl-schema.json",
+  "title": "DKPoint Studio Video — Edit Decision List",
+  "description": "Kontrak untuk agen AI atau editor eksternal. EDL hanya berisi keputusan editing (klip, potongan, teks); berkas video tetap diproses di browser. Semua waktu dalam detik.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["versi", "keluaran", "urutan"],
+  "properties": {
+    "versi": {
+      "const": "dkpoint-edl/1",
+      "description": "Versi kontrak. Naikkan bila bentuk EDL berubah dan tidak kompatibel."
+    },
+    "dibuat": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Waktu pembuatan EDL dalam ISO 8601. Diisi otomatis bila kosong."
+    },
+    "sumber": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "Asal EDL, misalnya nama agen atau 'studio-video'."
+    },
+    "keluaran": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rasio"],
+      "properties": {
+        "rasio": {
+          "type": "string",
+          "enum": ["16:9", "9:16", "1:1", "4:5"],
+          "default": "16:9"
+        },
+        "judul": {
+          "type": "string",
+          "maxLength": 80,
+          "default": "",
+          "description": "Teks pembuka. Boleh kosong."
+        },
+        "penutup": {
+          "type": "string",
+          "maxLength": 80,
+          "default": "",
+          "description": "Teks penutup. Boleh kosong."
+        }
+      }
+    },
+    "urutan": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "description": "Urutan adegan dari awal ke akhir. Maksimal 30 karena batas render.",
+      "items": {
+        "$ref": "#/$defs/adegan"
+      }
+    },
+    "catatan": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Catatan bebas dari agen; tidak memengaruhi render."
+    }
+  },
+  "$defs": {
+    "adegan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["klip", "masuk", "keluar"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "ID adegan yang unik di dalam EDL. Boleh diisi agen; dibuat otomatis bila kosong."
+        },
+        "klip": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id"],
+          "description": "Referensi ke media yang tersedia di Studio Video.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "ID media dari StudioVideo.edl.katalog()."
+            },
+            "nama": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Nama berkas untuk membantu pencocokan bila ID berubah."
+            },
+            "room": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "petugas": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "durasi": {
+              "type": "number",
+              "minimum": 0.3,
+              "description": "Durasi asli klip dalam detik, bila diketahui."
+            },
+            "ts": {
+              "type": ["number", "null"],
+              "description": "Waktu rekaman dalam milidetik epoch, bila ada."
+            }
+          }
+        },
+        "masuk": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Detik awal di dalam klip sumber."
+        },
+        "keluar": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Detik akhir di dalam klip sumber; harus lebih besar dari masuk."
+        },
+        "teks": {
+          "type": "string",
+          "maxLength": 90,
+          "default": "",
+          "description": "Caption yang dibakar ke video."
+        },
+        "posisiTeks": {
+          "type": "string",
+          "enum": ["atas", "tengah", "bawah"],
+          "default": "bawah"
+        },
+        "warnaTeks": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#ffffff"
+        },
+        "alasan": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Alasan agen memilih adegan ini; tidak memengaruhi render."
+        }
+      }
+    }
+  }
+}

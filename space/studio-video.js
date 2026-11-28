@@ -922,6 +922,146 @@
     pasangTabCapcut();
   }
 
+  /* ---------------- EDL (Edit Decision List) ---------------- */
+  // Kontrak ada di edl-schema.json dan divalidasi edl.js. Fungsi di bawah
+  // menjembatani kontrak itu dengan state timeline tanpa mengekspos ST.
+  const teksEDL = v => String(v == null ? '' : v).trim();
+  const bulatEDL = v => Math.round((Number(v) || 0) * 1000) / 1000;
+
+  function semuaMediaEDL() {
+    const peta = new Map();
+    (ST.cloud || []).forEach(k => { if (k && k.id) peta.set(k.id, k); });
+    (ST.pilih || []).forEach(k => { if (k && k.id && !peta.has(k.id)) peta.set(k.id, k); });
+    return Array.from(peta.values());
+  }
+
+  async function katalogEDL() {
+    if (!ST.muat) await muatDaftar();
+    const media = semuaMediaEDL();
+    return {
+      versi: 'dkpoint-katalog/1',
+      room: (ctx().roomDipilih ? ctx().roomDipilih() : '') || '',
+      jumlah: media.length,
+      klip: media.map(k => ({
+        id: k.id,
+        nama: k.nama || '',
+        room: k.room || 'LOKAL',
+        petugas: k.petugas || 'Lokal',
+        durasi: Number(k.durasi) || 0,
+        ukuran: Number(k.ukuran) || 0,
+        ts: (k.ts === undefined ? null : k.ts),
+        sumber: k.sumber || (k.node ? 'cloud' : 'lokal')
+      }))
+    };
+  }
+
+  function edlSekarang() {
+    const nilai = id => { const el = $(id); return el ? el.value : ''; };
+    return {
+      versi: window.EDL.VERSI,
+      dibuat: new Date().toISOString(),
+      sumber: 'studio-video',
+      keluaran: {
+        rasio: nilai('stRasio') || '16:9',
+        judul: teksEDL(nilai('stJudul')),
+        penutup: teksEDL(nilai('stPenutup'))
+      },
+      urutan: ST.pilih.map((k, i) => ({
+        id: 'sc-' + (i + 1),
+        klip: {
+          id: k.id,
+          nama: k.nama || '',
+          room: k.room || 'LOKAL',
+          petugas: k.petugas || 'Lokal',
+          ...(Number(k.durasi) > 0 ? { durasi: bulatEDL(k.durasi) } : {}),
+          ts: (k.ts === undefined ? null : k.ts)
+        },
+        masuk: bulatEDL(k.trimAwal),
+        keluar: bulatEDL(Number(k.trimAkhir) || Number(k.durasi) || 0),
+        teks: teksEDL(k.teks),
+        posisiTeks: k.posisi || 'bawah',
+        warnaTeks: k.warna || '#ffffff'
+      }))
+    };
+  }
+
+  async function terapkanEDL(edl) {
+    if (ST.renderJalan) {
+      return { ok: false, galat: [{ path: '', pesan: 'Tunggu render selesai sebelum menerapkan EDL.' }] };
+    }
+    if (!window.EDL || typeof window.EDL.validasi !== 'function') {
+      return { ok: false, galat: [{ path: '', pesan: 'Validator EDL belum termuat. Muat ulang halaman.' }] };
+    }
+    const cek = window.EDL.validasi(edl);
+    if (!cek.ok) return { ok: false, galat: cek.galat };
+    if (!ST.muat) await muatDaftar();
+
+    const media = semuaMediaEDL();
+    const hasil = [];
+    const galat = [];
+    for (let i = 0; i < cek.edl.urutan.length; i++) {
+      const adegan = cek.edl.urutan[i];
+      let k = media.find(x => x.id === adegan.klip.id);
+      if (!k && adegan.klip.nama) {
+        const calon = media.filter(x => x.nama === adegan.klip.nama);
+        if (calon.length === 1) k = calon[0];
+      }
+      if (!k) {
+        galat.push({ path: 'urutan[' + i + '].klip.id', pesan: 'Media "' + adegan.klip.id + '" tidak ditemukan. Muat ulang daftar atau pakai ID dari katalog.' });
+        continue;
+      }
+      if (!(Number(k.durasi) > 0)) await pastikanDurasi(k);
+      const durasi = Number(k.durasi) || 0;
+      if (!(durasi > 0)) {
+        galat.push({ path: 'urutan[' + i + ']', pesan: 'Durasi media "' + k.nama + '" tidak terbaca.' });
+        continue;
+      }
+      if (adegan.masuk >= durasi - 0.01 || adegan.keluar > durasi + 0.05) {
+        galat.push({ path: 'urutan[' + i + ']', pesan: 'Potongan ' + adegan.masuk + '–' + adegan.keluar + ' detik di luar durasi "' + k.nama + '" (' + bulatEDL(durasi) + ' detik).' });
+        continue;
+      }
+      hasil.push(Object.assign({}, k, BARU, {
+        trimAwal: adegan.masuk,
+        trimAkhir: adegan.keluar,
+        teks: adegan.teks || '',
+        posisi: adegan.posisiTeks || 'bawah',
+        warna: adegan.warnaTeks || '#ffffff',
+        edlId: adegan.id
+      }));
+    }
+    if (galat.length) return { ok: false, galat };
+    if (!hasil.length) return { ok: false, galat: [{ path: 'urutan', pesan: 'EDL tidak berisi adegan yang bisa diterapkan.' }] };
+
+    // Baru ubah timeline setelah semua adegan lolos validasi.
+    jedaSequence();
+    ST.pilih = hasil;
+    ST.terpilih = hasil[0];
+    ST.idx = 0;
+    ST.pos = 0;
+    if ($('stRasio')) $('stRasio').value = cek.edl.keluaran.rasio;
+    if ($('stJudul')) $('stJudul').value = cek.edl.keluaran.judul || '';
+    if ($('stPenutup')) $('stPenutup').value = cek.edl.keluaran.penutup || '';
+    const { W, H } = ukuranRasio();
+    $('stPratinjau').style.aspectRatio = W + ' / ' + H;
+    renderPlaylist(); renderDaftar(); sinkronForm(); perbaruiWaktu();
+    const p = klipPada(0);
+    if (p) tampilkanKlip(p, false);
+    status('EDL diterapkan: ' + hasil.length + ' adegan · ' + detik(totalDurasi()));
+    return {
+      ok: true,
+      jumlah: hasil.length,
+      totalDetik: bulatEDL(totalDurasi()),
+      urutan: hasil.map((k, i) => ({ id: cek.edl.urutan[i].id, nama: k.nama, masuk: k.trimAwal, keluar: k.trimAkhir, teks: k.teks }))
+    };
+  }
+
+  async function skemaEDL() {
+    let r = await fetch('edl-schema.json', { cache: 'no-store' });
+    if (!r.ok) r = await fetch('/space/edl-schema.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('Skema EDL tidak ditemukan (' + r.status + ').');
+    return r.json();
+  }
+
   /* ---------------- API untuk app.js ---------------- */
   window.StudioVideo = {
     async tampilkan() {
@@ -931,7 +1071,16 @@
       $('stPratinjau').style.aspectRatio = W + ' / ' + H;
       perbaruiWaktu();
     },
-    muatUlang: async () => { ST.muat = false; await muatDaftar(); }
+    muatUlang: async () => { ST.muat = false; await muatDaftar(); },
+    edl: {
+      versi: window.EDL ? window.EDL.VERSI : 'dkpoint-edl/1',
+      skema: skemaEDL,
+      contoh: () => (window.EDL ? window.EDL.contoh() : null),
+      katalog: katalogEDL,
+      ambil: edlSekarang,
+      validasi: edl => (window.EDL ? window.EDL.validasi(edl) : { ok: false, galat: [{ path: '', pesan: 'Validator EDL belum termuat.' }], edl: null }),
+      terapkan: terapkanEDL
+    }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pasang);
