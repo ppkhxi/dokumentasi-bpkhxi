@@ -2,7 +2,7 @@
    Strategi: cache-first untuk berkas aplikasi, dengan pembaruan di latar
    belakang. Foto TIDAK disimpan di sini — foto ada di IndexedDB. */
 
-const VERSI = 'dkpoint-v4.5.4-video-cta';
+const VERSI = 'dkpoint-v4.5.5-kamera-video';
 const CACHE_TILES = 'dkpoint-tiles-v2';
 const MAKS_TILE = 1200;   // simpan lebih banyak tile basemap agar area kerja tetap bisa dibuka offline berhari-hari
 

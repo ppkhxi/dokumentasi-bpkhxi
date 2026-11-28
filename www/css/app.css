@@ -2669,3 +2669,31 @@ body[data-tema] ::-webkit-scrollbar-track{background:transparent}
 body[data-tema] #appbar *,body[data-tema] #navbar *,body[data-tema] .kartu *,
 body[data-tema] .dialog-isi *,body[data-tema] .hero *,body[data-tema] .stat *,
 body[data-tema] .menu-kartu *,body[data-tema] .tombol *{text-shadow:none !important}
+
+/* =====================================================================
+   KAMERA UTAMA — MODE FOTO / VIDEO
+   Rana yang sama: putih untuk foto, merah untuk merekam. Mode video
+   memakai klip pendek yang sama dengan menu Video Kegiatan.
+   ===================================================================== */
+#modeKamera{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 16px 0;background:var(--makior-bg)}
+.mode-kamera-seg{display:flex;gap:3px;padding:3px;border-radius:999px;border:1px solid var(--makior-border);background:rgba(255,255,255,.06)}
+.mode-kamera-btn{border:0;border-radius:999px;padding:6px 14px;background:transparent;color:#B7C4D6;font-size:11px;font-weight:750;letter-spacing:.15px;cursor:pointer;line-height:1.2}
+.mode-kamera-btn.aktif{background:#fff;color:#0B0F16;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.mode-kamera-btn[data-kmode="video"].aktif{background:#FF3B30;color:#fff;box-shadow:0 0 14px rgba(255,59,48,.45)}
+.mode-kamera-btn:disabled{opacity:.55;cursor:default}
+.mode-kamera-btn.aktif:disabled{opacity:1}
+.mode-kamera-ket{font-size:10px;color:var(--makior-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+#scKamera #shutter.mode-video{border-color:rgba(255,255,255,.85);box-shadow:0 0 0 3px var(--makior-bg),0 0 0 5px rgba(255,59,48,.7),0 0 24px rgba(255,59,48,.4),0 8px 18px rgba(0,0,0,.7)}
+#scKamera #shutter.mode-video .shutter-dalam{background:radial-gradient(70% 60% at 50% 12%,#FFB4AE 0%,#FF453A 48%,#C81E14 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.55),inset 0 -3px 8px rgba(90,0,0,.35)}
+#scKamera #shutter.mode-video.merekam .shutter-dalam{border-radius:12px;transform:scale(.58);background:#FF3B30;box-shadow:inset 0 2px 0 rgba(255,255,255,.4)}
+.rec-kamera{position:absolute;top:10px;left:10px;z-index:20;display:none;align-items:center;gap:7px;background:rgba(9,10,14,.86);border:1px solid rgba(255,59,48,.55);border-radius:999px;padding:5px 10px;color:#fff;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.rec-kamera.tampil{display:flex}
+.rec-kamera i{width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:kedipRec 1s steps(1,end) infinite}
+.rec-kamera b{font-weight:700;color:#FFD1CC}
+.rec-kamera.menyimpan i{animation:none;background:#FFB020}
+.rec-kamera.menyimpan b{color:#FFE0AE}
+@media (max-width:380px){.mode-kamera-ket{display:none}#modeKamera{padding-top:7px}}
+body.tema-bukan-flash #modeKamera{background:var(--t-cam-bar)}
+body.tema-bukan-flash .mode-kamera-seg{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.16);box-shadow:none}
+body.tema-bukan-flash .mode-kamera-btn.aktif[data-kmode="foto"]{background:#fff;color:#0B0F16;box-shadow:none}
+body.tema-bukan-flash .mode-kamera-btn.aktif[data-kmode="video"]{background:#FF3B30;color:#fff;box-shadow:none}

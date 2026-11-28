@@ -244,6 +244,9 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
               </div>
             </div>
           </div>
+          <div id="recKamera" class="rec-kamera" aria-live="off">
+            <i></i><span>REC</span><b id="recKameraWaktu">00:00 / 00:04</b>
+          </div>
           <div id="tirai"></div>
         </div>
 
@@ -268,6 +271,15 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
           </div>
         </div>
         <div id="pesanKamera" style="display:none"></div>
+      </div>
+
+      <!-- Mode Foto / Video: rana yang sama, hasil masuk ke Galeri yang sesuai -->
+      <div id="modeKamera" class="mode-kamera" role="tablist" aria-label="Mode kamera">
+        <div class="mode-kamera-seg">
+          <button type="button" id="modeFoto" class="mode-kamera-btn aktif" data-kmode="foto" role="tab" aria-selected="true">📷 Foto</button>
+          <button type="button" id="modeVideo" class="mode-kamera-btn" data-kmode="video" role="tab" aria-selected="false">🎥 Video</button>
+        </div>
+        <span id="modeKameraKet" class="mode-kamera-ket">Ketuk rana untuk memotret</span>
       </div>
 
       <!-- Bottom Bar Rana Makior: Menu/Dashboard | Shutter | Balik Kamera -->
@@ -943,7 +955,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.4';
+const VERSI = '4.5.5';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -1494,6 +1506,7 @@ function inisialisasiKontrolZoom(){
 }
 
 /* ---------- Kamera Utama (Native 4:3 Sensor, No Auto-Zoom) ---------- */
+const KM = { mode: 'foto', rec: null, chunks: [], timer: null, mulai: 0, audio: null, menyiapkan: false, menyimpan: false };
 let _kameraGen = 0;
 async function nyalakanKamera(){
   const gen = ++_kameraGen;
@@ -1533,6 +1546,7 @@ async function nyalakanKamera(){
     }
     await terapkanZoom(S.zoomLevel || 1);
     if(typeof perbaruiMakiorStatus === 'function') perbaruiMakiorStatus();
+    perbaruiModeKamera();
   }catch(e){
     gagalKamera(e.name==='NotAllowedError'
       ? 'Izin kamera ditolak. Buka pengaturan situs/aplikasi lalu izinkan Kamera.'
@@ -1545,11 +1559,145 @@ function gagalKamera(html){
   $('pesanKamera').innerHTML = '\u{1F4F5}<br><br>'+html;
 }
 function matikanKamera(){
+  hentikanRekamKameraVideo();
+  lepasMicKamera();
   _kameraGen++;
   if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; }
   $('video').style.visibility='hidden';
 }
-$('btnGantiKamera').onclick = ()=>{ 
+
+/* ---------- Mode Foto / Video di kamera utama ---------- */
+function perbaruiModeKamera(){
+  const video = KM.mode === 'video';
+  const shutter = $('shutter');
+  if(shutter){
+    shutter.classList.toggle('mode-video', video);
+    shutter.classList.toggle('merekam', !!KM.rec);
+    shutter.setAttribute('aria-label', video ? (KM.rec ? 'Hentikan rekaman video' : 'Mulai merekam video') : 'Ambil foto');
+    shutter.title = video ? (KM.rec ? 'Hentikan rekaman' : 'Mulai merekam video') : 'Ambil Foto';
+  }
+  const foto = $('modeFoto'), vid = $('modeVideo');
+  if(foto){ foto.classList.toggle('aktif', !video); foto.setAttribute('aria-selected', String(!video)); foto.disabled = !!(KM.rec || KM.menyiapkan); }
+  if(vid){ vid.classList.toggle('aktif', video); vid.setAttribute('aria-selected', String(video)); vid.disabled = !!(KM.rec || KM.menyiapkan); }
+  const ket = $('modeKameraKet');
+  if(ket) ket.textContent = video ? (KM.rec ? 'Ketuk rana untuk berhenti' : 'Ketuk rana merah untuk merekam') : 'Ketuk rana untuk memotret';
+  const waktu = $('recKameraWaktu');
+  if(waktu && !KM.rec && !KM.menyimpan) waktu.textContent = '00:00 / ' + durasiTeks(vidMaksDetik());
+  const kotak = $('recKamera');
+  if(kotak) kotak.classList.toggle('tampil', !!(KM.rec || KM.menyimpan));
+}
+
+function lepasMicKamera(){
+  if(KM.audio){ try{ KM.audio.getTracks().forEach(t=>t.stop()); }catch(_){} }
+  KM.audio = null;
+}
+
+function perbaruiTimerRekamKamera(){
+  if(!KM.rec) return;
+  const batas = vidMaksMs();
+  const lewat = Math.max(0, Date.now() - KM.mulai);
+  const waktu = $('recKameraWaktu');
+  if(waktu) waktu.textContent = durasiTeks(Math.min(lewat, batas) / 1000) + ' / ' + durasiTeks(vidMaksDetik());
+  if(lewat >= batas) hentikanRekamKameraVideo();
+}
+
+function hentikanRekamKameraVideo(){
+  if(KM.timer){ clearInterval(KM.timer); KM.timer = null; }
+  const rec = KM.rec;
+  if(rec && rec.state !== 'inactive'){
+    try{ rec.stop(); }catch(_){ KM.rec = null; lepasMicKamera(); perbaruiModeKamera(); }
+  } else if(!rec){
+    lepasMicKamera();
+    perbaruiModeKamera();
+  }
+}
+
+async function selesaikanRekamKameraVideo(){
+  const rec = KM.rec;
+  const tipe = (rec && rec.mimeType) || 'video/webm';
+  const blob = new Blob(KM.chunks, { type: tipe });
+  KM.rec = null;
+  KM.chunks = [];
+  if(KM.timer){ clearInterval(KM.timer); KM.timer = null; }
+  lepasMicKamera();
+  KM.menyimpan = true;
+  const kotak = $('recKamera');
+  const label = kotak && kotak.querySelector('span');
+  const waktu = $('recKameraWaktu');
+  if(kotak) kotak.classList.add('tampil', 'menyimpan');
+  if(label) label.textContent = 'SIMPAN';
+  if(waktu) waktu.textContent = 'Menyimpan…';
+  perbaruiModeKamera();
+  try{
+    if(!blob.size) throw new Error('rekaman kosong');
+    await simpanKlipVideo(blob, 'kamera');
+  }catch(e){
+    pesan('Gagal menyimpan video: ' + (e.message || e));
+  }finally{
+    KM.menyimpan = false;
+    if(kotak) kotak.classList.remove('tampil', 'menyimpan');
+    if(label) label.textContent = 'REC';
+    perbaruiModeKamera();
+  }
+}
+
+async function mulaiRekamKameraVideo(){
+  if(KM.menyiapkan) return;
+  if(KM.rec){ hentikanRekamKameraVideo(); return; }
+  if(!window.MediaRecorder){ pesan('Perangkat ini tidak mendukung rekam video'); return; }
+  if(!S.stream){ pesan('Kamera belum siap — tunggu sebentar'); return; }
+  const trackVideo = S.stream.getVideoTracks().find(t => t.readyState === 'live');
+  if(!trackVideo){ pesan('Kamera belum siap — coba segarkan kamera'); return; }
+
+  KM.menyiapkan = true;
+  perbaruiModeKamera();
+  let mic = null;
+  try{
+    // Mikrofon diminta hanya saat mulai merekam; foto tetap tidak meminta izin mic.
+    try{
+      mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      KM.audio = mic;
+    }catch(_){ KM.audio = null; }
+
+    const tracks = [trackVideo];
+    if(mic) tracks.push(...mic.getAudioTracks());
+    const stream = new MediaStream(tracks);
+    const kandidat = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+    let mime = '';
+    for(const m of kandidat){
+      try{ if(MediaRecorder.isTypeSupported(m)){ mime = m; break; } }catch(_){}
+    }
+    let rec;
+    try{
+      rec = new MediaRecorder(stream, Object.assign({
+        videoBitsPerSecond: 12000000,
+        audioBitsPerSecond: 128000
+      }, mime ? { mimeType: mime } : {}));
+    }catch(_){
+      rec = new MediaRecorder(stream);
+    }
+    KM.rec = rec;
+    KM.chunks = [];
+    KM.mulai = Date.now();
+    rec.ondataavailable = e => { if(e.data && e.data.size) KM.chunks.push(e.data); };
+    rec.onstop = selesaikanRekamKameraVideo;
+    rec.start(250);
+    if(navigator.vibrate) navigator.vibrate(35);
+    KM.timer = setInterval(perbaruiTimerRekamKamera, 100);
+    perbaruiTimerRekamKamera();
+    if(!mic) pesan('Merekam video tanpa suara — mikrofon tidak aktif');
+  }catch(e){
+    lepasMicKamera();
+    KM.rec = null;
+    pesan('Gagal memulai rekaman: ' + (e.message || e));
+  }finally{
+    KM.menyiapkan = false;
+    perbaruiModeKamera();
+  }
+}
+
+$('btnGantiKamera').onclick = ()=>{
+  if(KM.rec || KM.menyiapkan){ pesan('Hentikan rekaman dulu'); return; }
   S.facing = S.facing==='environment'?'user':'environment'; 
   S.kameraDeviceId = null; // reset sensor deviceId saat ganti depan/belakang
   matikanKamera(); 
@@ -1557,6 +1705,7 @@ $('btnGantiKamera').onclick = ()=>{
 };
 if($('btnPilihSensor')){
   $('btnPilihSensor').onclick = async ()=>{
+    if(KM.rec || KM.menyiapkan){ pesan('Hentikan rekaman dulu'); return; }
     await perbaruiDaftarKamera();
     if(daftarKameraBelakang.length <= 1){
       pesan('Hanya 1 sensor kamera terdeteksi di perangkat ini');
@@ -1572,6 +1721,7 @@ if($('btnPilihSensor')){
   };
 }
 $('btnRefreshKamera').onclick = async ()=>{
+  if(KM.rec || KM.menyiapkan){ pesan('Hentikan rekaman dulu'); return; }
   pesan('Menyegarkan kamera…');
   matikanKamera();
   await new Promise(r=>setTimeout(r,300));
@@ -2114,6 +2264,11 @@ function potongKeRasio(v){
 }
 
 $('shutter').onclick = async ()=>{
+  if(KM.mode === 'video'){
+    if(KM.rec) hentikanRekamKameraVideo();
+    else await mulaiRekamKameraVideo();
+    return;
+  }
   const v=$('video');
   if(!S.stream || !v.videoWidth){ pesan('Kamera belum siap — tunggu sebentar'); return; }
   $('tirai').classList.add('kilat'); setTimeout(()=>$('tirai').classList.remove('kilat'),90);
@@ -2127,6 +2282,16 @@ $('shutter').onclick = async ()=>{
     pesan('Gagal memproses foto: ' + err.message);
   }
 };
+
+document.querySelectorAll('.mode-kamera-btn').forEach(b=>{
+  b.onclick = ()=>{
+    if(KM.rec || KM.menyiapkan){ pesan('Hentikan rekaman dulu'); return; }
+    KM.mode = b.dataset.kmode === 'video' ? 'video' : 'foto';
+    perbaruiModeKamera();
+    if(KM.mode === 'video') pesan('Mode video · ketuk rana merah untuk merekam');
+  };
+});
+perbaruiModeKamera();
 
 $('btnMenu').onclick = () => {
   if (S.kembaliKePeta) {
