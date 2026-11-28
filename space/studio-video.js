@@ -85,7 +85,11 @@
   function renderDaftar() {
     const box = $('stDaftarKlip'); if (!box) return;
     const c = ctx();
-    const lokal = (ST.pilih || []).filter(k => k.sumber === 'lokal');
+    const lokal = [];
+    const sudahLokal = new Set();
+    (ST.pilih || []).forEach(k => {
+      if (k && k.sumber === 'lokal' && !sudahLokal.has(k.id)) { sudahLokal.add(k.id); lokal.push(k); }
+    });
     const jumlah = $('stJumlah');
     if (jumlah) jumlah.textContent = (ST.cloud || []).length + lokal.length ? ((ST.cloud || []).length + lokal.length) + ' media' : '';
     if ((!ST.cloud || !ST.cloud.length) && !lokal.length) {
