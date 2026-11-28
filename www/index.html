@@ -955,7 +955,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.6';
+const VERSI = '4.5.7';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -1569,6 +1569,9 @@ function matikanKamera(){
 /* ---------- Mode Foto / Video di kamera utama ---------- */
 function perbaruiModeKamera(){
   const video = KM.mode === 'video';
+  // Watermark adalah overlay foto. Saat mode video, pratinjau dan rekaman bersih.
+  const wm = $('overlayWm');
+  if(wm) wm.style.display = video ? 'none' : '';
   const shutter = $('shutter');
   if(shutter){
     shutter.classList.toggle('mode-video', video);
@@ -1732,8 +1735,8 @@ $('btnRefreshKamera').onclick = async ()=>{
 
 /* ---------- Kamera Ganda ----------
    Satu aliran kamera, dua canvas dengan potongan berbeda, satu rana menghasilkan
-   dua berkas berwatermark sekaligus. Hasil langsung masuk Galeri room (IndexedDB)
-   dan antrian upload room — tidak disalin ke galeri HP. */
+   dua foto berwatermark atau dua video bersih tanpa watermark. Hasil langsung
+   masuk Galeri room (IndexedDB) dan antrian upload room — tidak disalin ke galeri HP. */
 const G = {
   stream:null, audio:null, facing:'environment', mode:'foto', mic:true,
   raf:0, fpsLalu:0, gpsTimer:0,
@@ -1812,19 +1815,24 @@ function gPotong(vw, vh, tw, th){
     ? {sx:(vw - vh*ta)/2, sy:0, sw:vh*ta, sh:vh}
     : {sx:0, sy:(vh - vw/ta)/2, sw:vw, sh:vw/ta};
 }
-function gGambar(cv, sumber, vw, vh){
+function gGambar(cv, sumber, vw, vh, denganWm = true){
   const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
   const c = gPotong(vw, vh, W, H);
   ctx.drawImage(sumber, c.sx, c.sy, c.sw, c.sh, 0, 0, W, H);
-  gambarWatermark(ctx, W, H);   // watermark sama persis dengan kamera biasa
+  if(denganWm) gambarWatermark(ctx, W, H);   // foto tetap berwatermark; video tidak
+}
+function gambarBingkaiGanda(){
+  const v = gEl();
+  if(!G.stream || !v.videoWidth) return;
+  const denganWm = G.mode !== 'video' && !G.rekam;
+  gGambar($('cvPot'), v, v.videoWidth, v.videoHeight, denganWm);
+  gGambar($('cvLan'), v, v.videoWidth, v.videoHeight, denganWm);
 }
 function gLoop(){
   // Timer ~24 fps (lebih hemat daripada rAF yang berjalan 60 Hz)
   G.raf = setTimeout(gLoop, 1000/G_FPS);
-  const v = gEl();
-  if(!G.stream || !v.videoWidth) return;
-  gGambar($('cvPot'), v, v.videoWidth, v.videoHeight);
-  gGambar($('cvLan'), v, v.videoWidth, v.videoHeight);
+  if(!G.stream) return;
+  gambarBingkaiGanda();
 }
 
 /* ---- Senter, balik kamera, mikrofon, saklar mode ---- */
@@ -1870,6 +1878,7 @@ document.querySelectorAll('.ganda-mode').forEach(b=> b.onclick = ()=>{
   document.querySelectorAll('.ganda-mode').forEach(x=>x.classList.toggle('aktif', x===b));
   $('gandaRana').classList.toggle('video', G.mode==='video');
   $('gMic').style.display = G.mode==='video' ? '' : 'none';
+  gambarBingkaiGanda();   // langsung bersihkan watermark saat beralih ke video
 });
 
 $('gandaRana').onclick = ()=>{
@@ -1994,6 +2003,7 @@ async function mulaiRekam(){
     try{ G.audio = await navigator.mediaDevices.getUserMedia({audio:true}); }
     catch(e){ G.audio = null; pesan('Suara tidak diizinkan — merekam tanpa audio'); }
   }
+  gambarBingkaiGanda();   // pastikan frame pertama rekaman tidak membawa watermark
   G.mimeRec = mimeGanda();
   const buatRec = (cv)=>{
     const st = cv.captureStream(G_FPS);
