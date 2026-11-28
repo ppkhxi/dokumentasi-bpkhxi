@@ -871,12 +871,6 @@
       e.target.value = '';
       tambahLokal(f);
     };
-    // Widget capture: buka kamera bawaan HP lalu impor hasilnya ke media.
-    if ($('wCaptureVideo')) $('wCaptureVideo').onclick = () => $('wFileVideo').click();
-    if ($('wCaptureFoto')) $('wCaptureFoto').onclick = () => $('wFileFoto').click();
-    if ($('wFotoUntukVideo')) $('wFotoUntukVideo').onclick = () => $('wFileFoto').click();
-    if ($('wFileVideo')) $('wFileVideo').onchange = e => { const f = Array.from(e.target.files || []); e.target.value = ''; tambahLokal(f); };
-    if ($('wFileFoto')) $('wFileFoto').onchange = e => { const f = Array.from(e.target.files || []); e.target.value = ''; tambahLokal(f); };
     $('stMuatUlang').onclick = async () => { ST.muat = false; await muatDaftar(); renderDaftar(); };
     $('stAudio').onchange = e => {
       ST.backsound = e.target.files[0] || null;
