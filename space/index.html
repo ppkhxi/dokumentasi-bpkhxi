@@ -7,7 +7,7 @@
 <title>spacedkpoint</title>
 <link rel="icon" href="favicon-96.png">
 <link rel="stylesheet" href="js/leaflet.css">
-<link rel="stylesheet" href="app.css?v=capcut5">
+<link rel="stylesheet" href="app.css?v=ai1">
 </head>
 <body>
 
@@ -139,6 +139,7 @@
             <div class="ccTabs">
               <button type="button" class="pilih" data-cctab="klip">Klip</button>
               <button type="button" data-cctab="hasil">Hasil</button>
+              <button type="button" data-cctab="agen">Agen AI</button>
             </div>
             <div class="ccTabIsi" data-ccpanel="klip">
               <div class="ccSeksi">Potongan</div>
@@ -169,6 +170,22 @@
               <label class="ccStack">Volume suara klip <b id="stVolKlipNilai">100%</b><input id="stVolKlip" type="range" min="0" max="150" value="100"></label>
               <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code></label>
               <p class="kecil ccKet">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
+            </div>
+            <div class="ccTabIsi" data-ccpanel="agen" hidden>
+              <div class="ccSeksi">Agen AI · tanpa akun</div>
+              <div class="ai-koneksi"><i></i><span id="stAiKoneksi">Gratis, best effort</span></div>
+              <p class="kecil ccKet">Ceritakan kegiatan. Agen memilih klip room, menyusun kartu adegan, lalu EDL-nya bisa diterapkan ke timeline. Hanya teks yang dikirim ke layanan publik.</p>
+              <label class="ccStack">Deskripsi kegiatan
+                <textarea id="stAiDeskripsi" rows="5" maxlength="1500" placeholder="Contoh: Survei patok 012 di Desa Ciasih. Tim tiba pagi, menyiapkan alat, lalu mengukur dan memasang patok. Tutup dengan suasana tim."></textarea>
+              </label>
+              <button type="button" id="stAiBuat" class="ccEkspor ai-buat">✨ Buat storyboard</button>
+              <p id="stAiStatus" class="kecil ai-status-teks" role="status"></p>
+              <div id="stAiHasil" class="ai-hasil"></div>
+              <div id="stAiAksi" class="ai-aksi" hidden>
+                <button type="button" id="stAiTerapkan" class="ccEkspor">Terapkan ke timeline</button>
+                <button type="button" id="stAiUlang" class="ccGhost">Buat ulang</button>
+              </div>
+              <p class="kecil ai-privasi">Layanan gratis anonim: satu permintaan per 30 detik. Jangan tulis data pribadi sensitif.</p>
             </div>
             <div id="stProgres" class="stProgres"></div>
           </aside>
@@ -204,5 +221,6 @@
 <script src="app.js?v=ceklist1"></script>
 <script src="edl.js?v=edl1"></script>
 <script src="studio-video.js?v=edl1"></script>
+<script src="ai-agen.js?v=ai1"></script>
 </body>
 </html>

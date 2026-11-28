@@ -244,6 +244,39 @@ label.centang input{width:auto}
 #vVideo .stHandle.kanan{border-left:0}
 #vVideo .stHandle::after{background:#3b3b45;height:14px;width:2px}
 #vVideo .stAksiTL{right:2px;bottom:2px}
+
+/* ---------------- Studio Video — panel Agen AI ---------------- */
+#vVideo .ccStack textarea{width:100%;min-height:82px;background:#1b1b20;border:1px solid #2e2e36;border-radius:7px;padding:8px;font-size:11.5px;line-height:1.45;color:#f0f0f4;resize:vertical}
+#vVideo .ccStack textarea:focus{outline:1px solid var(--cc-aksen);outline-offset:0}
+.ai-koneksi{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#b6c2d4}
+.ai-koneksi i{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.65);flex:none}
+.ai-buat{width:100%;background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#7c3aed;color:#fff;font-weight:700}
+.ai-buat:hover{background:linear-gradient(135deg,#8b5cf6,#6366f1);border-color:#8b5cf6}
+.ai-buat:disabled{opacity:.55;cursor:default}
+.ai-status-teks{margin:0;line-height:1.45;color:#a7b0bf;min-height:1em}
+.ai-status-teks.galat{color:#fca5a5}
+.ai-status-teks.sukses{color:#86efac}
+.ai-hasil{display:flex;flex-direction:column;gap:7px}
+.ai-kosong{border:1px dashed #34343e;border-radius:8px;padding:12px;font-size:11px;line-height:1.5;color:#8f8f9a}
+.ai-loading{display:flex;align-items:center;gap:8px;font-size:11px;color:#c4b5fd;padding:8px 0}
+.ai-loading::before{content:'';width:12px;height:12px;border:2px solid #4c1d95;border-top-color:#c4b5fd;border-radius:50%;animation:aiPutar .8s linear infinite;flex:none}
+@keyframes aiPutar{to{transform:rotate(360deg)}}
+.ai-kartu{border:1px solid #34343e;background:#1a1a20;border-radius:8px;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
+.ai-kartu-kepala{display:flex;align-items:center;gap:6px;min-width:0}
+.ai-kartu-no{width:20px;height:20px;flex:none;border-radius:5px;background:#312e81;color:#c7d2fe;font-size:10px;font-weight:800;display:grid;place-items:center}
+.ai-kartu-nama{font-size:11px;font-weight:650;color:#e9e9ef;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.ai-kartu-dur{font-size:9.5px;color:#9a9aa5;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ai-caption{width:100%;box-sizing:border-box;background:#111116;border:1px solid #30303a;border-radius:5px;padding:5px 6px;color:#f2f2f5;font-size:11px;line-height:1.35}
+.ai-caption:focus{outline:1px solid #8b5cf6}
+.ai-kartu-meta{font-size:9.5px;color:#85858f;line-height:1.35;display:flex;gap:5px;flex-wrap:wrap}
+.ai-kartu-meta b{color:#b4b4bf;font-weight:600}
+.ai-aksi{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.ai-aksi .ccEkspor{padding:7px 10px;font-size:11px}
+.ai-aksi .ccGhost{font-size:10.5px;padding:7px 8px;white-space:nowrap}
+.ai-privasi{margin:0;font-size:9.5px;line-height:1.4;color:#777782}
+.ai-ringkas{font-size:10.5px;color:#9aa5b5;line-height:1.4;padding:6px 8px;border-radius:6px;background:#17171c;border:1px solid #2b2b33}
+.ai-ringkas b{color:#e5e7eb;font-weight:650}
+.ai-galat{font-size:10.5px;line-height:1.45;color:#fca5a5;background:rgba(127,29,29,.18);border:1px solid rgba(248,113,113,.25);border-radius:7px;padding:7px 8px}
 #vVideo .stAksiTL button{background:#2a2a32;border:1px solid #3a3a44;border-radius:4px;padding:0 4px;font-size:10px;color:#d7d7df}
 #vVideo .stTimeline>p.kecil{font-size:11px;align-self:center;margin:auto}
 @media(max-width:1180px){#vVideo .ccIsi{grid-template-columns:236px minmax(0,1fr)}#vVideo .ccProps{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-content:start;border-top:1px solid var(--cc-line)}#vVideo .ccTabs{grid-column:1/-1}#vVideo .ccTabIsi{border-right:1px solid var(--cc-line)}#vVideo .ccProps .stProgres{grid-column:1/-1}}
