@@ -165,16 +165,14 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
         <button class="menu-kartu" data-menu="pengaturan"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a1.9 1.9 0 1 1-2.69 2.69l-.06-.06A1.6 1.6 0 0 0 15 19.4a1.6 1.6 0 0 0-.97 1.47v.17a1.9 1.9 0 1 1-3.8 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.77.32l-.06.06a1.9 1.9 0 1 1-2.69-2.69l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97h-.17a1.9 1.9 0 1 1 0-3.8h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a1.9 1.9 0 1 1 2.69-2.69l.06.06A1.6 1.6 0 0 0 9 4.6h.08A1.6 1.6 0 0 0 10.05 3.13V3a1.9 1.9 0 1 1 3.8 0v.09A1.6 1.6 0 0 0 15 4.6a1.6 1.6 0 0 0 1.77-.32l.06-.06a1.9 1.9 0 1 1 2.69 2.69l-.06.06A1.6 1.6 0 0 0 19.4 9v.08a1.6 1.6 0 0 0 1.47.97h.17a1.9 1.9 0 1 1 0 3.8h-.09a1.6 1.6 0 0 0-1.47.97Z"/></svg></span><b>Pengaturan</b><small>Logo, kompresi, akun</small></button>
       </div>
 
-      <!-- Widget capture: kamera HP + portal spacedkpoint -->
-      <div class="ccWidgetCapture" style="margin:12px 0">
+      <!-- Widget capture: kamera HP + portal spacedkpoint (hanya tampil di APK) -->
+      <div class="ccWidgetCapture" id="ccWidgetCapture" style="margin:12px 0;display:none">
         <div class="ccWidgetBaris">
           <button type="button" class="menu-kartu" id="wCaptureVideo" style="min-height:72px"><span class="ic">🎬</span><b>Capture Video</b><small>Buka kamera HP</small></button>
           <button type="button" class="menu-kartu" id="wCaptureFoto" style="min-height:72px"><span class="ic">📷</span><b>Capture Foto</b><small>Buka kamera HP</small></button>
         </div>
         <button type="button" class="tombol" id="wFotoUntukVideo" style="width:100%;margin-top:8px">📸 Capture foto untuk video</button>
         <a class="tombol" id="wPortal" href="https://spacedkpoint.pages.dev" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1d3a5f">Masuk portal spacedkpoint</a>
-        <input id="wFileVideo" type="file" accept="video/*" capture="environment" hidden>
-        <input id="wFileFoto" type="file" accept="image/*" capture="environment" hidden>
       </div>
     </section>
 
@@ -8195,30 +8193,18 @@ mulaiVideoUI();
   const btnVid = $('wCaptureVideo');
   const btnFoto = $('wCaptureFoto');
   const btnFotoVid = $('wFotoUntukVideo');
-  const inVid = $('wFileVideo');
-  const inFoto = $('wFileFoto');
+  const kotak = $('ccWidgetCapture');
   const portalLink = $('wPortal');
   if(portalLink) portalLink.href = portal;
-  /* Di APK (native Android), Capture Video memakai kamera HP bawaan (sensor & stabilizer asli)
-     lewat rekamKameraHp(), sama seperti menu Video Kegiatan — bukan file picker WebView.
-     Di PWA/browser (tanpa native), tetap pakai input capture="environment". */
+  /* Widget capture hanya untuk APK (native Android). Di PWA/browser blok ini
+     disembunyikan dan tombolnya tidak dipasang sama sekali. */
   const nativeVid = !!(window.DokumentasiNative && window.DokumentasiNative.rekamVideo);
-  if(btnVid){
-    if(nativeVid){
-      btnVid.onclick = () => {
-        try{ rekamKameraHp(); }
-        catch(e){ pesan('Gagal membuka kamera HP: ' + (e && e.message || e)); }
-      };
-    } else if(inVid){
-      btnVid.onclick = () => inVid.click();
-      inVid.onchange = async () => {
-        const f = inVid.files && inVid.files[0];
-        inVid.value = '';
-        if(!f) return;
-        try{ await simpanKlipVideo(f, 'widget'); pesan('Video tersimpan di Galeri → Video'); }
-        catch(e){ pesan('Gagal menyimpan video: ' + (e && e.message || e)); }
-      };
-    }
+  if(kotak) kotak.style.display = nativeVid ? '' : 'none';
+  if(nativeVid && btnVid){
+    btnVid.onclick = () => {
+      try{ rekamKameraHp(); }
+      catch(e){ pesan('Gagal membuka kamera HP: ' + (e && e.message || e)); }
+    };
   }
   if(btnFoto){ btnFoto.onclick = () => ke('kamera'); }
   if(btnFotoVid){ btnFotoVid.onclick = () => ke('kamera'); }
