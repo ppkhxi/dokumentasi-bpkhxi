@@ -8199,15 +8199,26 @@ mulaiVideoUI();
   const inFoto = $('wFileFoto');
   const portalLink = $('wPortal');
   if(portalLink) portalLink.href = portal;
-  if(btnVid && inVid){
-    btnVid.onclick = () => inVid.click();
-    inVid.onchange = async () => {
-      const f = inVid.files && inVid.files[0];
-      inVid.value = '';
-      if(!f) return;
-      try{ await simpanKlipVideo(f, 'widget'); pesan('Video tersimpan di Galeri → Video'); }
-      catch(e){ pesan('Gagal menyimpan video: ' + (e && e.message || e)); }
-    };
+  /* Di APK (native Android), Capture Video memakai kamera HP bawaan (sensor & stabilizer asli)
+     lewat rekamKameraHp(), sama seperti menu Video Kegiatan — bukan file picker WebView.
+     Di PWA/browser (tanpa native), tetap pakai input capture="environment". */
+  const nativeVid = !!(window.DokumentasiNative && window.DokumentasiNative.rekamVideo);
+  if(btnVid){
+    if(nativeVid){
+      btnVid.onclick = () => {
+        try{ rekamKameraHp(); }
+        catch(e){ pesan('Gagal membuka kamera HP: ' + (e && e.message || e)); }
+      };
+    } else if(inVid){
+      btnVid.onclick = () => inVid.click();
+      inVid.onchange = async () => {
+        const f = inVid.files && inVid.files[0];
+        inVid.value = '';
+        if(!f) return;
+        try{ await simpanKlipVideo(f, 'widget'); pesan('Video tersimpan di Galeri → Video'); }
+        catch(e){ pesan('Gagal menyimpan video: ' + (e && e.message || e)); }
+      };
+    }
   }
   if(btnFoto){ btnFoto.onclick = () => ke('kamera'); }
   if(btnFotoVid){ btnFotoVid.onclick = () => ke('kamera'); }
