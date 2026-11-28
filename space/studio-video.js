@@ -481,41 +481,17 @@
     t.style.display = k && k.teks ? 'block' : 'none';
   }
 
+  // Tidak ada lagi formulir properti klip: potongan diatur dengan menarik tepi klip
+  // di timeline, teks/narasi datang dari Agen AI atau EDL.
   function sinkronForm() {
     const k = ST.terpilih;
-    const nonaktif = !k;
-    ['stAwal', 'stAkhir', 'stTeksKlip', 'stNarasiKlip', 'stPosisiTeks', 'stWarnaTeks', 'stTandaiAwal', 'stTandaiAkhir'].forEach(id => { const el = $(id); if (el) el.disabled = nonaktif; });
-    if (!k) {
-      $('stNamaKlip').textContent = 'Belum ada klip terpilih';
-      $('stAwal').value = 0; $('stAkhir').value = 0; $('stTeksKlip').value = ''; $('stNarasiKlip').value = '';
-      tampilTeksPratinjau(null);
-      return;
-    }
-    $('stNamaKlip').textContent = k.nama + ' · ' + detik(k.durasi);
-    $('stAwal').value = angka(k.trimAwal);
-    $('stAwal').max = angka(k.durasi || 0);
-    $('stAkhir').value = angka(k.trimAkhir || k.durasi);
-    $('stAkhir').max = angka(k.durasi || 0);
-    $('stTeksKlip').value = k.teks || '';
-    $('stNarasiKlip').value = k.narasi || '';
-    $('stPosisiTeks').value = k.posisi || 'bawah';
-    $('stWarnaTeks').value = k.warna || '#ffffff';
-    tampilTeksPratinjau(k);
+    $('stNamaKlip').textContent = k ? (k.nama + ' · ' + detik(k.durasi)) : 'Belum ada klip terpilih';
+    tampilTeksPratinjau(k || null);
   }
 
   function bacaForm() {
-    const k = ST.terpilih; if (!k) return;
-    jedaSequence();
-    const a = Math.max(0, Number($('stAwal').value) || 0);
-    const b = Math.max(0, Number($('stAkhir').value) || 0);
-    k.trimAwal = Math.min(a, Math.max(0, (k.durasi || b) - 0.3));
-    k.trimAkhir = Math.min(b || k.durasi, k.durasi || b || 0);
-    if (k.trimAkhir - k.trimAwal < 0.3) k.trimAkhir = Math.min(k.durasi || (k.trimAwal + 0.3), k.trimAwal + 0.3);
-    k.teks = $('stTeksKlip').value.trim();
-    k.narasi = $('stNarasiKlip').value.trim().slice(0, 500);
-    k.posisi = $('stPosisiTeks').value;
-    k.warna = $('stWarnaTeks').value;
-    tampilTeksPratinjau(k);
+    if (!ST.terpilih) return;
+    tampilTeksPratinjau(ST.terpilih);
     renderPlaylist(); renderDaftar();
     const i = idxTerpilih();
     if (i >= 0) ST.pos = posisiMulai(i);
@@ -836,8 +812,6 @@
       const d = durasiKlip(k);
       geser.el.style.width = lebarKlip(d) + 'px';
       const durEl = geser.el.querySelector('.stDur'); if (durEl) durEl.textContent = detik(d);
-      $('stAwal').value = angka(k.trimAwal);
-      $('stAkhir').value = angka(k.trimAkhir);
       ST.pos = posisiMulai(geser.i);
       $('stSeqRange').max = totalDurasi().toFixed(2);
       perbaruiWaktu();
@@ -970,21 +944,6 @@
         const ta = $('stNarasi'); ta.select(); document.execCommand('copy');
         status('Teks narasi disalin.');
       }
-    };
-    ['stAwal', 'stAkhir', 'stTeksKlip', 'stNarasiKlip', 'stPosisiTeks', 'stWarnaTeks'].forEach(id => {
-      const el = $(id); if (!el) return;
-      el.oninput = bacaForm;
-      el.onchange = bacaForm;
-    });
-    $('stTandaiAwal').onclick = () => {
-      if (!ST.terpilih) return;
-      $('stAwal').value = angka(Math.min($('stVideo').currentTime || 0, (ST.terpilih.durasi || 0) - 0.3));
-      bacaForm();
-    };
-    $('stTandaiAkhir').onclick = () => {
-      if (!ST.terpilih) return;
-      $('stAkhir').value = angka(Math.max(Number($('stAwal').value) + 0.3, $('stVideo').currentTime || 0));
-      bacaForm();
     };
     $('stPutar').onclick = putarJeda;
     $('stSeqRange').oninput = () => {
