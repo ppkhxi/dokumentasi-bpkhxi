@@ -937,7 +937,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.2';
+const VERSI = '4.5.3';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -5801,12 +5801,12 @@ function renderCeklist(def, agg, info, mySelesai, prog){
 }
 
 function formCeklistBaru(judul, teks){
-  const adaGeo = window._ceklistImport && window._ceklistImport.length;
+  const adaGeo = window._ceklistImport && window._ceklistImport.filter(f => f && f.latlngs).length;
   return '<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-bottom:10px">' +
     '<b style="font-size:14px">Buat / Edit Ceklist Lokasi</b>' +
     '<p class="catatan-kecil" style="margin:4px 0 8px">Satu baris = satu lokasi. Nomor otomatis. Anggota room akan menandai lokasi yang sudah dikerjakan.</p>' +
     '<button class="tombol sekunder" onclick="window.pilihKMLuntukCeklist()" style="margin:0 0 10px">📍 Ambil daftar dari lapisan KML (poligon/titik)</button>' +
-    (adaGeo ? '<p class="catatan-kecil" style="color:#15803D;margin:0 0 8px">✅ ' + window._ceklistImport.length + ' fitur spasial siap — akan tampil di Sebaran Peta (hijau=sudah, merah=belum).</p>' : '') +
+    (adaGeo ? '<p class="catatan-kecil" style="color:#15803D;margin:0 0 8px">✅ ' + adaGeo + ' fitur spasial siap — akan tampil di Sebaran Peta (hijau=sudah, merah=belum).</p>' : '') +
     '<label class="f" style="margin-top:0">Judul</label>' +
     '<input id="inJudulCeklist" class="f" placeholder="Contoh: Survei Patok Blok A" value="' + esc(judul || '') + '">' +
     '<label class="f">Daftar lokasi (1 baris = 1 lokasi)</label>' +
@@ -5861,10 +5861,20 @@ window.simpanDefCeklist = async () => {
   const el1 = $('inJudulCeklist'), el2 = $('inItemsCeklist');
   const judul = ((el1 && el1.value) || '').trim() || 'Ceklist Lokasi';
   const teks = (el2 && el2.value) || '';
-  const impor = window._ceklistImport || null;   // fitur spasial dari KML (urut per baris)
-  const items = teks.split('\n').map(s => s.trim()).filter(Boolean).map((nama, i) => {
+  const impor = window._ceklistImport || null;   // fitur spasial dari KML / geometri lama
+  const baris = teks.split('\n').map(s => s.trim()).filter(Boolean);
+  const dipakai = new Set();
+  const items = baris.map((nama, i) => {
     const o = { no: i + 1, nama };
-    if (impor && impor[i] && impor[i].latlngs) { o.tipe = impor[i].tipe; o.latlngs = impor[i].latlngs; }  // bawa geometri
+    let sumber = null;
+    if (impor) {
+      // Utamakan nama yang sama agar geometri tetap benar saat baris diurutkan ulang.
+      let j = impor.findIndex((f, k) => f && f.latlngs && !dipakai.has(k) && String(f.nama || '').trim() === nama);
+      // Bila hanya nama yang diubah (jumlah baris tetap), pertahankan geometri posisi yang sama.
+      if (j < 0 && impor.length === baris.length && impor[i] && impor[i].latlngs && !dipakai.has(i)) j = i;
+      if (j >= 0) { sumber = impor[j]; dipakai.add(j); }
+    }
+    if (sumber) { o.tipe = sumber.tipe; o.latlngs = sumber.latlngs; }
     return o;
   });
   if (!items.length) { pesan('Daftar lokasi masih kosong'); return; }
@@ -5889,8 +5899,14 @@ window.simpanDefCeklist = async () => {
 
 window.editCeklist = async () => {
   const def = await ambilCeklist(idDefCeklist());
+  const items = (def && def.items) || [];
+  // Bawa geometri lama ke formulir. Tanpa ini, menyimpan hasil edit akan menghapus
+  // tipe/latlngs dan poligon ceklist hilang dari Sebaran Peta.
+  window._ceklistImport = items.some(it => it && it.latlngs)
+    ? items.map(it => ({ nama: it.nama, tipe: it.tipe, latlngs: it.latlngs }))
+    : null;
   const wrap = $('panelCeklist');
-  if (wrap) wrap.innerHTML = formCeklistBaru((def && def.judul) || '', ((def && def.items) || []).map(it => it.nama).join('\n'));
+  if (wrap) wrap.innerHTML = formCeklistBaru((def && def.judul) || '', items.map(it => it.nama).join('\n'));
 };
 
 // Gambar status ceklist (hijau=sudah, merah=belum) di Sebaran Peta bila item punya geometri
