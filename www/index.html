@@ -937,7 +937,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.1';
+const VERSI = '4.5.2';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -5675,6 +5675,7 @@ window.gantiSubTabel = (sub) => {
 let _sedangTarikCeklist = false;
 let _tarikCeklistTerakhir = 0;
 const JEDA_TARIK_CEKLIST = 5 * 60 * 1000;   // tarik data tim maksimal sekali per 5 menit
+let _sedangSinkronCeklist = false;
 
 function sedangEditCeklist(){ return !!$('inItemsCeklist'); }
 
@@ -5768,14 +5769,33 @@ function renderCeklist(def, agg, info, mySelesai, prog){
   const tsSync = Number((prog && prog.tsSync) || 0);
   const belumTerkirim = ((prog && prog.selesai) || []).filter(s => (Number(s.ts) || 0) > tsSync).length;
   const tertunda = (prog && prog.perluSync) ? Math.max(belumTerkirim, 1) : belumTerkirim;
+  const defTertunda = !!(def && def.perluSync && info.host);
+  const perluSinkron = tertunda > 0 || defTertunda;
+  const rincianTertunda = [
+    defTertunda ? 'Daftar ceklist belum dibagikan' : '',
+    tertunda ? tertunda + ' perubahan menunggu sinkron' : ''
+  ].filter(Boolean).join(' · ');
+  const statusSinkron = perluSinkron
+    ? '<span class="catatan-kecil" style="color:var(--oranye);margin:0;flex:1;min-width:160px">🕓 ' + rincianTertunda +
+      (!navigator.onLine ? ' — offline, ceklist tetap bisa diisi.' : ' — otomatis pukul 16.00 WIB.') + '</span>'
+    : (!navigator.onLine
+      ? '<span class="catatan-kecil" style="margin:0;flex:1;min-width:160px">Offline — ceklist lokal tetap aman.</span>'
+      : '<span class="catatan-kecil" style="margin:0;flex:1;min-width:160px">Tersinkron dengan room.</span>');
+  const tombolSinkron = info.cloud
+    ? '<button class="tombol-mini" id="btnSyncCeklist" onclick="window.sinkronCeklistSekarang()"' +
+      (navigator.onLine ? '' : ' disabled title="Tidak ada koneksi"') +
+      ' style="margin:0;flex:0 0 auto">↻ Sinkron sekarang</button>'
+    : '';
+  const barisSinkron = tombolSinkron
+    ? '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px">' + statusSinkron + tombolSinkron + '</div>'
+    : '';
 
   const tombolHost = info.host ? '<button class="tombol sekunder" onclick="window.editCeklist()" style="margin:0 0 10px">✏️ Edit Daftar Lokasi</button>' : '';
   return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
       '<b style="flex:1;font-size:15px">' + esc(def.judul || 'Ceklist Lokasi') + '</b>' +
       '<span style="font-size:12px;font-weight:700;color:#15803D">' + selesai + '/' + total + ' (' + persen + '%)</span></div>' +
     '<div style="height:8px;background:#E5E7EB;border-radius:6px;overflow:hidden;margin-bottom:12px"><div style="height:100%;width:' + persen + '%;background:#34C759"></div></div>' +
-    tombolHost +
-    (tertunda ? '<p class="catatan-kecil" style="color:var(--oranye);margin:0 0 8px">🕓 ' + tertunda + ' perubahan ceklis menunggu sinkron' + (!navigator.onLine ? ' — offline, ceklis tetap bisa dilakukan.' : ' — dikirim otomatis pukul 16.00 WIB.') + '</p>' : '') +
+    tombolHost + barisSinkron +
     (!info.cloud ? '<p class="catatan-kecil" style="color:var(--oranye);margin:0 0 8px">Mode lokal — centang Anda tersimpan & terkirim ke room saat online.</p>' : '') +
     '<div>' + baris + '</div>';
 }
@@ -5890,7 +5910,7 @@ async function muatStatusCeklistPeta(){
   } catch(e){ console.warn('muatStatusCeklistPeta:', e); }
 }
 
-// Kirim ceklist yang tertunda. paksa=true hanya dari tombol Kirim Sekarang.
+// Kirim ceklist yang tertunda. paksa=true dari tombol Kirim Sekarang / Sinkron sekarang.
 // Selain itu menunggu jadwal 16.00 WIB supaya pemeriksaan lapangan tidak terganggu buffering.
 async function dorongCeklistTertunda(paksa){
   if (!navigator.onLine) return;
@@ -5920,6 +5940,29 @@ async function dorongCeklistTertunda(paksa){
     if (panel && !panel.hidden && !sedangEditCeklist()) await muatCeklist({ tanpaCloud: true });
   } catch(e){ console.warn('dorongCeklistTertunda:', e); }
 }
+
+// Tombol di panel ceklist: kirim perubahan lokal sekarang tanpa menunggu pukul 16.00.
+window.sinkronCeklistSekarang = async () => {
+  if (_sedangSinkronCeklist) return;
+  const info = infoRoomSpasial();
+  if (!navigator.onLine) { pesan('Tidak ada koneksi — ceklist tetap tersimpan di HP'); return; }
+  if (!info.cloud) { pesan('Room ini belum terhubung ke cloud.'); return; }
+  _sedangSinkronCeklist = true;
+  const btn = $('btnSyncCeklist');
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyinkronkan…'; }
+  try {
+    await dorongCeklistTertunda(true);
+    const prog = await ambilCeklist(idProgCeklist());
+    const def = await ambilCeklist(idDefCeklist());
+    const sisa = (prog && prog.perluSync) || (def && def.perluSync);
+    pesan(sisa ? 'Ceklist belum sepenuhnya terkirim — periksa koneksi lalu coba lagi.' : 'Ceklist sudah tersinkron ke room.');
+  } catch(e) {
+    pesan('Gagal sinkron ceklist: ' + (e.message || e));
+  } finally {
+    _sedangSinkronCeklist = false;
+    await muatCeklist({ tanpaCloud: true });
+  }
+};
 
 $('btnPetaFilter').onclick = () => {
   S.lingkupPeta = (S.lingkupPeta === 'room' ? 'semua' : 'room');
