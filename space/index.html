@@ -7,7 +7,7 @@
 <title>spacedkpoint</title>
 <link rel="icon" href="favicon-96.png">
 <link rel="stylesheet" href="js/leaflet.css">
-<link rel="stylesheet" href="app.css?v=ai4">
+<link rel="stylesheet" href="app.css?v=studio3">
 </head>
 <body>
 
@@ -104,22 +104,67 @@
 
     <section id="vVideo" class="view" hidden>
       <div class="cc">
-        <div class="ccBar">
-          <div class="ccMerek"><span class="ccLogo">◒</span><b>Studio Video</b><span class="ccTitik"></span><span class="kecil">spacedkpoint</span></div>
-          <div class="ccAktif"><span class="kecil">KLIP AKTIF</span><b id="stNamaKlip">Belum ada klip terpilih</b></div>
-          <div class="ccBarAksi"><span id="stTotal" class="kecil">0 klip</span><button id="stRender" class="ccEkspor">Ekspor video</button></div>
-        </div>
+        <header class="ccTop">
+          <div class="ccMerek">
+            <span class="ccLogo">◒</span>
+            <span class="ccMerekTeks"><b>Studio Video</b><span class="kecil">spacedkpoint</span></span>
+          </div>
+          <div class="ccAktif"><span class="ccLabel">KLIP AKTIF</span><b id="stNamaKlip">Belum ada klip terpilih</b></div>
+          <div class="ccTopAksi">
+            <span id="stTotal" class="ccTotal">0 klip</span>
+            <button type="button" id="stBukaEkspor" class="ccTombol utama">Ekspor</button>
+          </div>
+        </header>
 
-        <div class="ccIsi">
+        <div class="ccBody">
           <aside class="ccPanel ccMedia">
-            <div class="ccHead"><b>Media</b><span id="stJumlah" class="kecil"></span></div>
-            <p class="kecil ccKet">Klip dari <code>ROOM/VIDEO/PETUGAS</code>. Klik untuk memasukkan ke timeline.</p>
-            <div id="stDaftarKlip" class="stDaftar"></div>
-            <label class="ccImpor">＋ Impor video<input id="stFile" type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden></label>
-            <button id="stMuatUlang" class="ccGhost">Muat ulang daftar</button>
+            <div class="ccPanelHead">
+              <b>Media</b>
+              <span id="stJumlah" class="kecil"></span>
+            </div>
+            <div id="stDaftarKlip" class="stDaftar" title="Klip dari ROOM/VIDEO/PETUGAS. Klik untuk pratinjau di kanvas."></div>
+            <div class="ccPratinjauBar">
+              <span id="stPratinjauNama" class="ccPratinjauNama">Pilih media untuk pratinjau</span>
+              <button type="button" id="stTambahKlip" class="ccTombol utama" disabled>＋ Tambah ke timeline</button>
+            </div>
+            <div class="ccMediaAksi">
+              <label class="ccImpor">＋ Impor video<input id="stFile" type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden></label>
+              <button type="button" id="stMuatUlang" class="ccTombol hantu" title="Muat ulang daftar dari MEGA">↻</button>
+            </div>
+            <details class="ccLipat">
+              <summary>Audio · backsound &amp; voiceover</summary>
+              <div class="ccLipatIsi">
+                <label class="ccFile">Backsound<input id="stAudio" type="file" accept="audio/*" hidden></label>
+                <div class="stKecil"><span id="stNamaAudio">Belum ada backsound</span><button type="button" id="stHapusAudio" class="mini">✕</button></div>
+                <label class="ccStack">Volume backsound <b id="stVolNilai">35%</b><input id="stVol" type="range" min="0" max="100" value="35"></label>
+                <label class="ccFile">Voiceover / narasi<input id="stVoiceover" type="file" accept="audio/*" hidden></label>
+                <div class="stKecil"><span id="stNamaVoiceover">Belum ada voiceover</span><button type="button" id="stHapusVoiceover" class="mini">✕</button></div>
+                <label class="ccStack">Volume voiceover <b id="stVolVoiceoverNilai">100%</b><input id="stVolVoiceover" type="range" min="0" max="150" value="100"></label>
+              </div>
+            </details>
+            <div class="ccInspectorIsi">
+              <div class="ccSeksi">Klip terpilih · potongan</div>
+              <div class="ccFieldBaris">
+                <label class="ccStack">Mulai (dtk)<input id="stAwal" type="number" min="0" step="0.1" value="0"></label>
+                <button type="button" id="stTandaiAwal" class="ccMini">Tandai</button>
+              </div>
+              <div class="ccFieldBaris">
+                <label class="ccStack">Akhir (dtk)<input id="stAkhir" type="number" min="0" step="0.1" value="0"></label>
+                <button type="button" id="stTandaiAkhir" class="ccMini">Tandai</button>
+              </div>
+
+              <div class="ccSeksi">Teks di layar</div>
+              <label class="ccStack">Teks klip<input id="stTeksKlip" maxlength="90" placeholder="mis. Pengukuran patok 012"></label>
+              <div class="ccDua">
+                <label class="ccStack">Posisi<select id="stPosisiTeks"><option value="bawah">Bawah</option><option value="tengah">Tengah</option><option value="atas">Atas</option></select></label>
+                <label class="ccStack">Warna<input id="stWarnaTeks" type="color" value="#ffffff"></label>
+              </div>
+              <label class="ccStack">Narasi adegan<textarea id="stNarasiKlip" rows="3" maxlength="500" placeholder="Kalimat voiceover untuk adegan ini."></textarea></label>
+              <p class="kecil ccHint">Format dan judul diatur lewat tombol <b>Ekspor</b>; audio ada di bagian atas bilah ini.</p>
+            </div>
           </aside>
 
-          <section class="ccPanel ccTengah">
+          <section class="ccStage">
             <div class="ccKanvas">
               <div class="stPratinjau" id="stPratinjau">
                 <video id="stVideo" playsinline preload="metadata"></video>
@@ -127,34 +172,55 @@
               </div>
             </div>
             <div class="ccTransport">
-              <button id="stPutar" class="ccPlay" title="Putar seluruh urutan">▶</button>
+              <button type="button" id="stPutar" class="ccPlay" title="Putar urutan (Space)">▶</button>
               <span id="stSeqWaktu" class="ccWaktu">00:00 / 00:00</span>
               <input id="stSeqRange" type="range" min="0" max="0" step="0.01" value="0" aria-label="Posisi pemutaran urutan">
-              <button id="stPecah" class="ccGhost" title="Pecah klip di posisi pemutar">✂ Pecah</button>
+              <button type="button" id="stPecah" class="ccTombol hantu" title="Pecah klip di posisi pemutar (S)">✂ Pecah</button>
             </div>
-            <p class="kecil ccShortcut"><b>Space</b> putar/jeda · <b>S</b> pecah · <b>Delete</b> keluarkan · <b>←/→</b> satu frame</p>
+            <p class="ccShortcut"><b>Space</b> putar/jeda · <b>S</b> pecah · <b>Del</b> keluarkan · <b>←/→</b> satu frame</p>
           </section>
 
-          <aside class="ccPanel ccProps">
-            <div class="ccTabs">
-              <button type="button" class="pilih" data-cctab="klip">Klip</button>
-              <button type="button" data-cctab="hasil">Hasil</button>
-              <button type="button" data-cctab="agen">Agen AI</button>
+          <aside class="ccPanel ccInspector">
+            <div class="ccPanelHead">
+              <b>Agen AI</b>
+              <span id="stAiKoneksi" class="kecil">Gratis, best effort</span>
             </div>
-            <div class="ccTabIsi" data-ccpanel="klip">
-              <div class="ccSeksi">Potongan</div>
-              <div class="ccField"><label>Mulai (dtk)<input id="stAwal" type="number" min="0" step="0.1" value="0"></label><button id="stTandaiAwal" class="ccMini">Tandai</button></div>
-              <div class="ccField"><label>Akhir (dtk)<input id="stAkhir" type="number" min="0" step="0.1" value="0"></label><button id="stTandaiAkhir" class="ccMini">Tandai</button></div>
-              <div class="ccSeksi">Teks</div>
-              <label class="ccStack">Teks klip<input id="stTeksKlip" maxlength="90" placeholder="mis. Pengukuran patok 012 — Desa Ciasih"></label>
-              <label class="ccStack">Narasi adegan<textarea id="stNarasiKlip" rows="3" maxlength="500" placeholder="Kalimat voiceover yang menceritakan adegan ini."></textarea></label>
-              <div class="ccDua">
-                <label class="ccStack">Posisi<select id="stPosisiTeks"><option value="bawah">Bawah</option><option value="tengah">Tengah</option><option value="atas">Atas</option></select></label>
-                <label class="ccStack">Warna<input id="stWarnaTeks" type="color" value="#ffffff"></label>
+            <div class="ccAi">
+              <p class="kecil ccHint">Ceritakan kegiatan; agen memilih klip lalu memotongnya ke timeline mengikuti alur cerita. Hanya teks yang dikirim ke layanan publik.</p>
+              <label class="ccStack">Deskripsi kegiatan
+                <textarea id="stAiDeskripsi" rows="5" maxlength="1500" placeholder="Contoh: Survei patok 012 di Desa Ciasih. Tim tiba pagi, menyiapkan alat, lalu mengukur dan memasang patok. Tutup dengan suasana tim."></textarea>
+              </label>
+              <button type="button" id="stAiBuat" class="ccTombol ai-buat">✨ Susun video</button>
+              <p id="stAiStatus" class="kecil ai-status-teks" role="status"></p>
+              <div id="stAiHasil" class="ai-hasil"></div>
+              <div id="stAiAksi" class="ai-aksi" hidden>
+                <button type="button" id="stAiTerapkan" class="ccTombol utama">Terapkan ke timeline</button>
+                <button type="button" id="stAiUlang" class="ccTombol hantu">Buat ulang</button>
               </div>
-              <p class="kecil ccKet">Pilih klip di timeline untuk mengatur potongan dan teksnya.</p>
+              <p class="kecil ai-privasi">Layanan gratis anonim: satu permintaan per 30 detik. Jangan tulis data pribadi sensitif.</p>
             </div>
-            <div class="ccTabIsi" data-ccpanel="hasil" hidden>
+          </aside>
+        </div>
+
+        <footer class="ccTimeline">
+          <div class="ccTLHead"><b>Timeline</b><span class="kecil">geser klip untuk mengurutkan · tarik tepi klip untuk memotong</span></div>
+          <div class="ccTrack">
+            <span class="ccTrackLabel">V1</span>
+            <div class="ccTrackArea" id="stTrackArea">
+              <div id="stTimeline" class="stTimeline"></div>
+              <div id="stPlayhead" class="ccPlayhead"></div>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      <dialog id="dialogEkspor" class="ccDialog">
+        <div class="ccDialogKepala">
+          <b>Ekspor video</b><span class="kecil">format, teks pembuka, dan audio</span>
+          <button type="button" class="ccTutup" data-tutup aria-label="Tutup">×</button>
+        </div>
+        <div class="ccDialogIsi">
+          <div class="ccBagian">
               <div class="ccSeksi">Format</div>
               <label class="ccStack">Rasio<select id="stRasio">
                 <option value="16:9">16:9 — 1920×1080</option>
@@ -164,49 +230,24 @@
               </select></label>
               <label class="ccStack">Judul pembuka<input id="stJudul" maxlength="80" placeholder="mis. Kegiatan Survei Blok A"></label>
               <label class="ccStack">Teks penutup<input id="stPenutup" maxlength="80" placeholder="mis. Dokumentasi BPKH — 2026"></label>
-              <div class="ccSeksi">Audio</div>
-              <label class="ccFile">Backsound<input id="stAudio" type="file" accept="audio/*" hidden></label>
-              <div class="stKecil"><span id="stNamaAudio">Belum ada backsound</span><button id="stHapusAudio" class="mini">✕</button></div>
-              <label class="ccStack">Volume backsound <b id="stVolNilai">35%</b><input id="stVol" type="range" min="0" max="100" value="35"></label>
-              <label class="ccFile">Voiceover / narasi<input id="stVoiceover" type="file" accept="audio/*" hidden></label>
-              <div class="stKecil"><span id="stNamaVoiceover">Belum ada voiceover</span><button id="stHapusVoiceover" class="mini">✕</button></div>
-              <label class="ccStack">Volume voiceover <b id="stVolVoiceoverNilai">100%</b><input id="stVolVoiceover" type="range" min="0" max="150" value="100"></label>
-              <label class="ccStack">Narasi voiceover (teks)
-                <textarea id="stNarasi" rows="4" maxlength="4000" placeholder="Teks narasi yang menceritakan rangkaian video. Bisa dibuat otomatis oleh Agen AI."></textarea>
-              </label>
-              <div class="ccDua">
-                <button type="button" id="stBacakan" class="ccGhost">🔊 Bacakan</button>
-                <button type="button" id="stSalinNarasi" class="ccGhost">Salin teks</button>
-              </div>
               <label class="ccStack">Volume suara klip <b id="stVolKlipNilai">100%</b><input id="stVolKlip" type="range" min="0" max="150" value="100"></label>
-              <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code></label>
-              <p class="kecil ccKet">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
+          </div>
+          <div class="ccBagian">
+            <div class="ccSeksi">Narasi voiceover (teks)</div>
+            <label class="ccStack"><span class="kecil">Dibacakan browser atau disalin untuk direkam terpisah.</span><textarea id="stNarasi" rows="4" maxlength="4000" placeholder="Teks narasi yang menceritakan rangkaian video. Bisa dibuat otomatis oleh Agen AI."></textarea></label>
+            <div class="ccDua">
+              <button type="button" id="stBacakan" class="ccTombol hantu">🔊 Bacakan</button>
+              <button type="button" id="stSalinNarasi" class="ccTombol hantu">Salin teks</button>
             </div>
-            <div class="ccTabIsi" data-ccpanel="agen" hidden>
-              <div class="ccSeksi">Agen AI · tanpa akun</div>
-              <div class="ai-koneksi"><i></i><span id="stAiKoneksi">Gratis, best effort</span></div>
-              <p class="kecil ccKet">Ceritakan kegiatan. Agen memilih klip room lalu langsung memotongnya ke timeline mengikuti alur cerita, dan mengisi narasi tiap adegan. Hanya teks yang dikirim ke layanan publik.</p>
-              <label class="ccStack">Deskripsi kegiatan
-                <textarea id="stAiDeskripsi" rows="5" maxlength="1500" placeholder="Contoh: Survei patok 012 di Desa Ciasih. Tim tiba pagi, menyiapkan alat, lalu mengukur dan memasang patok. Tutup dengan suasana tim."></textarea>
-              </label>
-              <button type="button" id="stAiBuat" class="ccEkspor ai-buat">✨ Susun video</button>
-              <p id="stAiStatus" class="kecil ai-status-teks" role="status"></p>
-              <div id="stAiHasil" class="ai-hasil"></div>
-              <div id="stAiAksi" class="ai-aksi" hidden>
-                <button type="button" id="stAiTerapkan" class="ccEkspor">Terapkan ulang ke timeline</button>
-                <button type="button" id="stAiUlang" class="ccGhost">Buat ulang</button>
-              </div>
-              <p class="kecil ai-privasi">Layanan gratis anonim: satu permintaan per 30 detik. Jangan tulis data pribadi sensitif.</p>
-            </div>
-            <div id="stProgres" class="stProgres"></div>
-          </aside>
+          </div>
+          <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code> di MEGA</label>
+          <p class="kecil ccHint">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
         </div>
-
-        <div class="ccTimeline">
-          <div class="ccTLHead"><b>Timeline</b><span class="kecil">Geser klip untuk mengatur urutan · tarik tepi untuk memotong</span></div>
-          <div class="ccTrack"><span class="ccTrackLabel">V1</span><div id="stTimeline" class="stTimeline"></div></div>
+        <div class="ccDialogKaki">
+          <div id="stProgres" class="stProgres"></div>
+          <button type="button" id="stRender" class="ccTombol utama">Ekspor video</button>
         </div>
-      </div>
+      </dialog>
     </section>
   </main>
 </div>
@@ -229,9 +270,9 @@
 <script src="js/exif-gps.js"></script>
 <script src="js/peta.js"></script>
 <script src="raster-impor.js"></script>
-<script src="app.js?v=ceklist1"></script>
+<script src="app.js?v=studio3"></script>
 <script src="edl.js?v=edl1"></script>
-<script src="studio-video.js?v=ai6"></script>
-<script src="ai-agen.js?v=ai3"></script>
+<script src="studio-video.js?v=studio3"></script>
+<script src="ai-agen.js?v=studio3"></script>
 </body>
 </html>

@@ -299,6 +299,7 @@
     S.tab = b.dataset.v;
     document.querySelectorAll('#tab button').forEach(x => x.classList.toggle('pilih', x === b));
     ['tabel', 'galeri', 'peta', 'ceklist', 'video'].forEach(v => $('v' + v[0].toUpperCase() + v.slice(1)).hidden = v !== S.tab);
+    document.body.classList.toggle('mode-studio', S.tab === 'video');
     if (S.tab === 'ceklist') muatCeklistSpace();
     else { render(); if (S.tab === 'peta' && typeof petaSiap !== 'undefined' && petaSiap) muatUlangLapisanPeta(); }
   });

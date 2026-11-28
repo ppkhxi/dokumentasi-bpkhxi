@@ -428,9 +428,7 @@
 
       let pesan;
       if (potong && potong.ok) {
-        pesan = 'Video dipotong menjadi ' + potong.jumlah + ' adegan · ' + tampil(potong.totalDetik) + ' dtk. Narasi sudah terisi di tab Hasil.';
-        const tabKlip = document.querySelector('[data-cctab="klip"]');
-        if (tabKlip) setTimeout(() => tabKlip.click(), 350);
+        pesan = 'Video dipotong menjadi ' + potong.jumlah + ' adegan · ' + tampil(potong.totalDetik) + ' dtk. Narasi sudah terisi di dialog Ekspor.';
       } else {
         pesan = hasil.edl.urutan.length + ' adegan siap · ' + tampil(totalDetik(hasil.edl)) + ' dtk. Tekan "Terapkan ulang ke timeline" untuk memotongnya.';
       }
@@ -478,12 +476,10 @@
       const elNarasi = $('stNarasi');
       if (elNarasi && narasiGabung) elNarasi.value = narasiGabung;
       kabar(pesan, 'sukses');
-      const tab = document.querySelector('[data-cctab="klip"]');
-      if (tab) setTimeout(() => tab.click(), 350);
     } catch (err) {
       kabar((err && err.message) || 'Gagal menerapkan storyboard.', 'galat');
     } finally {
-      if (tombol) { tombol.disabled = false; tombol.textContent = 'Terapkan ulang ke timeline'; }
+      if (tombol) { tombol.disabled = false; tombol.textContent = 'Terapkan ke timeline'; }
     }
   }
 
@@ -492,9 +488,6 @@
     $('stAiBuat').addEventListener('click', buat);
     $('stAiUlang').addEventListener('click', buat);
     $('stAiTerapkan').addEventListener('click', terapkan);
-    document.querySelectorAll('[data-cctab="agen"]').forEach(b => {
-      b.addEventListener('click', infoKatalog);
-    });
     infoKatalog();
     renderKosong(S.jumlah);
     perbaruiTombol();
@@ -506,6 +499,7 @@
   window.AgenStudio = {
     buat,
     terapkan,
+    perbarui: infoKatalog,
     provider: { nama: 'Pollinations', model: MODEL, akun: false, batasDetik: BATAS_GRATIS },
     status: () => ({ sibuk: S.sibuk, siap: S.siap, edl: S.edl, katalog: S.jumlah })
   };
