@@ -341,7 +341,13 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
           <div id="vidPesan" class="vid-pesan"></div>
         </div>
         <div class="vid-kontrol">
-          <button id="vidNative" class="tombol" style="margin:0;display:none">🎥 Rekam dengan Kamera HP</button>
+          <button id="vidNative" class="vid-rekam-utama" style="display:none" aria-label="Rekam video dengan kamera HP">
+            <span class="vid-rekam-ikon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.2"/><path d="m16.5 11 5-2.6v7.2l-5-2.6Z"/></svg>
+            </span>
+            <span class="vid-rekam-teks"><b>Rekam Video</b><small>Buka kamera HP · klip singkat</small></span>
+            <span class="vid-rekam-panah" aria-hidden="true">›</span>
+          </button>
           <button id="vidBalik" class="vid-bulat" aria-label="Balik kamera" title="Balik kamera" style="display:none">
             <svg viewBox="0 0 24 24"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 4 8.5Z"/><path d="M9.6 13.4h4.8l-1.6-1.7"/><path d="M14.4 15.1H9.6l1.6 1.7"/></svg>
           </button>
@@ -937,7 +943,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.3';
+const VERSI = '4.5.4';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
