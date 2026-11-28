@@ -955,7 +955,7 @@ try{var _tema=localStorage.getItem('dkpoint_tema')||'flash';document.body.setAtt
    PORTAL DOKUMENTASI
    PWA satu halaman — satu layar aktif dalam satu waktu.
    ======================================================================= */
-const VERSI = '4.5.5';
+const VERSI = '4.5.6';
 if(/DokumentasiApp/.test(navigator.userAgent)) document.documentElement.classList.add('app-native');
 
 /* Mode jalan: 'apk' (wrapper native), 'pwa' (terpasang ke layar utama), atau 'web'. */
@@ -2288,7 +2288,6 @@ document.querySelectorAll('.mode-kamera-btn').forEach(b=>{
     if(KM.rec || KM.menyiapkan){ pesan('Hentikan rekaman dulu'); return; }
     KM.mode = b.dataset.kmode === 'video' ? 'video' : 'foto';
     perbaruiModeKamera();
-    if(KM.mode === 'video') pesan('Mode video · ketuk rana merah untuk merekam');
   };
 });
 perbaruiModeKamera();
