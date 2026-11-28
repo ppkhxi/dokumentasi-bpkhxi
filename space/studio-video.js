@@ -1056,9 +1056,10 @@
   }
 
   async function skemaEDL() {
-    let r = await fetch('edl-schema.json', { cache: 'no-store' });
-    if (!r.ok) r = await fetch('/space/edl-schema.json', { cache: 'no-store' });
+    const r = await fetch('edl-schema.json', { cache: 'no-store' });
     if (!r.ok) throw new Error('Skema EDL tidak ditemukan (' + r.status + ').');
+    const tipe = r.headers.get('content-type') || '';
+    if (!/json/i.test(tipe)) throw new Error('Alamat skema EDL tidak mengembalikan JSON.');
     return r.json();
   }
 

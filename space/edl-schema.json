@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://spacedkpoint.pages.dev/space/edl-schema.json",
+  "$id": "https://spacedkpoint.pages.dev/edl-schema.json",
   "title": "DKPoint Studio Video — Edit Decision List",
   "description": "Kontrak untuk agen AI atau editor eksternal. EDL hanya berisi keputusan editing (klip, potongan, teks); berkas video tetap diproses di browser. Semua waktu dalam detik.",
   "type": "object",
