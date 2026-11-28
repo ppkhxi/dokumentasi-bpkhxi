@@ -7,7 +7,7 @@
 <title>spacedkpoint</title>
 <link rel="icon" href="favicon-96.png">
 <link rel="stylesheet" href="js/leaflet.css">
-<link rel="stylesheet" href="app.css?v=timeline1">
+<link rel="stylesheet" href="app.css?v=capcut5">
 </head>
 <body>
 
@@ -97,64 +97,81 @@
     </section>
 
     <section id="vVideo" class="view" hidden>
-      <div class="studio">
-        <aside class="stPanel stKiri">
-          <h3>Klip dari cloud <span id="stJumlah" class="kecil"></span></h3>
-          <p class="kecil" style="margin:0 0 8px">Klip dari <code>ROOM/VIDEO/PETUGAS</code>. Klik untuk memasukkan ke urutan.</p>
-          <div id="stDaftarKlip" class="stDaftar"></div>
-          <label class="tambah" style="margin-top:8px">+ Tambah video dari komputer<input id="stFile" type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden></label>
-          <button id="stMuatUlang" style="width:100%;margin-top:8px">Muat ulang daftar klip</button>
-        </aside>
+      <div class="cc">
+        <div class="ccBar">
+          <div class="ccMerek"><span class="ccLogo">◒</span><b>Studio Video</b><span class="ccTitik"></span><span class="kecil">spacedkpoint</span></div>
+          <div class="ccAktif"><span class="kecil">KLIP AKTIF</span><b id="stNamaKlip">Belum ada klip terpilih</b></div>
+          <div class="ccBarAksi"><span id="stTotal" class="kecil">0 klip</span><button id="stRender" class="ccEkspor">Ekspor video</button></div>
+        </div>
 
-        <section class="stPanel stTengah">
-          <div class="stPratinjau" id="stPratinjau">
-            <video id="stVideo" playsinline controls preload="metadata"></video>
-            <div id="stTeksPratinjau" class="stTeksPratinjau bawah"></div>
-          </div>
-          <div class="stKepala"><b id="stNamaKlip">Belum ada klip terpilih</b><span class="rapat"></span><span id="stTotal" class="kecil">0 klip</span></div>
-          <div class="stKontrol">
-            <label>Mulai (dtk)<input id="stAwal" type="number" min="0" step="0.1" value="0"></label>
-            <button id="stTandaiAwal">Tandai dari pemutar</button>
-            <label>Akhir (dtk)<input id="stAkhir" type="number" min="0" step="0.1" value="0"></label>
-            <button id="stTandaiAkhir">Tandai dari pemutar</button>
-          </div>
-          <label class="stBaris">Teks di klip ini<input id="stTeksKlip" maxlength="90" placeholder="mis. Pengukuran patok 012 — Desa Ciasih"></label>
-          <div class="stKontrol">
-            <label>Posisi teks<select id="stPosisiTeks"><option value="bawah">Bawah</option><option value="tengah">Tengah</option><option value="atas">Atas</option></select></label>
-            <label>Warna<input id="stWarnaTeks" type="color" value="#ffffff"></label>
-          </div>
-          <div class="stTimelineKepala">
-            <h3>Urutan video</h3>
-            <div class="stSeqKontrol">
-              <button id="stPutar" title="Putar seluruh urutan">▶</button>
-              <input id="stSeqRange" type="range" min="0" max="0" step="0.01" value="0" aria-label="Posisi pemutaran urutan">
-              <span id="stSeqWaktu" class="kecil">00:00 / 00:00</span>
-              <button id="stPecah" title="Pecah klip di posisi pemutar">✂ Pecah</button>
+        <div class="ccIsi">
+          <aside class="ccPanel ccMedia">
+            <div class="ccHead"><b>Media</b><span id="stJumlah" class="kecil"></span></div>
+            <p class="kecil ccKet">Klip dari <code>ROOM/VIDEO/PETUGAS</code>. Klik untuk memasukkan ke timeline.</p>
+            <div id="stDaftarKlip" class="stDaftar"></div>
+            <label class="ccImpor">＋ Impor video<input id="stFile" type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden></label>
+            <button id="stMuatUlang" class="ccGhost">Muat ulang daftar</button>
+          </aside>
+
+          <section class="ccPanel ccTengah">
+            <div class="ccKanvas">
+              <div class="stPratinjau" id="stPratinjau">
+                <video id="stVideo" playsinline preload="metadata"></video>
+                <div id="stTeksPratinjau" class="stTeksPratinjau bawah"></div>
+              </div>
             </div>
-          </div>
-          <div id="stTimeline" class="stTimeline"></div>
-          <p class="kecil stPetunjuk">Geser blok untuk mengubah urutan; tarik tepi kiri/kanan untuk memotong. <b>Space</b> putar/jeda · <b>S</b> pecah · <b>Delete</b> keluarkan · <b>←/→</b> satu frame.</p>
-        </section>
+            <div class="ccTransport">
+              <button id="stPutar" class="ccPlay" title="Putar seluruh urutan">▶</button>
+              <span id="stSeqWaktu" class="ccWaktu">00:00 / 00:00</span>
+              <input id="stSeqRange" type="range" min="0" max="0" step="0.01" value="0" aria-label="Posisi pemutaran urutan">
+              <button id="stPecah" class="ccGhost" title="Pecah klip di posisi pemutar">✂ Pecah</button>
+            </div>
+            <p class="kecil ccShortcut"><b>Space</b> putar/jeda · <b>S</b> pecah · <b>Delete</b> keluarkan · <b>←/→</b> satu frame</p>
+          </section>
 
-        <aside class="stPanel stKanan">
-          <h3>Hasil video</h3>
-          <label class="stBaris">Rasio<select id="stRasio">
-            <option value="16:9">16:9 — 1920×1080</option>
-            <option value="9:16">9:16 — 1080×1920</option>
-            <option value="1:1">1:1 — 1080×1080</option>
-            <option value="4:5">4:5 — 1080×1350</option>
-          </select></label>
-          <label class="stBaris">Judul pembuka<input id="stJudul" maxlength="80" placeholder="mis. Kegiatan Survei Blok A"></label>
-          <label class="stBaris">Teks penutup<input id="stPenutup" maxlength="80" placeholder="mis. Dokumentasi BPKH — 2026"></label>
-          <label class="stBaris">Backsound<input id="stAudio" type="file" accept="audio/*"></label>
-          <div class="stKecil"><span id="stNamaAudio">Belum ada backsound</span><button id="stHapusAudio" class="mini">✕</button></div>
-          <label class="stBaris">Volume backsound <b id="stVolNilai">35%</b><input id="stVol" type="range" min="0" max="100" value="35"></label>
-          <label class="stBaris">Volume suara klip <b id="stVolKlipNilai">100%</b><input id="stVolKlip" type="range" min="0" max="150" value="100"></label>
-          <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code></label>
-          <button id="stRender" class="utama" style="width:100%;margin-top:8px">🎬 Gabungkan &amp; unduh</button>
-          <p class="kecil" style="margin:8px 0 0">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
-          <div id="stProgres" class="stProgres"></div>
-        </aside>
+          <aside class="ccPanel ccProps">
+            <div class="ccTabs">
+              <button type="button" class="pilih" data-cctab="klip">Klip</button>
+              <button type="button" data-cctab="hasil">Hasil</button>
+            </div>
+            <div class="ccTabIsi" data-ccpanel="klip">
+              <div class="ccSeksi">Potongan</div>
+              <div class="ccField"><label>Mulai (dtk)<input id="stAwal" type="number" min="0" step="0.1" value="0"></label><button id="stTandaiAwal" class="ccMini">Tandai</button></div>
+              <div class="ccField"><label>Akhir (dtk)<input id="stAkhir" type="number" min="0" step="0.1" value="0"></label><button id="stTandaiAkhir" class="ccMini">Tandai</button></div>
+              <div class="ccSeksi">Teks</div>
+              <label class="ccStack">Teks klip<input id="stTeksKlip" maxlength="90" placeholder="mis. Pengukuran patok 012 — Desa Ciasih"></label>
+              <div class="ccDua">
+                <label class="ccStack">Posisi<select id="stPosisiTeks"><option value="bawah">Bawah</option><option value="tengah">Tengah</option><option value="atas">Atas</option></select></label>
+                <label class="ccStack">Warna<input id="stWarnaTeks" type="color" value="#ffffff"></label>
+              </div>
+              <p class="kecil ccKet">Pilih klip di timeline untuk mengatur potongan dan teksnya.</p>
+            </div>
+            <div class="ccTabIsi" data-ccpanel="hasil" hidden>
+              <div class="ccSeksi">Format</div>
+              <label class="ccStack">Rasio<select id="stRasio">
+                <option value="16:9">16:9 — 1920×1080</option>
+                <option value="9:16">9:16 — 1080×1920</option>
+                <option value="1:1">1:1 — 1080×1080</option>
+                <option value="4:5">4:5 — 1080×1350</option>
+              </select></label>
+              <label class="ccStack">Judul pembuka<input id="stJudul" maxlength="80" placeholder="mis. Kegiatan Survei Blok A"></label>
+              <label class="ccStack">Teks penutup<input id="stPenutup" maxlength="80" placeholder="mis. Dokumentasi BPKH — 2026"></label>
+              <div class="ccSeksi">Audio</div>
+              <label class="ccFile">Backsound<input id="stAudio" type="file" accept="audio/*" hidden></label>
+              <div class="stKecil"><span id="stNamaAudio">Belum ada backsound</span><button id="stHapusAudio" class="mini">✕</button></div>
+              <label class="ccStack">Volume backsound <b id="stVolNilai">35%</b><input id="stVol" type="range" min="0" max="100" value="35"></label>
+              <label class="ccStack">Volume suara klip <b id="stVolKlipNilai">100%</b><input id="stVolKlip" type="range" min="0" max="150" value="100"></label>
+              <label class="centang kecil"><input id="stSimpanCloud" type="checkbox" checked> Simpan juga ke <code>VIDEO/HASIL</code></label>
+              <p class="kecil ccKet">Render memakai ffmpeg.wasm di browser (±32 MB, diunduh sekali). Jangan tutup tab selama render.</p>
+            </div>
+            <div id="stProgres" class="stProgres"></div>
+          </aside>
+        </div>
+
+        <div class="ccTimeline">
+          <div class="ccTLHead"><b>Timeline</b><span class="kecil">Geser klip untuk mengatur urutan · tarik tepi untuk memotong</span></div>
+          <div class="ccTrack"><span class="ccTrackLabel">V1</span><div id="stTimeline" class="stTimeline"></div></div>
+        </div>
       </div>
     </section>
   </main>
@@ -179,6 +196,6 @@
 <script src="js/peta.js"></script>
 <script src="raster-impor.js"></script>
 <script src="app.js"></script>
-<script src="studio-video.js?v=timeline4"></script>
+<script src="studio-video.js?v=capcut5"></script>
 </body>
 </html>

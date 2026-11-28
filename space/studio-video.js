@@ -85,13 +85,23 @@
   function renderDaftar() {
     const box = $('stDaftarKlip'); if (!box) return;
     const c = ctx();
-    if (!ST.cloud || !ST.cloud.length) {
+    const lokal = (ST.pilih || []).filter(k => k.sumber === 'lokal');
+    const jumlah = $('stJumlah');
+    if (jumlah) jumlah.textContent = (ST.cloud || []).length + lokal.length ? ((ST.cloud || []).length + lokal.length) + ' media' : '';
+    if ((!ST.cloud || !ST.cloud.length) && !lokal.length) {
       box.innerHTML = '<p class="kecil" style="margin:0">' + (c.demo ? 'Mode demo: tambahkan video dari komputer.' : 'Belum ada klip di folder VIDEO room.') + '</p>';
       return;
     }
     const per = new Map();
-    ST.cloud.forEach(k => { if (!per.has(k.room)) per.set(k.room, []); per.get(k.room).push(k); });
-    box.innerHTML = Array.from(per).map(([room, list]) =>
+    (ST.cloud || []).forEach(k => { if (!per.has(k.room)) per.set(k.room, []); per.get(k.room).push(k); });
+    const grupLokal = lokal.length
+      ? '<div class="stGrup"><b>Lokal <span class="kecil">' + lokal.length + ' klip</span></b>' +
+        lokal.map(k => '<button class="stKlip dipakai" data-lokal="' + esc(k.id) + '">' +
+          '<span class="stNama">' + esc(k.nama) + '</span>' +
+          '<span class="kecil">Lokal · ' + detik(k.durasi) + ' · ' + ukuranTeks(k.ukuran) + '</span>' +
+          '<span class="stCek">✓</span></button>').join('') + '</div>'
+      : '';
+    box.innerHTML = grupLokal + Array.from(per).map(([room, list]) =>
       '<div class="stGrup"><b>' + esc(room) + ' <span class="kecil">' + list.length + ' klip</span></b>' +
       list.map(k => {
         const dipakai = ST.pilih.some(p => p.id === k.id);
@@ -100,13 +110,19 @@
           '<span class="kecil">' + esc(k.petugas) + ' · ' + detik(k.durasi) + ' · ' + ukuranTeks(k.ukuran) + '</span>' +
           (dipakai ? '<span class="stCek">✓</span>' : '') + '</button>';
       }).join('') + '</div>').join('');
-    box.querySelectorAll('.stKlip').forEach(b => b.onclick = () => {
+    box.querySelectorAll('.stKlip[data-id]').forEach(b => b.onclick = () => {
       const k = ST.cloud.find(x => x.id === b.dataset.id);
       if (!k) return;
       if (ST.pilih.some(p => p.id === k.id)) { status('Klip ini sudah ada di urutan.'); return; }
       ST.pilih.push(Object.assign({}, k, BARU, { trimAkhir: k.durasi || 0 }));
       ST.terpilih = ST.pilih[ST.pilih.length - 1];
       renderDaftar(); renderPlaylist(); bukaKlip(ST.terpilih);
+    });
+    box.querySelectorAll('.stKlip[data-lokal]').forEach(b => b.onclick = () => {
+      const k = ST.pilih.find(x => x.id === b.dataset.lokal);
+      if (!k) return;
+      ST.terpilih = k;
+      renderDaftar(); renderPlaylist(); bukaKlip(k);
     });
   }
 
@@ -131,10 +147,10 @@
   }
 
   /* ---------------- urutan & pratinjau ---------------- */
-  const PX_DETIK = 26;
+  const PX_DETIK = 72;
   function durasiKlip(k) { return Math.max(0, (Number(k.trimAkhir) || Number(k.durasi) || 0) - (Number(k.trimAwal) || 0)); }
   function totalDurasi() { return ST.pilih.reduce((a, k) => a + durasiKlip(k), 0); }
-  function lebarKlip(d) { return Math.max(72, Math.min(260, Math.round((Number(d) || 1) * PX_DETIK))); }
+  function lebarKlip(d) { return Math.max(72, Math.min(380, Math.round((Number(d) || 1) * PX_DETIK))); }
   function posisiMulai(i) { let a = 0; for (let j = 0; j < i; j++) a += durasiKlip(ST.pilih[j]); return a; }
   function idxTerpilih() { return ST.pilih.indexOf(ST.terpilih); }
   function klipPada(t) {
@@ -815,6 +831,17 @@
     });
   }
 
+  function pasangTabCapcut() {
+    const tabs = Array.from(document.querySelectorAll('[data-cctab]'));
+    const panels = Array.from(document.querySelectorAll('[data-ccpanel]'));
+    tabs.forEach(b => {
+      b.onclick = () => {
+        tabs.forEach(x => x.classList.toggle('pilih', x === b));
+        panels.forEach(p => { p.hidden = p.dataset.ccpanel !== b.dataset.cctab; });
+      };
+    });
+  }
+
   function pasang() {
     $('stFile').onchange = e => {
       const f = Array.from(e.target.files || []);   // salin dulu: mengosongkan input ikut mengosongkan FileList
@@ -892,6 +919,7 @@
     $('stVolKlipNilai').textContent = $('stVolKlip').value + '%';
     pasangTimeline();
     pasangShortcut();
+    pasangTabCapcut();
   }
 
   /* ---------------- API untuk app.js ---------------- */
